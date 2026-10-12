@@ -12,25 +12,23 @@ export const INTEL = {
   packageMm: 240, // "package size up to 240x240 mm"
   organicMaxMm: 120, // FCBGA today: "Support to 120x120mm"
   reticles: 8, // ">8x reticle Si"
-  tgvUm: 75, // "Electrically functional assembled MCP test vehicle with 3 layers of RDL and TGV of 75um"
+  tgvUm: 75, // "Electrically functional assembled MCP test vehicle with 3 layers of RDL and TGV of 75um" (the slide does not say whether 75 µm is the via diameter or the pitch, so the text quotes it as "TGVs at 75 µm")
   rdl: 3, // same bullet: 3 layers of RDL on the test vehicle
   aspect: 20, // "Filled through glass vias with ~20:1 aspect ratio for 1mm core thickness" (a separate bullet)
   coreMm: 1, // same bullet
-  trillion: 2030, // "1 trillion transistors on a package by 2030"
   investB: 1, // "Fully integrated glass R&D line with over $1B investment in Chandler, AZ"
 };
 
-// DNP, "DNP Develops TGV Glass Core Substrate for Semiconductor Packages" (March 2023): aspect ratio 9+,
-// scaling the conformal type to a 510 × 515 mm panel. https://www.global.dnp/en/news/detail/2023/03/0320_20169052/
+// DNP, "DNP Develops TGV Glass Core Substrate for Semiconductor Packages" (March 2023): scaling the conformal type
+// to a 510 × 515 mm panel. https://www.global.dnp/en/news/detail/2023/03/0320_20169052/
 export const PANEL = { w: 510, d: 515 };
-export const DNP = { aspect: 9 };
 
 // LPKF Laser & Electronics, investor deck (Berenberg conference 2024): LIDE, laser induced deep etching.
 // "glass of up to 1mm can be structured by a single laser pulse"; "the laser-modified regions display a much higher
 // etch rate than the bulk material"; "hourglass shaped holes with a tunable taper"; aspect ratios "1:10 to 1:50";
 // glass core substrate "Glass CTE≈7 · Typical thickness: 800 µm"; glass interposer "CTE≈3 · 400 µm".
 // https://www.lpkf.com/fileadmin/mediafiles/user_upload/company/investor-relations/financial-reports/2024/Berenberg_Conference_2024_LPKF_Website.pdf
-export const LIDE = { pulses: 1, maxMm: 1, aspect: [10, 50], coreCte: 7, coreUm: 800, interposerCte: 3, accuracyUm: 5 };
+export const LIDE = { pulses: 1, maxMm: 1, aspect: [10, 50], coreCte: 7, coreUm: 800, interposerCte: 3 };
 
 // Corning (A. B. Shorey), "Leveraging Glass Properties for Advanced Packaging", IMAPS 2015: panels "up to 515 x 515 mm";
 // "Glass with CTE in the range of ~ 3-9 ppm/C is available" (the composition sets it).
@@ -66,16 +64,18 @@ export const STATUS = { intelUse: 2030 };
 // (production) and up to $100 M (NAPMP R&D grants, a ceiling). https://www.kedglobal.com/korean-chipmakers/newsView/ked202411220005
 export const ABSOLICS = { m2: 12000, chipsM: 75, napmpM: 100 };
 
-// Samsung Electro-Mechanics (5 Nov 2025): prototypes on the Sejong pilot line; a joint venture with Sumitomo Chemical
-// Group to mass-produce "after 2027". https://www.samsungsem.com/global/newsroom/news/view.do?id=9850
-export const SEMCO = { after: 2027 };
+// Samsung Electro-Mechanics: the Nov 2025 MOU (https://www.samsungsem.com/global/newsroom/news/view.do?id=9850) became a
+// joint venture. Tom's Hardware (27 Aug 2026): "Samsung Electro-Mechanics formalized a 482.1 billion won ($310 million)
+// glass-core joint venture with Sumitomo Chemical's Dongwoo Fine-Chem on July 2, targeting first production in the second
+// half of 2027"; the JV (GLASEM) makes the drilled and metallized glass core that feeds Samsung's substrate line.
+// https://www.tomshardware.com/tech-industry/manufacturing/glass-substrate-roadmap-examined
+export const SEMCO = { jvSigned: "2026-07", firstProd: "H2 2027", jvKrwB: 482.1 };
 
 // Derived
 export const pitchRatio = Math.sqrt(INTEL.densityX); // 10x more holes per area is about 3.2x tighter pitch
 export const panelM2 = (PANEL.w / 1000) * (PANEL.d / 1000); // 0.263 m²
 export const panelsPerYear = Math.round(ABSOLICS.m2 / panelM2); // about 45,700 panels at Absolics' first-phase capacity
 export const sitesPerPanel = Math.floor(PANEL.w / INTEL.packageMm) * Math.floor(PANEL.d / INTEL.packageMm); // 4 of the largest packages
-export const aspectFor1mm = Math.round((INTEL.coreMm * 1000) / INTEL.tgvUm); // a 75 µm via through 1 mm would be about 13:1
 
 // Drawing (illustrative): via grid per package site, drawn at a pitch far coarser than real so it reads.
 export const DRAWN = { viasPerSide: 8, organicVias: 3, glassVias: 10, hbmPerSite: 16 };
@@ -87,8 +87,8 @@ export const PHASES = [
   { id: "load", t0: 0.0, t1: 0.06, label: "Bare glass panel", short: `bare glass · ${PANEL.w} × ${PANEL.d} mm on the chuck`, say: `${PANEL.w} × ${PANEL.d} mm glass panel held flat on the vacuum chuck` },
   { id: "laser", t0: 0.06, t1: 0.46, label: "Laser modify", short: "", say: `${LIDE.pulses} pulse per via changes the glass through its whole thickness · nothing is removed yet` },
   { id: "etch", t0: 0.46, t1: 0.57, label: "Wet etch", short: "wet etch · laser-modified glass dissolves", say: `modified glass etches far faster than the rest · hourglass holes open (wet bench)` },
-  { id: "fill", t0: 0.57, t1: 0.67, label: "Seed + Cu fill", short: "seed metal, then copper plated into each via", say: `seed layer, then copper plated into every hole (plating line)` },
-  { id: "rdl", t0: 0.67, t1: 0.8, label: "Build-up RDL", short: "", say: `wiring layers built up on both faces · <${INTEL.lineSpaceUm}/${INTEL.lineSpaceUm} µm lines (laminators, litho)` },
+  { id: "fill", t0: 0.57, t1: 0.67, label: "Seed + copper fill", short: "seed metal, then copper plated into vias", say: `seed layer, then copper plated into every hole (plating line)` },
+  { id: "rdl", t0: 0.67, t1: 0.8, label: "Build-up wiring (RDL)", short: "", say: `wiring layers built up on both faces · <${INTEL.lineSpaceUm}/${INTEL.lineSpaceUm} µm lines (laminators, litho)` },
   { id: "cut", t0: 0.8, t1: 0.9, label: "Singulate", short: "", say: `laser cuts the panel into ${sitesPerPanel} substrates of up to ${INTEL.packageMm} × ${INTEL.packageMm} mm` },
   { id: "attach", t0: 0.9, t1: 1.0, label: "Attach chiplets", short: "", say: `compute dies and HBM placed on each substrate (assembly)` },
 ];

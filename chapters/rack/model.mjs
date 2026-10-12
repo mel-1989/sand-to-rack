@@ -9,6 +9,7 @@
 //   [QCT]  QCT / HPCwire white paper, liquid cooling for GB200 NVL72: https://blog.qct.io/wp-content/uploads/2025/04/QCT-Qoolrack-Stand-Alone_Advanced-Liquid-Cooling-for-NVIDIA-GB200-NVL72-Systems.pdf
 //   [REG]  The Register, GTC 2024 report: https://www.theregister.com/2024/03/21/nvidia_dgx_gb200_nvk72
 //   [GIG]  Gigabyte DLB2-CB1 (GB200 NVL72 rack) datasheet: https://download.gigabyte.com/FileList/DataSheet/DLB2-CB1_datasheet.pdf
+//   [VR]   NVIDIA technical blog, inside the Rubin platform: https://developer.nvidia.com/blog/inside-the-nvidia-rubin-platform-six-new-chips-one-ai-supercomputer/
 
 export const TRAY = {
   ru: 1, // [DGX] compute and switch trays are 1RU each
@@ -55,6 +56,13 @@ export const RACK = {
   tonnes: 1.36, // [REG] 1.36 metric tons (3,000 lb)
   matingLbf: 6000, // [OCP] 6,000 lb of mating force between rack components and frame
 };
+// The next rack, for the lesson's last note.
+export const RUBIN = {
+  superchipsPerTray: 2, // [VR] "Each tray integrates two superchips ... into a modular, cable-free assembly"
+  gpus: 72, // [VR] 72 Rubin GPUs in one NVL72 rack
+  assemblyBlackwellH: 1.5, // [VR] "more than 1.5 hours for Blackwell"
+  assemblyRubinMin: 5, // [VR] "now takes only ~5 minutes with Vera Rubin"
+};
 export const switchPorts = RACK.switchTrays * RACK.switchChipsPerTray * RACK.portsPerSwitch; // 1,296, derived
 export const gpuPorts = RACK.gpus * GPU.nvlinkPorts; // 1,296, derived: every GPU port meets one switch port
 
@@ -62,8 +70,8 @@ export const COOL = {
   inletMaxC: 45, // [QCT] maximum liquid inlet temperature
   returnMaxC: 65, // [QCT] maximum liquid return temperature
   rackLpm: 130, // [QCT] up to 130 L/min per rack
-  liquidKW: 115, // [QCT] heat taken by liquid, in QCT's 132 kW cooling design budget (sized above the ≈120 kW typical draw)
-  airKW: 17, // [QCT] heat taken by air (SSDs, NICs, risers)
+  liquidKW: 115, // [QCT] "the liquid cooling requires 115 kW"
+  airKW: 17, // [QCT] "the air cooling requires 17 kW" (SSDs, NICs, risers)
   regInC: 25, // [REG] one GTC 2024 description: water in at 25 °C ...
   regLps: 2, // [REG] ... at two litres a second, leaving about 20 °C warmer
   regRiseC: 20, // [REG]
@@ -73,7 +81,7 @@ export const COOL = {
 // Drawing scale: the tray is drawn at 1 unit = 2 mm across and in height (1U = 44.45 mm = 22 units).
 // Its depth, the board layout and the rack slot fixture are illustrative.
 export const MM = 0.5;
-COOL.liquidShare = Math.round((COOL.liquidKW / (COOL.liquidKW + COOL.airKW)) * 100); // 87 %, derived from [QCT]'s 132 kW cooling design budget
+COOL.liquidShare = Math.round((COOL.liquidKW / (COOL.liquidKW + COOL.airKW)) * 100); // 87 %, derived: QCT's 115 kW liquid over its 115 + 17 kW
 
 const NB = "\u00a0"; // non-breaking space between a number and its unit in readouts
 export const U_UNITS = 44.45 * MM;

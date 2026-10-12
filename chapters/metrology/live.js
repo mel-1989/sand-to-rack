@@ -42,6 +42,9 @@ const defects = [...screen.querySelectorAll('[data-part="defect"]')];
 const crossY = cross.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/);
 const crossV = Number(crossY[2]);
 const crossU0 = Number(crossY[1]);
+// the optical head lights itself while it works, so the reader can find it under the chamber wall
+const opticalNodes = nodes.filter((node) => node.part === "optical");
+let opticalLit = false;
 const beamLine = stage.querySelector(".mt-wafer-beam .iso-line");
 const spotDot = stage.querySelector(".mt-wafer-beam circle");
 
@@ -59,10 +62,12 @@ let frame = 0;
 let last = 0;
 let clock = 0;
 let spoken = "";
+let dragging = false;
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const ease = (t) => t * t * (3 - 2 * t);
 const stepIndex = (t) => Math.min(END - 1, Math.floor(t));
+const STILL_AT = 0.7; // where in a step a reduced-motion jump lands
 const pad = (n) => String(n).padStart(2, "0");
 
 function say(text) {
@@ -116,6 +121,11 @@ function render() {
   const p = clamp(T - i);
   const id = T <= 0 ? "rest" : STEPS[i].id;
   let text = D.idle;
+  const lit = id === "navigate" && !selected;
+  if (lit !== opticalLit) {
+    opticalLit = lit;
+    for (const node of opticalNodes) node.el.toggleAttribute("data-auto", lit);
+  }
   // beam on while scanning and imaging
   const beamOn = T > 2 && T < 4;
   stage.toggleAttribute("data-beam", beamOn);
@@ -210,11 +220,12 @@ function showPlay() {
   const label = `${pad(i + 1)} · ${STEPS[i].name}`;
   if (stepText.textContent !== label) stepText.textContent = label;
   const value = String(Math.round((T / END) * 1000));
-  if (scrubInput.value !== value && document.activeElement !== scrubInput) scrubInput.value = value;
+  // only an active pointer drag owns the thumb; focus alone must not freeze it
+  if (scrubInput.value !== value && !dragging) scrubInput.value = value;
 }
 
 function readoutText() {
-  if (selected) return D.parts[selected].say;
+  if (selected) return `${D.parts[selected].name}: ${D.parts[selected].say}`;
   return shown ?? D.idle;
 }
 
@@ -268,10 +279,7 @@ new IntersectionObserver(
 ).observe(stage);
 
 function takeOver() {
-  if (touring) {
-    touring = false;
-    playing = false;
-  }
+  touring = false;
   tookOver = true;
 }
 
@@ -363,8 +371,9 @@ function togglePlay() {
   }
   if (T >= END) T = 0;
   if (still.matches) {
-    // reduced motion: jump one whole step at a time
-    T = Math.min(END, Math.floor(T) + 1);
+    // reduced motion: jump to a representative frame inside each step, one step per press
+    const i = T < STILL_AT - 1e-6 ? 0 : Math.floor(T - STILL_AT + 1e-6) + 1;
+    T = i >= END ? END : i + STILL_AT;
     paint();
     return;
   }
@@ -424,6 +433,10 @@ scrubInput.addEventListener("keydown", (event) => {
   paint();
   run();
 });
+
+scrubInput.addEventListener("pointerdown", () => (dragging = true));
+for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) scrubInput.addEventListener(type, () => (dragging = false));
+window.addEventListener("pointerup", () => (dragging = false));
 
 scrubInput.addEventListener("input", () => {
   takeOver();

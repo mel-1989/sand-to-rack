@@ -39,6 +39,16 @@ export const SPARE_PCT = 1.5;
 // CS-6 is to add 3D-stacked DRAM to the wafer. https://www.cerebras.ai/blog/ultrafast-frontier-inference-cerebras-deep-dive-at-hot-chips-2026
 export const HC26 = { convertMm: 0.5, gpuConvertMm: 50 };
 
+// CS-4 (Hot Chips 2026) runs the WSE-3T ("Turbo"), the WSE-3 at about twice the clock; the figure still draws the WSE-3.
+// Cerebras, same blog post as above: "A single Cerebras WSE-3T provides 53.5 petabytes per second of aggregate on-wafer
+// fabric bandwidth" and "Nexus supports three Wafer-Scale Engines" per rack.
+// ServeTheHome: "doubled the clockspeeds (and thus performance) of its predecessor", "WSE3-T offers 43,000 TB/second of
+// memory bandwidth", "putting 3 WSEs within a single rack".
+// https://www.servethehome.com/cerebras-talks-going-rack-scale-with-their-wses-at-hot-chips-2026/
+export const WSE3T = { name: "WSE-3T", system: "CS-4", clockX: 2, fabricPBs: 53.5, memPBs: 43, perRack: 3 };
+// the WSE-3's 214 Pb/s fabric in bytes, to compare with the WSE-3T's 53.5 PB/s
+export const fabricPBsWSE3 = WSE3.fabricPbs / 8;
+
 // TSMC SoW-X, named in TSMC's 2025 North America Technology Symposium release: a CoWoS-based wafer-sized system,
 // 40× the computing power of current CoWoS, volume production in 2027. https://pr.tsmc.com/english/news/3228
 // TSMC's 2027 full-wafer system-on-wafer: more than 40 reticles' worth of silicon and more than 60 HBM stacks
@@ -75,23 +85,23 @@ export { fmt };
 export const PIECES = {
   cold: {
     name: "Cold plate",
-    say: "water-cooled · pressed on the wafer's back",
+    say: "water-cooled, on the wafer's back",
   },
   wafer: {
     name: "WSE-3 wafer",
-    say: `${fmt(WSE3.areaMm2)} mm² · ${WSE3.transistorsT} T transistors · ${WSE3.sramGB} GB SRAM`,
+    say: `${fmt(WSE3.areaMm2)} mm² · ${WSE3.transistorsT} T transistors`,
   },
   connector: {
     name: "Wafer connector",
-    say: "absorbs silicon vs board expansion",
+    say: "absorbs the thermal mismatch",
   },
   pcb: {
     name: "Main board",
-    say: "current rises through it, perpendicular to the wafer",
+    say: "carries power up to the wafer",
   },
   power: {
     name: "Power modules",
-    say: "current rises through the board to the wafer",
+    say: "current rises through the board",
   },
   stand: { name: "Assembly fixture", say: "" },
 };

@@ -50,7 +50,7 @@ const exitDot = fanItem.querySelector("[data-exit]");
 const dose = stage.querySelector(".ii-dose:not(.ii-adose)");
 const annealDose = stage.querySelector(".ii-adose");
 const heat = stage.querySelector(".ii-heat");
-const lamps = [...stage.querySelectorAll(".ii-lamps, .ii-lampcells")];
+const lamps = [...stage.querySelectorAll(".ii-lamps")];
 const cupGlow = stage.querySelector(".ii-cupglow");
 const lampItem = items.find((el) => el.hasAttribute("data-lamps"));
 const hotWafer = items.find((el) => el.hasAttribute("data-hot-wafer"));
@@ -135,7 +135,7 @@ function render() {
   // kept beam
   let front = 0;
   if (index === 1) front = ease(t) * D.beam.entry;
-  else if (index === 2) front = D.beam.entry + ease(t) * (D.beam.exit - D.beam.entry);
+  else if (index === 2) front = D.beam.entry + ease(clamp(t / 0.8)) * (D.beam.exit - D.beam.entry); // the arc is whole before the step ends
   else if (index === 3) front = D.beam.exit + ease(t) * (D.beam.length - D.beam.exit);
   else if (index === 4) front = D.beam.length;
   for (const b of beamItems) {
@@ -146,14 +146,14 @@ function render() {
   }
   if (index === 0) for (const b of beamItems) if (b.s0 === 0) (b.el.toggleAttribute("hidden", false), reveal(b.paths, 0));
   // rejected ions
-  const rej = index === 2 ? ease(t) : index > 2 && index <= 4 ? 1 : 0;
+  const rej = index === 2 ? ease(clamp(t / 0.6)) : index > 2 && index <= 4 ? 1 : 0; // drawn by mid-step, held to the end of it
   for (const el of rejectItems) {
     const show = rej > 0 && el.dataset.reject === species;
     el.toggleAttribute("hidden", !show);
     if (show) for (const entry of rejectPaths.get(el)) dashTo(entry, rej * 2 - (el.dataset.half === "1" ? 1 : 0));
   }
-  // column rings light in turn
-  ringsHot.forEach((el, i) => setHot(el, index === 3 ? t * ringsHot.length > i : false));
+  // column rings light in turn from the first moment of the step, ahead of the beam front, and all are on by mid-step
+  ringsHot.forEach((el, i) => setHot(el, index === 3 ? (0.02 + t * 2) * ringsHot.length > i : false));
   // extraction electrodes switch on one after another, then hold while the beam runs
   for (const el of xrings) {
     const i = Number(el.dataset.xring);

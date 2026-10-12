@@ -225,8 +225,13 @@
   }
 }
 
-.hb-step {
-  width: 260px;
+@media (min-width: 481px) {
+  .hb-step {
+    width: 210px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
 }
 
 /* the collet when it is hot, and the camera lights: the one lit accent */

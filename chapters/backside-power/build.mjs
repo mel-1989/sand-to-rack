@@ -16,8 +16,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const { BLK, RB, LB, WHEEL } = ST;
 
 // ---- camera ----
-const W = 720;
-const H = 600;
+const W = 640;
+const H = 572;
 const AZIMUTH = 56;
 const ELEVATION = 30;
 
@@ -74,7 +74,7 @@ const P = k.fitProjection(
   [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), ...k.boxCorners(COL, 0, COL_TOP + 4), ...k.boxCorners({ x: XR - 10, y: -8, w: 20, d: 16, r: 0 }, 0, MOTOR.z1 + 4)],
   W,
   H,
-  { pad: 30, azimuth: AZIMUTH, elevation: ELEVATION },
+  { pad: 12, azimuth: AZIMUTH, elevation: ELEVATION },
 );
 const V = G.viewOf(P);
 const L = G.lightOf(P);
@@ -336,7 +336,7 @@ const PARTS = M.ORDER.map((id, index) => `<button type="button" class="bp-part" 
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">Front-side vs backside power</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.DONE}</span></div>`;
 const controls = `<div class="bp-controls"><span class="bp-hint">Hover a layer · Space plays the build</span><span class="bp-live" aria-live="polite" data-live></span></div>`;
 const stageEl = `<div class="bp-stage" tabindex="0" role="slider" aria-label="Two chip blocks: front-side power on the left, backside power on the right on a flip fixture under a grinder. Hover, or use the arrow keys, to pick a part; Space plays or pauses the backside-power build; Escape stops it and shows the finished chip; the slider below steps through the build." aria-valuemin="0" aria-valuemax="${M.ORDER.length}" aria-valuenow="0" aria-valuetext="${M.DONE}">${svg}</div>`;
-const caption = `Left, the usual chip: current enters at the bumps on top and has to climb down through every wiring layer, ${M.IMEC.beolLayers[0]} to ${M.IMEC.beolLayers[1]} of them on a modern chip, where power lines take at least ${M.IMEC.powerRoutingPct}% of the routing (imec). Right, backside power, as in Intel's PowerVia (${M.INTEL_18A.node}) and TSMC's Super Power Rail (${M.A16.node}): the front keeps only signal wiring, a carrier wafer is bonded on and the stack flipped, the original silicon is ground from ${M.WAFER_UM} µm to ${M.IMEC.thinNm} nanometres, and nano-TSVs carry current from thick power layers on the back straight to the transistors. Power copper is drawn in the strongest tone and signal copper in a paler one; the moving dashes show the path current takes from the bumps to the transistors. The blocks are illustrative: hugely magnified, heights compressed, layer and wire counts reduced, and the flip fixture and grinder stand in for the separate bonding, flipping and back-grinding tools a fab uses on whole 300 mm wafers.`;
+const caption = `Left, the usual chip: current enters at the bumps on top and has to climb down through every wiring layer, ${M.IMEC.beolLayers[0]} to ${M.IMEC.beolLayers[1]} of them on a modern chip, where power lines take at least ${M.IMEC.powerRoutingPct}% of the routing (imec). Right, backside power, as in Intel's PowerVia (${M.INTEL_18A.node}) and TSMC's Super Power Rail (${M.A16.node}): the front keeps only signal wiring, a carrier wafer is bonded on and the stack flipped, the original silicon is ground from ${M.WAFER_UM} µm to ${M.IMEC.thinNm} nanometres, and nano-TSVs carry current from thick power layers on the back straight to the transistors (drawn as in imec's flow, etched from the back after thinning; Intel forms its nano-TSVs from the front before the wiring). Power copper is drawn in the strongest tone and signal copper in a paler one; the moving dashes show the path current takes from the bumps to the transistors. The blocks are illustrative: hugely magnified, heights compressed, layer and wire counts reduced, and the flip fixture and grinder stand in for the separate bonding, flipping and back-grinding tools a fab uses on whole 300 mm wafers.`;
 const scrub = `<span class="bp-scrub"><button type="button" class="bp-play" data-play aria-label="Play the backside-power build"><span class="bp-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="bp-range" data-scrub min="0" max="1000" step="1" value="1000" aria-label="Build: 0 is a bare wafer, 1000 is the finished backside-power chip"><span class="bp-step" data-step>07 · Bumps on the back</span></span>`;
 const body = `<figure class="iso-figure bp"><div class="iso-plate">${corners}${stageEl}${controls}</div><figcaption class="iso-legend">${scrub}<span class="bp-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 

@@ -656,6 +656,8 @@ function showPlay() {
   if (stepText.textContent !== text) stepText.textContent = text;
   const v = String(Math.round(s * 1000));
   if (scrubInput.value !== v) scrubInput.value = v;
+  const vt = `Step ${text}`;
+  if (scrubInput.getAttribute("aria-valuetext") !== vt) scrubInput.setAttribute("aria-valuetext", vt);
 }
 
 function tick(now) {
@@ -723,6 +725,8 @@ function partAt(event) {
 stage.addEventListener("pointermove", (event) => {
   if (event.pointerType === "touch") return;
   inside = true;
+  touring = false;
+  clearTimeout(idleTimer);
   clearTimeout(leaveTimer);
   select(partAt(event));
   run();
@@ -781,9 +785,12 @@ function togglePlay() {
   } else {
     if (s >= 0.999) s = 0;
     if (still.matches) {
-      // reduced motion: jump to the next step instead of animating
+      // reduced motion: jump to a late point of the next step, so each step shows its result
+      const late = (q) => q.t0 + 0.85 * (q.t1 - q.t0);
       const p = phaseAt(s);
-      s = p.t1 >= 1 ? 1 : p.t1 + 0.001;
+      if (s < late(p) - 0.001) s = late(p);
+      else if (p.t1 >= 1) s = 1;
+      else s = late(phaseAt(p.t1 + 0.001));
     } else playing = true;
   }
   showPlay();

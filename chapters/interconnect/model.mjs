@@ -39,12 +39,39 @@ export const PLATE = {
   rpmFill: [12, 30], // during bottom-up fill
   rpmBurden: [60, 120], // while plating the overburden
   fillRange: [0.5, 5], // "between about 0.5-5 mA/cm2 during this fill stage"
-  fillMAcm2: 3, // the value the supply's display shows: "about 3 mA/cm2 or less" goes with the patent's low-copper (<10 g/L) bath
+  fillMAcm2: 3, // illustrative: the supply display's value, a point inside the patent's 0.5-5 mA/cm2 fill window
   burdenMAcm2: [10, 15], // overburden stage
   flowFillLpm: 6,
   flowBurdenLpm: [12, 20],
   bath: { cuGL: 40, acidGL: 10, chloridePpm: 50 }, // "a baseline solution of 40 g/L Cu2+, 10 g/L acid, and 50 ppm Cl" (the patent's comparison bath)
 };
+// ---- wafer bumping: copper pillars with a solder cap, plated after the last metal layer ----
+// TSMC patent US 8,659,155 B2 ("Mechanisms for forming copper pillar bumps"): open the passivation over the top pad,
+// sputter (PVD) a Ti barrier and a Cu seed (the UBM), pattern a resist mask, electroplate the Cu pillar, plate an optional
+// Ni cap and a SnAg solder layer, strip the resist, flash-etch the exposed UBM, then reflow to round the solder:
+//   https://patents.google.com/patent/US8659155B2/en
+// Rohm and Haas / Dow patent US 10,104,782 B2 (plating resist-defined pillars): "Current densities may range from 0.25 ASD
+// to 40 ASD, preferably 1 ASD to 20 ASD, more preferably from 4 ASD to 18 ASD" (ASD = A/dm2 = 10 mA/cm2); pillars
+// typically 10-75 um across; tops plated with tin/silver solder in the same resist apertures:
+//   https://patents.google.com/patent/US10104782B2/en
+// Pitches from AMD's Hot Chips 33 slide (2021), as reported: C4 130 um, micro-bump 3D 50 um, hybrid bond 9 um:
+//   https://www.tomshardware.com/news/amd-unveils-more-ryzen-3d-packaging-and-v-cache-details-at-hot-chips
+export const BUMP = {
+  asd: [4, 18], // A/dm2, the patent's "more preferably" range
+  pillarDiamUm: [10, 75],
+  c4PitchUm: 130,
+  microPitchUm: 50,
+  hybridPitchUm: 9,
+};
+export const BUMP_MACM2 = BUMP.asd.map((a) => a * 10); // 40-180 mA/cm2
+export const BUMP_DISPLAY = BUMP_MACM2[0]; // illustrative: the supply display's value while plating pillars
+export const BUMP_STEPS = [
+  { id: "pad", name: "passivation + pad openings", say: "passivation · an opening over each pad" },
+  { id: "ubm", name: "UBM sputter", say: "sputtered Ti + Cu seed over the wafer" },
+  { id: "pillar", name: "plate Cu pillar + SnAg", say: `resist mask · Cu pillar then SnAg cap · ${BUMP.asd[0]}–${BUMP.asd[1]} A/dm²` },
+  { id: "reflow", name: "strip · etch · reflow", say: "strip resist · etch seed · reflow solder" },
+];
+
 export const WAFER_MM = 300; // standard leading-edge wafer diameter
 
 // ---- copper itself (P. C. Andricacos, IBM, "Copper On-Chip Interconnections", ECS Interface, Spring 1999) ----
@@ -86,7 +113,7 @@ export const PIECES = {
   cell: { name: "Plating cell", say: `Cu anode · membrane · ${PLATE.bath.cuGL} g/L Cu²⁺ · ${PLATE.bath.chloridePpm} ppm Cl⁻` },
   loop: { name: "Electrolyte loop", say: `pump + filter · ≈${PLATE.flowFillLpm} L/min fill · ${PLATE.flowBurdenLpm[0]}–${PLATE.flowBurdenLpm[1]} overburden` },
   power: { name: "Plating supply", say: `wafer is the cathode · ${PLATE.fillRange[0]}–${PLATE.fillRange[1]} → ${PLATE.burdenMAcm2[0]}–${PLATE.burdenMAcm2[1]} mA/cm²` },
-  stack: { name: "Metal stack", say: `${LAYER_COUNT} layers · M0 ${STACK.m0PitchNm} nm pitch to thick top metal` },
+  stack: { name: "Metal stack", say: `${LAYER_COUNT} layers · M0 ${STACK.m0PitchNm} nm pitch to thick top metal · Cu pillar bumps` },
   stand: { name: "Bench", say: "" },
 };
 

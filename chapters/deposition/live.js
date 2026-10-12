@@ -74,7 +74,7 @@ function draw(s) {
   const done = Math.floor(film / RIG.FILM_PER + 1e-6);
   const bladeSvg = solid(bladeA.ring, bladeA.z, bladeA.h, { tone: "mid" });
   const waferBottom = s.waferZ;
-  let waferSvg = solidSvg(cylinder(wx, wy, RIG.WAFER_R, waferBottom, RIG.WAFER_T, P, 64), { tone: "hi", crease: "lo" });
+  let waferSvg = solidSvg(cylinder(wx, wy, RIG.WAFER_R, waferBottom, RIG.WAFER_T, P, 64), { tone: "hi", lit: true, crease: "lo" });
   if (film > 0.01) {
     const z0 = waferBottom + RIG.WAFER_T;
     const seams = [];
@@ -86,7 +86,7 @@ function draw(s) {
   carryEl.innerHTML = carry;
 
   // lift pins rising out of the pedestal
-  pinsEl.innerHTML = s.lift > 0.05 ? D.pins.map(([x, y]) => solidSvg(cylinder(x, y, 1.3, RIG.PED_TOP, s.lift, P, 12), { tone: "mid" })).join("") : "";
+  pinsEl.innerHTML = s.lift > 0.05 ? D.pins.map(([x, y]) => solidSvg(cylinder(x, y, 1.6, RIG.PED_TOP, s.lift, P, 12), { tone: "mid" })).join("") : "";
 
   // gas: precursor falls as dots, co-reactant as rings, purge sweeps sideways to the pumping port
   const top = D.shower.z0 - 0.5;
@@ -128,7 +128,7 @@ function processText(s) {
   const id = s.seg.id;
   if (s.seg.cycle) return `cycle ${s.seg.cycle} of ${D.cycles} · ${s.seg.say.split(" · ")[0]} · ${((s.seg.cycle - 1) * D.gpc).toFixed(2)} → ${(s.seg.cycle * D.gpc).toFixed(2)} nm`;
   if (id === "done") return s.seg.say;
-  if (id === "heat") return `heated pedestal · ${Math.round(s.temp)} °C`;
+  if (id === "heat") return `wafer on heated pedestal · ${Math.round(s.temp)} °C`;
   return s.seg.say;
 }
 
@@ -149,10 +149,10 @@ function describe() {
 }
 
 function showPlay() {
-  playText.textContent = playing ? "Pause" : t >= 0.999 ? "Replay" : t > 0.0005 ? "Resume" : "Play";
+  playText.textContent = playing ? "Pause" : t >= 0.999 ? "Replay" : t > 0.0005 && tookOver ? "Resume" : "Play";
   playButton.toggleAttribute("data-playing", playing);
   playButton.setAttribute("aria-label", playing ? "Pause" : "Play the run");
-  const text = stateAt(t, SEGS).seg.label;
+  const text = t <= 0.0005 && !playing ? "Ready · in load lock" : stateAt(t, SEGS).seg.label;
   if (stepText.textContent !== text) stepText.textContent = text;
   const value = String(Math.round(t * 1000));
   if (scrubInput.value !== value && !dragging) scrubInput.value = value;

@@ -4,7 +4,7 @@
 const S = {
   intel45: "https://doi.org/10.1109/IEDM.2007.4418914", // Mistry et al., IEDM 2007, pp. 247–250: 160 nm gate pitch, 35 nm gate length, high-k + metal gate, third-generation strained silicon, late 2007
   intel90: "https://www.eetimes.com/?p=1145028", // Intel 90 nm (2003): ~50 nm gate length, 1.2 nm oxide, strained silicon
-  intel22: "https://archive.vlsisymposium.org/12web/technology/tec_pdf/session15.htm", // Auth et al., VLSI 2012, paper 15.2; its text gives 90 nm contacted gate pitch, 60 nm fin pitch, 8 nm fin width, 34 nm fin height
+  intel22: "https://doi.org/10.1109/VLSIT.2012.6242496", // DOI of Auth et al., "A 22nm high performance and low-power CMOS technology featuring fully-depleted tri-gate transistors...", VLSI 2012 (resolves to IEEE Xplore 6242496). The landing page is the abstract; the paper's full text gives 90 nm contacted gate pitch, 60 nm fin pitch, 8 nm fin width, 34 nm fin height
   intel22news: "https://www.anandtech.com/show/4313", // Intel announces 22 nm 3D tri-gate, 4 May 2011
   density: "https://faculty-web.msoe.edu/johnsontimoj/EE4980/files4980/Kaizad-Mistry-2017-Manufacturing.pdf", // Intel Technology and Manufacturing Day 2017: 3.3 (45 nm), 15.3 (22 nm) MTr/mm²
   intel18a: "https://www.intel.com/content/www/us/en/newsroom/news/corporate/intel-foundry-details-process-milestones-future-innovation-at-vlsi-symposium.html", // Intel Foundry at VLSI, 18A-P release: "Similar to Intel 18A, Intel 18A-P offers two cell heights (180nm and 160nm), a contacted poly pitch of 50nm"
@@ -12,6 +12,7 @@ const S = {
   hdDensity: "https://www.tomshardware.com/tech-industry/intels-18a-and-tsmcs-n2-process-nodes-compared-intel-is-faster-but-tsmc-is-denser", // TechInsights HD cell estimates: N2 313, 18A 238 MTr/mm²
   samsung3: "https://news.samsung.com/global/samsung-begins-chip-production-using-3nm-process-technology-with-gaa-architecture", // first GAA (MBCFET) production, 30 June 2022
   tsmcN2: "https://spectrum.ieee.org/tsmc-n2", // TSMC N2 nanosheets, IEDM 2024: >1.15x density vs N3, HVM 2H 2025
+  intelCfet2020: "https://www.intel.com/content/www/us/en/newsroom/opinion/iedm-2020-marks-key-process-packaging-innovations.html", // Intel newsroom, 18 Dec 2020: IEDM 2020 paper "3-D Self-aligned Stacked NMOS-on-PMOS Nanoribbon Transistors", monolithic NMOS-on-PMOS stacking (the first stacked CFET Intel showed)
   intelCfet: "https://www.intel.com/content/www/us/en/newsroom/news/research-advancements-extend-moore-law.html", // IEDM 2023: stacked CFET at 60 nm gate pitch, backside contacts
   imecCfet: "https://spectrum.ieee.org/semiconductor-technology-roadmap", // imec roadmap: CFET from the A7 node, around 2033
   dennard: "https://en.wikipedia.org/wiki/Dennard_scaling", // Dennard scaling broke down around 2005–2007: leakage and threshold voltage stopped scaling
@@ -68,7 +69,7 @@ export const GENS = [
     id: "cfet",
     name: "Complementary FET (CFET)",
     short: "CFET",
-    year: 2023, // research demo, IEDM 2023 (S.intelCfet); roadmap ~2033 (S.imecCfet)
+    year: 2023, // 60 nm gate-pitch stacked demo, IEDM 2023 (S.intelCfet); first stacked NMOS-on-PMOS shown at IEDM 2020 (S.intelCfet2020); roadmap ~2033 (S.imecCfet)
     yearText: "2023 lab demo",
     node: "Intel research",
     cppNm: 60, // gate pitch of the stacked demo (S.intelCfet)
@@ -79,6 +80,7 @@ export const GENS = [
   },
 ];
 
+export const CFET_FIRST = 2020; // Intel's first stacked NMOS-on-PMOS nanoribbons, IEDM 2020 (S.intelCfet2020)
 export const ROADMAP_CFET = 2033; // (S.imecCfet)
 export const SAMSUNG_GAA = 2022; // (S.samsung3)
 export const TSMC_N2_HD = 313; // MTr/mm² (S.hdDensity)
@@ -116,7 +118,7 @@ export const PART_TEXT = {
   cap: "gate cap · insulator on top of the gate",
   spacer: "spacer · insulates the gate from the source/drain contact",
   epi: { planar: "raised {half} · doped silicon", finfet: "{half} epitaxy grown on the fins", gaa: "{half} epitaxy joining the sheet ends" },
-  epiP: "p-type {half} epitaxy · bottom device",
+  epiP: "p-type {half} epitaxy · bottom device, the stronger tone",
   epiN: "n-type {half} epitaxy · top device",
   isolation: "dielectric between the n and p {half}",
   contact: "trench contact to the {half}",
@@ -137,6 +139,8 @@ export const PART_TEXT = {
     gaa: "channel · silicon nanosheets, gate on all 4 sides",
     cfet: "channels · n-type sheets over p-type sheets",
   },
+  channelN: "n-type channel sheets · top device",
+  channelP: "p-type channel sheets · bottom device, the stronger tone",
   gox: "gate dielectric · lines the channel under the metal",
   root: "fin root · silicon below the gate, in the isolation",
   core: "fin core inside the {half} epitaxy",

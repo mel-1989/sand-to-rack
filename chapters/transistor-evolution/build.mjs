@@ -26,6 +26,7 @@ const STEP = 108;
 const SLIDE = 86;
 const Z0 = 10; // specimen base sits on its pedestal and carriage at this height
 const HW = 44; // half width of every specimen block (y)
+const PLANAR_OX = 3.2; // planar gate dielectric, drawn thick (illustrative)
 
 // Illustrative device geometry (heights, widths, gate lengths except the planar one); x lengths follow CPP.
 const SPEC = {
@@ -263,8 +264,8 @@ function specimen(id) {
       // source half, cut through the gate: the channel strip under the oxide, the doped well around it;
       // drain half, its outer end cut through the drain: the doped drain region under the raised drain
       if (side < 0) {
-        baseFace += mat("tr-sd", pathYZ(face, rrect(Y - 31, Y + 31, z(s.base - 8), z(s.base), 0)), "lo", "body");
-        baseFace += mat("tr-si", pathYZ(face, rrect(Y - 30, Y + 30, z(s.base - 3.4), z(s.base))), "hi", "channel");
+        baseFace += mat("tr-sd", pathYZ(face, rrect(Y - 31, Y + 31, z(s.base - 9), z(s.base), 0)), "lo", "body");
+        baseFace += mat("tr-sib", pathYZ(face, rrect(Y - 30, Y + 30, z(s.base - 5.5), z(s.base))), "hi", "channel");
       } else baseFace += mat("tr-sd", pathYZ(face, rrect(Y - 30, Y + 30, z(s.base - 7), z(s.base), 0)), "hi", "well");
     }
     const well = L(k.sideSeam(base, z(s.base - (id === "planar" ? 11 : 7)), P, 2), { tone: "faint" });
@@ -288,9 +289,11 @@ function specimen(id) {
     const gate = box(...xs(0, s.g), gy0, gy1);
     let gateBottom = sti;
     if (id === "planar") {
+      // drawn thicker than the real ~1 nm high-k film (illustrative) so the one-sided grip reads at 1x
       const ox = box(...xs(0, s.g), Y - 32, Y + 32);
-      put(piece, id, centreOf(ox, z(s.base)), S(k.slabOf(ox, z(s.base), 1.6, P, 2), { tone: "hi", crease: "none" }), [slabShape(ox, z(s.base), 1.6)], { name: `${tag}.oxide` });
-      gateBottom = s.base + 1.6;
+      const oxCut = side < 0 ? mat("tr-oxb", pathYZ(X, rrect(Y - 32, Y + 32, z(s.base), z(s.base + PLANAR_OX))), "hi", "gox") : "";
+      put(piece, id, centreOf(ox, z(s.base)), S(k.slabOf(ox, z(s.base), PLANAR_OX, P, 2), { tone: "hi", crease: "none" }) + oxCut, [slabShape(ox, z(s.base), PLANAR_OX)], { name: `${tag}.oxide` });
+      gateBottom = s.base + PLANAR_OX;
     }
     let cut = "";
     if (side < 0) {
@@ -309,7 +312,9 @@ function specimen(id) {
           for (const z0 of s.sheets) {
             cut += L(pathYZ(X, rrect(Y + yc - hw - ox - 1.6, Y + yc + hw + ox + 1.6, z(z0 - ox - 1.6), z(z0 + s.sheetH + ox + 1.6), 3.4)), { tone: "faint" });
             cut += mat("tr-ox", pathYZ(X, rrect(Y + yc - hw - ox, Y + yc + hw + ox, z(z0 - ox), z(z0 + s.sheetH + ox), 2.4)), "lo", "gox");
-            cut += mat("tr-si", pathYZ(X, rrect(Y + yc - hw, Y + yc + hw, z(z0), z(z0 + s.sheetH), 1.6)), "hi", "channel");
+            // CFET: the p-type sheets (under the middle dielectric) get their own lighter tone, the n-type sheets the plain one
+            const [cls, sub] = s.mdi ? (z0 < s.mdi[0] ? ["tr-sip", "channelP"] : ["tr-sin", "channelN"]) : ["tr-si", "channel"];
+            cut += mat(cls, pathYZ(X, rrect(Y + yc - hw, Y + yc + hw, z(z0), z(z0 + s.sheetH), 1.6)), "hi", sub);
           }
         }
       }
@@ -347,7 +352,7 @@ function specimen(id) {
       }
     } else {
       const pe = box(...ex, Y - 17, Y + 17, 1.5);
-      put(piece, id, centreOf(pe, z(sti)), S(k.slabOf(pe, z(sti), 58 - sti, P, 3, 0.4), { tone: "hi", crease: "lo" }), [slabShape(pe, z(sti), 58 - sti, 3)], { name: `${tag}.epiP` });
+      put(piece, id, centreOf(pe, z(sti)), `<g class="tr-ptype">${S(k.slabOf(pe, z(sti), 58 - sti, P, 3, 0.4), { tone: "hi", crease: "lo" })}</g>`, [slabShape(pe, z(sti), 58 - sti, 3)], { name: `${tag}.epiP` });
       const iso = box(...ex, Y - 17, Y + 17, 1.5);
       put(piece, id, centreOf(iso, z(58)), S(k.slabOf(iso, z(58), 10, P, 3), { tone: "lo" }), [slabShape(iso, z(58), 10, 3)], { name: `${tag}.isolation` });
       const ne = box(...ex, Y - 17, Y + 17, 1.5);
@@ -427,7 +432,7 @@ const PARTS = g.map((gen, index) => `<button type="button" class="tr-part" data-
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">Four gates, cut open</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="tr-controls"><span class="tr-hint">Hover a part · Space plays</span><span class="tr-live" aria-live="polite" data-live></span></div>`;
 const stage2 = `<div class="tr-stage" tabindex="0" role="slider" aria-label="Four transistor generations on a sectioning bench. Hover, or use the arrow keys, to pick a generation; Space plays the sectioning; Escape closes every specimen again; the slider below cuts them open one by one." aria-valuemin="0" aria-valuemax="${g.length}" aria-valuenow="0" aria-valuetext="${M.IDLE}">${svg}</div>`;
-const caption = `The same switch, four ways. A gate voltage turns the channel under the gate on or off; the more sides of the channel the gate touches, the better it can shut off leakage. Planar (${g[0].node}, ${g[0].year}): gate on one side of a flat channel, ${g[0].lgNm} nm long, on a high-k dielectric. FinFET (${g[1].node}, ${g[1].year}): the channel is a fin ${g[1].finWidthNm} nm wide and ${g[1].finHeightNm} nm tall, gated on three sides. Nanosheet (${g[2].node}, ${g[2].year}; Samsung was first in ${M.SAMSUNG_GAA}): stacked sheets with the gate all around each. CFET (lab demos since ${g[3].year}, roadmap about ${M.ROADMAP_CFET}): the n-type stack sits on the p-type stack, under one gate, so the pair takes the footprint of one, with power and some contacts from the back side. Specimen lengths are one contacted gate pitch (${g.map((gen) => gen.cppNm).join(", ")} nm) on the ruler's 10 nm ticks; heights, widths, sheet counts and all but the planar gate length are illustrative. Densities: ${g[0].density} and ${g[1].density} MTr/mm² are Intel's figures, ${g[2].density} is an analyst estimate for dense cells, so compare only orders of magnitude.`;
+const caption = `The same switch, four ways. A gate voltage turns the channel under the gate on or off; the more sides of the channel the gate touches, the better it can shut off leakage. Planar (${g[0].node}, ${g[0].year}): gate on one side of a flat channel, ${g[0].lgNm} nm long, on a high-k dielectric. FinFET (${g[1].node}, ${g[1].year}): the channel is a fin ${g[1].finWidthNm} nm wide and ${g[1].finHeightNm} nm tall, gated on three sides. Nanosheet (${g[2].node}, ${g[2].year}; Samsung was first in ${M.SAMSUNG_GAA}): stacked sheets with the gate all around each. CFET (lab demos since ${M.CFET_FIRST}, a ${g[3].cppNm} nm gate-pitch version in ${g[3].year}; roadmap about ${M.ROADMAP_CFET}): the n-type stack sits on the p-type stack, under one gate, so the pair takes the footprint of one, with power and some contacts from the back side. Specimen lengths are one contacted gate pitch (${g.map((gen) => gen.cppNm).join(", ")} nm) on the ruler's 10 nm ticks; heights, widths, sheet counts and all but the planar gate length are illustrative. Densities: ${g[0].density} and ${g[1].density} MTr/mm² are Intel's figures, ${g[2].density} is an analyst estimate for dense cells, so compare only orders of magnitude.`;
 const scrub = `<span class="tr-scrub"><button type="button" class="tr-play" data-play aria-label="Play the sectioning"><span class="tr-play-icon" aria-hidden="true"></span><span data-play-text>Cut open</span></button><input type="range" class="tr-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Sectioning: 0 is every specimen closed, 1000 is all four cut open"><span class="tr-step" data-step>closed</span></span>`;
 const body = `<figure class="iso-figure tr"><div class="iso-plate">${corners}${stage2}${controls}</div><figcaption class="iso-legend">${scrub}<span class="tr-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 

@@ -81,12 +81,19 @@ const LAYERS = M.LAYERS.map((layer, index) => {
 const PAD = { z0: zRun, h: PAD_H };
 const STACK_TOP = zRun + PAD_H;
 const OVERBURDEN = 0.9;
+// wafer bumps on the pads (drawn size illustrative: a real C4 pillar is tens of microns, the wiring tens of nanometres)
+const UBM_H = 0.5;
+const PILLAR = { r: 4.4, h: 6, cap: 2.6, ubmR: 5.4 };
+const PILLAR_PHASES = 8;
+const BUMP_TOP = STACK_TOP + UBM_H + PILLAR.h + PILLAR.cap;
+const BUMPS = [[SP.x + 16, SP.y + 16], [SP.x + 40, SP.y + 16], [SP.x + 16, SP.y + 40], [SP.x + 40, SP.y + 40]];
 
 // ---- process steps: weights set how long each step plays ----
 const WEIGHTS = { lowk: 1, cut: 1, liner: 0.8, plate: 2, cmp: 1.2 };
 const SEQ = [];
 for (const layer of LAYERS) for (const step of M.STEPS) SEQ.push({ layer: layer.index, step: step.id, weight: WEIGHTS[step.id] });
-SEQ.push({ layer: LAYERS.length, step: "pad", weight: 2 });
+const BUMP_WEIGHTS = { pad: 1.2, ubm: 1, pillar: 2.2, reflow: 1.4 };
+for (const step of M.BUMP_STEPS) SEQ.push({ layer: LAYERS.length, step: step.id, weight: BUMP_WEIGHTS[step.id] });
 
 const PIECES = {
   head: { ...M.PIECES.head, move: [0, 0, -LIFT] },
@@ -101,7 +108,7 @@ const STAGGER = ["head"];
 const SPRING = { stagger: 0.05, stiffness: 64, damping: 16, substeps: 4 };
 
 const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), ...k.boxCorners(COL, 0, COL_TOP + 6), ...k.boxCorners(SP, 0, STACK_TOP + 2)],
+  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), ...k.boxCorners(COL, 0, COL_TOP + 6), ...k.boxCorners(SP, 0, BUMP_TOP + 1)],
   W,
   H,
   { pad: 26, azimuth: AZIMUTH, elevation: ELEVATION },
@@ -210,8 +217,8 @@ function plumbing() {
   const cathodeStud = stud("power", [box.x + 5, box.y + box.d, 14], [0, 1, 0], 1.8, 1.6, { name: "power.cathodestud" });
   const t0 = [PSU.x + 10, fy + 1.6, 6];
   const t1 = [PSU.x + 20, fy + 1.6, 6];
-  cable("power", [t0, [t0[0], 76, 6], [t0[0], 76, 1.1], [cathodeStud[0], 76, 1.1], [cathodeStud[0], 28, 1.1], [cathodeStud[0], 28, 14], cathodeStud], { name: "power.cathode" });
-  cable("power", [t1, [t1[0], 72.5, 6], [t1[0], 72.5, 1.1], [anodeStud[0], 72.5, 1.1], [anodeStud[0], 40, 1.1], [anodeStud[0], 40, 6], anodeStud], { name: "power.anode" });
+  cable("power", [t0, [t0[0], 74, 6], [t0[0], 74, 1.1], [cathodeStud[0], 74, 1.1], [cathodeStud[0], 28, 1.1], [cathodeStud[0], 28, 14], cathodeStud], { name: "power.cathode" });
+  cable("power", [t1, [t1[0], 71, 6], [t1[0], 71, 1.1], [anodeStud[0], 71, 1.1], [anodeStud[0], 40, 1.1], [anodeStud[0], 40, 6], anodeStud], { name: "power.anode" });
 }
 
 // ======================= bench =======================
@@ -231,7 +238,7 @@ function bench() {
   out.push(L(screws.map(([x, y]) => k.ring(x, y, 2.4, 0, P, 16)).join(""), { tone: "lo" }));
   out.push(Dots(screws.map(([x, y]) => at([x, y, 0])), { size: 0.5 }));
   // ruler strip along the near (+y) edge, 5 mm ticks at the cell's scale
-  const strip = { x: -150, y: PLATE.y + PLATE.d - 17, w: 196, d: 8, r: 1 };
+  const strip = { x: -150, y: PLATE.y + PLATE.d - 14.5, w: 196, d: 8, r: 1 };
   out.push(S(k.slabOf(strip, 0, 0.6, P, 3), { tone: "lo", crease: "none" }));
   const ticks = k.topTicks(strip.x + 4, strip.x + strip.w - 4, 2, 5, strip.y + 0.8, 0.6, [2.2, 4], P);
   out.push(L(ticks.minor, { tone: "lo" }), L(ticks.major, { tone: "mid" }));
@@ -281,9 +288,10 @@ function cell() {
   parts.push(`<path class="ic-sec" d="${plate}"/>`, L(plate, { tone: "lo" }));
   // flow: up through the diffuser, out across the wafer, over the weir (shown while plating)
   const flows = [];
-  for (const side of [-1, 1]) for (const r0 of [6, 15, 24]) {
+  // each stream starts on the diffuser's solid top (between holes), so its end is rooted on the plate's outline
+  for (const side of [-1, 1]) for (const r0 of [6, 14, 22]) {
     const r1 = r0 + 3;
-    flows.push(secLine([[side * r0, 47.2], [side * r0, 51], [side * r1, 54.2], [side * 35.6, 56.2]]));
+    flows.push(secLine([[side * r0, 47], [side * r0, 51], [side * r1, 54.2], [side * 35.6, 56.2]]));
   }
   parts.push(`<g data-flow-lines>${L(flows.join(""), { tone: "hi", flow: true })}</g>`);
   const shapes = [A.extruded(liquidRing, FLOOR_TOP, LEVEL - FLOOR_TOP, { name: "cell.liquid", owner: "cell.bowl" })];
@@ -570,6 +578,29 @@ function stack() {
   const pv = [faceRect("x", SP.y + 38, SP.y + 46, PAD.z0, PAD.z0 + PAD.h - 1.2), faceRect("y", SP.x + 38, SP.x + 46, PAD.z0, PAD.z0 + PAD.h - 1.2)].join("");
   const padSvg = `<g data-pad>${pas}<path class="ic-cu" d="${pv}"/>${L(pv, { tone: "mid" })}${pads.join("")}${L(padTops.join(""), { tone: "faint" })}</g>`;
   put("stack", centreOf(SP, PAD.z0), padSvg, [slabShape(SP, PAD.z0, PAD.h, { owner: "stack" }, 2)], { name: "stack.pad" });
+
+  // under-bump metallization: a sputtered blanket over the whole wafer until the etch clears it between the bumps
+  const film = S(k.slabOf(SP, STACK_TOP, UBM_H, P, 2, 0), { tone: "hi", crease: "lo", className: "ic-cu-solid" });
+  put("stack", centreOf(SP, STACK_TOP), `<g data-ubm style="display:none">${film}</g>`, [slabShape(SP, STACK_TOP, UBM_H, { owner: "stack" }, 2)], { name: "stack.ubm" });
+  // copper pillars with a SnAg cap, one item each so they sort among themselves
+  const zp = STACK_TOP + UBM_H;
+  BUMPS.forEach(([bx, by], i) => {
+    const parts = [];
+    parts.push(`<g data-b="disc">${S(k.cylinder(bx, by, PILLAR.ubmR, STACK_TOP, UBM_H, P, 36), { tone: "hi", crease: "lo", className: "ic-cu-solid" })}</g>`);
+    for (let j = 1; j <= PILLAR_PHASES; j++) {
+      const h = (PILLAR.h * j) / PILLAR_PHASES;
+      parts.push(`<g data-b="pillar" data-j="${j}" style="display:none">${S(k.cylinder(bx, by, PILLAR.r, zp, h, P, 36), { tone: "hi", crease: "lo", className: "ic-cu-solid" })}</g>`);
+    }
+    const zc = zp + PILLAR.h;
+    for (let j = 1; j <= PILLAR_PHASES; j++) {
+      const h = (PILLAR.cap * j) / PILLAR_PHASES;
+      parts.push(`<g data-b="cap" data-j="${j}" style="display:none">${S(k.cylinder(bx, by, PILLAR.r, zc, h, P, 36), { tone: "hi", crease: "lo", className: "ic-solder" })}</g>`);
+    }
+    // reflowed: the solder pulls into a dome
+    const dome = S(k.cylinder(bx, by, PILLAR.r, zc, 1.1, P, 36, 0.5), { tone: "hi", crease: "lo", className: "ic-solder" }) + S(k.cylinder(bx, by, PILLAR.r * 0.72, zc + 1.1, 1.3, P, 36, 0.7), { tone: "hi", crease: "lo", className: "ic-solder" });
+    parts.push(`<g data-b="dome" style="display:none">${dome}</g>`);
+    put("stack", [bx, by, zp + PILLAR.h / 2], `<g data-bump>${parts.join("")}</g>`, [cylShape(bx, by, PILLAR.r, zp, PILLAR.h + PILLAR.cap, { owner: "stack" })], { name: `stack.bump${i}` });
+  });
 }
 
 bench();
@@ -589,7 +620,7 @@ const groups = R.items.map((item, index) => {
   return `<g class="it" data-piece="${item.piece}" data-k="${item.key.toFixed(2)}" data-m="${mx.toFixed(1)},${my.toFixed(1)},${mz.toFixed(1)}" data-i="${index}">${item.svg}</g>`;
 });
 
-const LABEL = `A copper electroplating cell and the metal stack it builds, on one bench. Left: the plating cell cut in half, showing the copper anode, membrane, diffuser plate and electrolyte, with the clamshell head that lowers the wafer face-down into the bath; a lift column, a pump and filter skid and the plating supply stand beside it. Right: a sawn, magnified cross-section of ${M.LAYER_COUNT} copper wiring layers over the transistors, with vias, barrier liners and low-k glass, topped by bond pads.`;
+const LABEL = `A copper electroplating cell and the metal stack it builds, on one bench. Left: the plating cell cut in half, showing the copper anode, membrane, diffuser plate and electrolyte, with the clamshell head that lowers the wafer face-down into the bath; a lift column, a pump and filter skid and the plating supply stand beside it. Right: a sawn, magnified cross-section of ${M.LAYER_COUNT} copper wiring layers over the transistors, with vias, barrier liners and low-k glass, topped by bond pads and copper pillar bumps with solder caps.`;
 const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<defs><clipPath id="ic-fill"><path d=""/></clipPath></defs><g class="ic-layers">${groups.join("")}</g>`], className: "ic-svg" });
 
 const unit = (vector) => {
@@ -609,21 +640,23 @@ const DATA = {
   phases: RIB_PHASES,
   layers: LAYERS.map((l) => ({ name: l.name, kind: l.kind, z0: l.z0, h: l.h })),
   pad: PAD,
-  steps: Object.fromEntries(M.STEPS.map((s) => [s.id, { name: s.name, say: s.say }])),
+  steps: Object.fromEntries([...M.STEPS, ...M.BUMP_STEPS].map((s) => [s.id, { name: s.name, say: s.say }])),
+  rpm: M.PLATE.rpmFill,
   seq: SEQ,
   pieces: Object.fromEntries(Object.entries(PIECES).map(([id, p]) => [id, { name: p.name, say: p.say }])),
   order: ORDER,
   idle: M.IDLE,
   pitch: M.PITCH_NOTE,
-  amps: { fill: M.PLATE.fillMAcm2, burden: M.PLATE.burdenMAcm2[0] },
+  amps: { fill: M.PLATE.fillMAcm2, burden: M.PLATE.burdenMAcm2[0], pillar: M.BUMP_DISPLAY },
+  pillarPhases: PILLAR_PHASES,
 };
 
 const PARTS = ORDER.map((id, index) => `<button type="button" class="ic-part" data-part="${id}"><span class="ic-num">${String(index + 1).padStart(2, "0")}</span>${PIECES[id].name}</button>`).join("");
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">Dual damascene · copper wiring</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="ic-controls"><span class="ic-hint">Hover a part · Space plays the loop</span><span class="ic-live" aria-live="polite" data-live></span></div>`;
 const stageEl = `<div class="ic-stage" tabindex="0" role="slider" aria-label="Copper electroplating cell and metal stack. Hover, or use the arrow keys, to pick a part; Space plays or pauses the dual damascene loop; Escape stops it and shows the finished stack; the slider below steps through every layer." aria-valuemin="0" aria-valuemax="${ORDER.length}" aria-valuenow="0" aria-valuetext="${M.IDLE}">${svg}</div>`;
-const caption = `The dual damascene loop, once per metal layer: deposit low-k glass, etch a via and a trench into it, line them with a Ta/TaN barrier and a copper seed, electroplate copper with the wafer face-down in the cell, then polish the overburden off by CMP. The stack drawn follows ${M.STACK.example}: ${M.STACK.regular} metal layers from M0 at ${M.STACK.m0PitchNm} nm pitch, plus ${M.STACK.thick} thick top layers, then the bond pads. The cell spins the wafer at ${M.PLATE.rpmFill[0]}–${M.PLATE.rpmFill[1]} rpm while copper fills the features bottom up at ${M.PLATE.fillRange[0]}–${M.PLATE.fillRange[1]} mA/cm², then faster for the overburden (Novellus Systems (Lam Research) patent example); the supply's display value is illustrative. The stack cross-section is hugely magnified with heights compressed and line counts illustrative; real pitch grows from tens of nanometres at the bottom to microns at the top. The cell is drawn at about 10 mm a ruler tick (the wafer is 300 mm across), its internal layout simplified.`;
-const scrub = `<span class="ic-scrub"><button type="button" class="ic-play" data-play aria-label="Play the damascene loop"><span class="ic-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="ic-range" data-scrub min="0" max="1000" step="1" value="1000" aria-label="Process: 0 is bare transistors, 1000 is the finished stack"><span class="ic-step" data-step>finished stack</span></span>`;
+const caption = `The dual damascene loop, once per metal layer: deposit low-k glass, etch a via and a trench into it, line them with a Ta/TaN barrier and a copper seed, electroplate copper with the wafer face-down in the cell, then polish the overburden off by CMP. The stack drawn follows ${M.STACK.example}: ${M.STACK.regular} metal layers from M0 at ${M.STACK.m0PitchNm} nm pitch, plus ${M.STACK.thick} thick top layers, then the bond pads. Last comes bumping: passivation with openings over the pads, a sputtered Ti/Cu under-bump metallization, a resist mask, a copper pillar and SnAg cap plated in the same kind of cell, then resist strip, seed etch and reflow (TSMC patent flow); real C4 bumps sit at about ${M.BUMP.c4PitchUm} µm pitch and micro-bumps at about ${M.BUMP.microPitchUm} µm, so the four drawn are not to scale. Adjacent metal layers route at right angles, so each sawn face shows one layer's wires lengthwise and the next layer's cut across. The cell spins the wafer at ${M.PLATE.rpmFill[0]}–${M.PLATE.rpmFill[1]} rpm while copper fills the features bottom up at ${M.PLATE.fillRange[0]}–${M.PLATE.fillRange[1]} mA/cm², then faster for the overburden (Novellus Systems (Lam Research) patent example); the supply's display value is illustrative. The stack cross-section is hugely magnified with heights compressed and line counts illustrative; real pitch grows from tens of nanometres at the bottom to microns at the top. The cell is drawn at about 10 mm a ruler tick (the wafer is 300 mm across), its internal layout simplified.`;
+const scrub = `<span class="ic-scrub"><button type="button" class="ic-play" data-play aria-label="Play the damascene loop"><span class="ic-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="ic-range" data-scrub min="0" max="1000" step="1" value="1000" aria-label="Process: 0 is bare transistors, 1000 is the finished, bumped stack"><span class="ic-step" data-step>finished stack</span></span>`;
 const body = `<figure class="iso-figure ic"><div class="iso-plate">${corners}${stageEl}${controls}</div><figcaption class="iso-legend">${scrub}<span class="ic-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 
 const CSS = readFileSync(join(HERE, "interconnect.css"), "utf8");

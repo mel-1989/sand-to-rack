@@ -58,6 +58,14 @@ export const CVD = { lpcvd: [600, 800], pecvd: [200, 400], lpcvdBatch: 100 };
 // ---- high-k gate dielectric: Intel 45 nm (2007) ----
 // https://www.intel.com/pressroom/archive/releases/2007/20071111comp.htm : first hafnium-based high-k metal gate processors
 // https://www.edn.com/?p=4005680 : HfO2 gate dielectric at 1.0 nm EOT
+// ---- epitaxy: Loo et al., "Epitaxial Si/SiGe Multi-Stacks: From Stacked Nano-Sheet to Fork-Sheet and CFET Devices",
+// ECS J. Solid State Sci. Technol. 14, 015003 (2025), open access, https://doi.org/10.1149/2162-8777/ada79f
+// (imec copy: https://imec-publications.be/bitstreams/c7557821-ddbc-4ac6-a109-05b1ee791202/download):
+// "grown in a production compatible ASM Intrepid RP-CVD cluster tool" on 300 mm Si(001); native oxide removed "by a wet HF clean
+// followed by an in situ anneal at 800–900 °C"; growth "at reduced pressure using H2 as carrier gas and conventional precursor gases
+// (SiH4, SiH2Cl2, and GeH4 ...)"; 2D growth kept "with Ge concentrations up to 40%"; source/drain layers are also "epitaxially grown".
+export const EPI = { bakeC: [800, 900], maxGePct: 40, precursors: "silane, dichlorosilane and germane" };
+
 export const HIGHK = { year: 2007, node: "45 nm", eotNm: 1.0 };
 
 // ---- the cluster tool ----
@@ -76,13 +84,13 @@ export const filmNm = (cycles) => fmt(cycles * ALD.gpcNm, 2);
 
 // The legend: pieces of the tool, with what each does.
 export const PIECES = {
-  ald: { name: "ALD chamber", say: `ALD · ${ALD.precursor} + ${ALD.coreactant} → ${ALD.film} · ≈${ALD.gpcNm} nm a cycle at ${ALD.tempC} °C` },
-  robot: { name: "Transfer chamber and robot", say: "vacuum transfer chamber · dual-arm robot moves wafers between chambers" },
-  loadlock: { name: "Load locks", say: `${TOOL.loadLocks} load locks · pump from air to vacuum so the transfer chamber never vents` },
+  ald: { name: "ALD chamber", say: `ALD · ${ALD.precursor} + ${ALD.coreactant} → ${ALD.film} · ≈${ALD.gpcNm} nm/cycle` },
+  robot: { name: "Transfer chamber and robot", say: "transfer chamber · dual-arm vacuum robot" },
+  loadlock: { name: "Load locks", say: `${TOOL.loadLocks} load locks · pump air down to vacuum` },
   pecvd: { name: "PECVD chamber", say: `PECVD · plasma lets CVD run at ${CVD.pecvd[0]}–${CVD.pecvd[1]} °C` },
-  pvd: { name: "PVD chamber", say: "PVD · argon ions sputter metal atoms off a target onto the wafer" },
-  clean: { name: "Pre-clean chamber", say: "pre-clean · strips native oxide in vacuum before deposition" },
-  efem: { name: "Front end and FOUPs", say: `front end · ${TOOL.waferMm} mm wafers arrive in FOUPs, in clean air` },
+  pvd: { name: "PVD chamber", say: "PVD · argon ions sputter metal off a target" },
+  clean: { name: "Pre-clean chamber", say: "pre-clean · strips native oxide in vacuum" },
+  efem: { name: "Front end and FOUPs", say: `front end · ${TOOL.waferMm} mm wafers arrive in FOUPs` },
 };
 export const ORDER = ["ald", "robot", "loadlock", "pecvd", "pvd", "clean", "efem"];
 

@@ -341,7 +341,9 @@ document.addEventListener("keydown", (event) => {
     event.preventDefault();
     quietTour();
     select(null);
+    if (Number(scrubInput.value) > 0 && Number(scrubInput.value) < 1000) scrubTo(0);
     setApart(true);
+    showPlay();
     run();
     return;
   } else if (event.key === " " || event.key === "Enter") {
@@ -364,9 +366,11 @@ scrubInput.addEventListener("input", () => {
   quietTour();
   playing = null;
   select(null);
+  clearTimeout(leaveTimer);
   scrubTo(Number(scrubInput.value) / 1000);
   showPlay();
   place();
+  say(idleText());
 });
 
 playButton.addEventListener("click", () => {

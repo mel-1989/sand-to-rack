@@ -12,6 +12,8 @@ const stepText = root.querySelector("[data-step]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
 const SVGNS = "http://www.w3.org/2000/svg";
 
+// Coolant: round dots, cool supply and warm return. NVLink: faster, sparser lit pulses.
+const FLOW_STYLE = { supply: { r: 1.5, spacing: 9, speed: 14 }, return: { r: 1.5, spacing: 9, speed: 14 }, nvlink: { r: 1.7, spacing: 14, speed: 34 } };
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const screen = (v) => [D.EX[0] * v[0] + D.EY[0] * v[1] + D.EZ[0] * v[2], D.EX[1] * v[0] + D.EY[1] * v[1] + D.EZ[1] * v[2]];
 
@@ -21,8 +23,9 @@ const nodes = [...layers.querySelectorAll(".it")].map((el) => {
   const flowEl = el.querySelector(".rk-flow");
   let flow = null;
   if (flowEl) {
-    const pts = flowEl.dataset.flow.split(" ").map((p) => p.split(",").map(Number));
-    flow = { el: flowEl, pts, dir: Number(flowEl.dataset.dir), dots: [] };
+    const lines = flowEl.dataset.flow.split("|").map((line) => line.split(" ").map((p) => p.split(",").map(Number)));
+    const kind = flowEl.dataset.kind;
+    flow = { el: flowEl, lines, dir: Number(flowEl.dataset.dir), stage: Number(flowEl.dataset.stage), style: FLOW_STYLE[kind] || FLOW_STYLE.supply, dots: [] };
   }
   return { el, piece: el.dataset.piece, group: el.dataset.g, key: Number(el.dataset.k), m, s, lift: dot(m, D.V), slideLift: dot(s, D.V), mScreen: screen(m), sScreen: screen(s), flow, shown: "" };
 });
@@ -145,31 +148,31 @@ function place() {
   glow();
 }
 
-// Coolant: small dots that travel along the hoses and manifold pipes at their 3D speed.
-const SPACING = 9;
-const SPEED = 14;
+// Flows: dots that travel along hoses, manifold pipes and NVLink runs at their 3D speed.
 function drawFlow() {
-  const level = doneOf(x, 4);
   for (const flow of flows) {
-    const pts = flow.pts;
-    const a0 = pts[0][2];
-    const a1 = pts[pts.length - 1][2];
+    const level = doneOf(x, flow.stage);
+    const { spacing, speed, r } = flow.style;
     const want = [];
     if (level > 0.01) {
-      const shift = (((phase * SPEED * flow.dir) % SPACING) + SPACING) % SPACING;
-      let a = Math.ceil((a0 - shift) / SPACING) * SPACING + shift;
-      for (; a <= a1; a += SPACING) {
-        let j = 1;
-        while (j < pts.length - 1 && pts[j][2] < a) j++;
-        const p = pts[j - 1];
-        const q = pts[j];
-        const t = q[2] > p[2] ? (a - p[2]) / (q[2] - p[2]) : 0;
-        want.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+      const shift = (((phase * speed * flow.dir) % spacing) + spacing) % spacing;
+      for (const pts of flow.lines) {
+        const a0 = pts[0][2];
+        const a1 = pts[pts.length - 1][2];
+        let a = Math.ceil((a0 - shift) / spacing) * spacing + shift;
+        for (; a <= a1; a += spacing) {
+          let j = 1;
+          while (j < pts.length - 1 && pts[j][2] < a) j++;
+          const p = pts[j - 1];
+          const q = pts[j];
+          const t = q[2] > p[2] ? (a - p[2]) / (q[2] - p[2]) : 0;
+          want.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+        }
       }
     }
     while (flow.dots.length < want.length) {
       const c = document.createElementNS(SVGNS, "circle");
-      c.setAttribute("r", "0.9");
+      c.setAttribute("r", String(r));
       flow.el.appendChild(c);
       flow.dots.push(c);
     }

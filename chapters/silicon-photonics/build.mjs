@@ -14,12 +14,12 @@ import { LESSON } from "./lesson.mjs";
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 const W = 640;
-const H = 470;
+const H = 510;
 const AZ = 52;
 const EL = 40;
 
 // ---- plan ----
-const PLATE = { x: -216, y: -142, w: 432, d: 374, r: 12 };
+const PLATE = { x: -206, y: -134, w: 412, d: 366, r: 12 };
 const PLATE_H = 12;
 const FOOT_H = 7;
 const BOARD = { x: -186, y: -118, w: 372, d: 288, r: 5 };
@@ -50,7 +50,14 @@ const OSFP_X = 74;
 const TX = { side: -1, row: 2 }; // front-left OSA, middle engine: transmit
 const RX = { side: 1, row: 2 }; // front-right OSA, middle engine: receive
 
-const P = k.fitProjection([...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), ...k.boxCorners(BOARD, 0, 34)], W, H, { pad: 12, azimuth: AZ, elevation: EL });
+// fit to width, then push the drawing to the bottom of the card: the spare height goes above it, where the inset sits
+const FIT_POINTS = [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), ...k.boxCorners(BOARD, 0, 34)];
+const P0 = k.fitProjection(FIT_POINTS, W, H, { pad: 12, azimuth: AZ, elevation: EL });
+const spareY = (() => {
+  const ys = FIT_POINTS.map((p) => k.iso(p, P0)[1]);
+  return Math.max(0, H - 24 - (Math.max(...ys) - Math.min(...ys)));
+})();
+const P = k.fitProjection(FIT_POINTS, W, H, { pad: 12, headroom: spareY, azimuth: AZ, elevation: EL });
 const V = G.viewOf(P);
 const at = (point) => k.iso(point, P);
 const S = (paths, style) => k.solidSvg(paths, style);
@@ -129,7 +136,7 @@ function stand() {
   out.push(L(k.planOutline(k.insetPlan(label, 1.8), 0.8, P, 4), { tone: "faint" }));
   out.push(L([0, 1, 2].map((i) => k.lineOnTop([label.x + 9, label.y + 5 + i * 3], [label.x + 78 - i * 18, label.y + 5 + i * 3], 0.8, P)).join(""), { tone: "lo", free: true }));
   out.push(Dots([at([label.x + 4, label.y + label.d / 2, 0.8]), at([label.x + label.w - 4, label.y + label.d / 2, 0.8])], { size: 0.45 }));
-  put("board", [0, 0, -1], out.join(""), shapes, { name: "stand.base", bias: -800 });
+  put("bench", [0, 0, -1], out.join(""), shapes, { name: "stand.base", bias: -800 });
 }
 
 // =====================================================================
@@ -402,8 +409,12 @@ const PARTS = DATA.order.map((id, index) => `<button type="button" class="sp-par
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">CPO switch · one bit's path</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 
 // inset: one lane at chip scale, and the comparison with a pluggable (2D detail, schematic)
-const barMax = Math.max(M.POWER.pluggableW, M.POWER.pluggableLossDb, M.pjPluggable);
-const bar = (y, value, max, cls) => `<rect class="${cls}" x="70" y="${y}" width="${((value / max) * 118).toFixed(1)}" height="7" rx="1.5"/>`;
+// each comparison row is scaled to its own larger value; the loss row carries the dB-to-signal ratio in words
+const bar = (y, value, max, cls) => `<rect class="${cls}" x="76" y="${y}" width="${((value / max) * 100).toFixed(1)}" height="7" rx="1.5"/>`;
+const row = (y, label, cpo, plug, show = (v) => v) => {
+  const max = Math.max(cpo, plug);
+  return `<text class="sp-in-text" x="10" y="${y + 9}">${label}</text>${bar(y, cpo, max, "sp-in-bar-cpo")}${bar(y + 9, plug, max, "sp-in-bar-plug")}<text class="sp-in-val" x="212" y="${y + 6}" text-anchor="end">${show(cpo)}</text><text class="sp-in-val" x="212" y="${y + 15}" text-anchor="end">${show(plug)}</text>`;
+};
 const inset = `<div class="sp-inset" aria-hidden="true"><span class="sp-inset-label" data-inset-label>Detail · one lane</span><svg viewBox="0 0 220 132" class="sp-inset-svg">
 <rect class="sp-in-frame" x="0.5" y="0.5" width="219" height="131" rx="6"/>
 <g data-lane>
@@ -416,28 +427,27 @@ const inset = `<div class="sp-inset" aria-hidden="true"><span class="sp-inset-la
 <rect class="sp-in-box" data-in-tia x="140" y="4" width="32" height="9" rx="2"/>
 <path class="sp-in-wire" d="M156 13V43"/>
 <circle class="sp-in-photon" data-in-photon cx="10" cy="48" r="2.4" opacity="0"/>
-<text class="sp-in-text" x="14" y="62">laser in</text>
-<text class="sp-in-text" x="62" y="62">ring</text>
-<text class="sp-in-text" x="104" y="62">fibre</text>
+<text class="sp-in-text" x="13" y="62">laser in</text>
+<text class="sp-in-text" x="68" y="62">ring</text>
+<text class="sp-in-text" x="108" y="62">fibre</text>
 <text class="sp-in-text" x="148" y="62">photodiode</text>
-<text class="sp-in-text" x="88" y="11">driver</text>
-<text class="sp-in-text" x="176" y="11">TIA</text>
-<path class="sp-in-axis" d="M10 80V122H210"/>
+<text class="sp-in-text" x="89" y="11.5">driver</text>
+<text class="sp-in-text" x="175" y="11.5">TIA</text>
+<path class="sp-in-axis" d="M10 82V122H210"/>
 <path class="sp-in-level" d="M10 84H210M10 96H210M10 108H210M10 120H210"/>
 <path class="sp-in-trace" data-in-trace d="M10 120"/>
-<text class="sp-in-text" x="14" y="77">light out · PAM4 · 4 levels</text>
+<text class="sp-in-text" x="13" y="78">light out · PAM4 · 4 levels</text>
 </g>
 <g data-compare opacity="0">
 <text class="sp-in-text" x="10" y="14">one 1.6 Tb/s port</text>
-<rect class="sp-in-bar-cpo" x="118" y="7" width="9" height="7" rx="1.5"/><text class="sp-in-key" x="131" y="14">CPO</text>
-<rect class="sp-in-bar-plug" x="160" y="7" width="9" height="7" rx="1.5"/><text class="sp-in-key" x="173" y="14">pluggable</text>
-<text class="sp-in-text" x="10" y="36">power, W</text>${bar(28, M.POWER.cpoW, barMax, "sp-in-bar-cpo")}${bar(37, M.POWER.pluggableW, barMax, "sp-in-bar-plug")}
-<text class="sp-in-val" x="212" y="35" text-anchor="end">${M.POWER.cpoW}</text><text class="sp-in-val" x="212" y="44" text-anchor="end">${M.POWER.pluggableW}</text>
-<text class="sp-in-text" x="10" y="66">pJ per bit</text>${bar(58, M.pjCpo, barMax, "sp-in-bar-cpo")}${bar(67, M.pjPluggable, barMax, "sp-in-bar-plug")}
-<text class="sp-in-val" x="212" y="65" text-anchor="end">${M.fmt(M.pjCpo, 1)}</text><text class="sp-in-val" x="212" y="74" text-anchor="end">${M.fmt(M.pjPluggable, 1)}</text>
-<text class="sp-in-text" x="10" y="96">loss, dB</text>${bar(88, M.POWER.cpoLossDb, barMax, "sp-in-bar-cpo")}${bar(97, M.POWER.pluggableLossDb, barMax, "sp-in-bar-plug")}
-<text class="sp-in-val" x="212" y="95" text-anchor="end">${M.POWER.cpoLossDb}</text><text class="sp-in-val" x="212" y="104" text-anchor="end">${M.POWER.pluggableLossDb}</text>
-<text class="sp-in-text" x="10" y="124">copper reach ${M.REACH.copperM} m · fibre ${M.REACH.smfM} m to ${M.fmt(M.REACH.smfLongM / 1000)} km</text>
+<rect class="sp-in-bar-cpo" x="110" y="7" width="9" height="7" rx="1.5"/><text class="sp-in-key" x="122" y="14">CPO</text>
+<rect class="sp-in-bar-plug" x="146" y="7" width="9" height="7" rx="1.5"/><text class="sp-in-key" x="158" y="14">pluggable</text>
+${row(22, "power, W", M.POWER.cpoW, M.POWER.pluggableW)}
+${row(46, "pJ per bit", M.pjCpo, M.pjPluggable, (v) => M.fmt(v, 1))}
+${row(70, "loss, dB", M.POWER.cpoLossDb, M.POWER.pluggableLossDb)}
+<text class="sp-in-text" x="10" y="102">${M.lossGap} dB less loss ≈ ${Math.round(M.lossRatio)}× the signal</text>
+<text class="sp-in-text" x="10" y="114">reach, ${M.QX.laneGbps}G lane: copper ≤ ${M.REACH.copperM} m</text>
+<text class="sp-in-text" x="10" y="126">fibre, CPO or pluggable: ${M.fmt(M.REACH.smfM / 1000, 1)}–${M.fmt(M.REACH.smfLongM / 1000)} km</text>
 </g>
 </svg></div>`;
 

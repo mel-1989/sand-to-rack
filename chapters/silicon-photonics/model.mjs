@@ -115,7 +115,7 @@ export const PARTS = {
   fibre: { name: "Fibre trunks", say: `per engine ${QX.txFibres} TX + ${QX.rxFibres} RX + ${QX.laserFibres} laser fibres` },
   els: { name: "External laser sources", say: `${ELS.lasers} lasers each · feeds ${ELS.txLanes} transmit lanes · field-replaceable` },
   osfp: { name: "Pluggable, for comparison", say: `OSFP · ${POWER.pluggableW} W a 1.6T port · ${POWER.pluggableLossDb} dB electrical loss` },
-  board: { name: "Switch board and bench", say: "the test board the package sits on" },
+  board: { name: "Switch test board", say: "the test board the package sits on" },
 };
 
 export const IDLE = `CPO switch · ${QX.osas} × ${fmt(osaTbps, 1)} Tb/s optics · ${QX.asicTbps} Tb/s`;

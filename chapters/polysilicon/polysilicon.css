@@ -380,7 +380,22 @@
 }
 
 .pz[data-pz-step="dist"] .pz-tray[data-hot] {
+  stroke-width: 2.6;
   opacity: 1;
+}
+
+.pz[data-pz-step="dist"] .pz-tray[data-warm] {
+  opacity: 0.45;
+}
+
+.pz-vapour {
+  fill: var(--anatomy-lit);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pz:not([data-pz-step="dist"]) .pz-vapour {
+  opacity: 0 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

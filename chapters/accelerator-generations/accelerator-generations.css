@@ -136,11 +136,11 @@
 
 @media (max-width: 640px) {
   .ag .iso-plate {
-    padding: 48px 8px 96px;
+    padding: 48px 8px 110px;
   }
 
   .ag .iso-plate-corner[data-corner="readout"] {
-    bottom: 44px;
+    bottom: 38px;
     right: 0;
     left: 16px;
     max-width: calc(100% - 32px);
@@ -280,4 +280,23 @@
 .ag-stage[data-zoomed] > svg {
   overflow: hidden;
   border-radius: 10px;
+}
+
+/* phone camera: a side the crop cuts fades out, so the zoomed view reads as a pan along the bench */
+.ag-stage[data-zoomed] {
+  --ag-fade-l: 0px;
+  --ag-fade-r: 0px;
+}
+
+.ag-stage[data-cut-left] {
+  --ag-fade-l: 36px;
+}
+
+.ag-stage[data-cut-right] {
+  --ag-fade-r: 36px;
+}
+
+.ag-stage[data-zoomed] > svg {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--ag-fade-l), #000 calc(100% - var(--ag-fade-r)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--ag-fade-l), #000 calc(100% - var(--ag-fade-r)), transparent 100%);
 }

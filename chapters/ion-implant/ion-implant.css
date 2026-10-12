@@ -294,14 +294,18 @@
 }
 
 .ii-reject {
-  stroke-width: 0.6;
+  stroke-width: 1.05;
   stroke-linecap: butt;
-  opacity: 0.85;
+  opacity: 0.8;
 }
 
 [data-theme="light"] .ii-reject {
   stroke: var(--anatomy-strong);
-  opacity: 0.6;
+  opacity: 0.75;
+}
+
+.ii-rspark {
+  filter: drop-shadow(0 0 1.5px var(--anatomy-lit));
 }
 
 .ii-aperture {
@@ -315,13 +319,6 @@
 .it[data-hot] .ii-aperture {
   opacity: 0.9;
   filter: drop-shadow(0 0 2px var(--anatomy-lit));
-}
-
-.ii-lampcells {
-  fill: none;
-  stroke: var(--ii-hot-core);
-  stroke-width: 0.7;
-  opacity: 0;
 }
 
 .ii-spark {

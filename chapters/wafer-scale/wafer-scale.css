@@ -9,8 +9,11 @@
 }
 
 .ws .iso-plate {
-  padding: 52px 24px 60px;
+  padding: 52px 24px 68px;
   overflow: hidden;
+  /* the readout wraps to one or two lines as parts change; without this Chrome's scroll anchoring shifts the page
+     under the finger and the legend buttons slide out from under a tap */
+  overflow-anchor: none;
 }
 
 .ws-stage {
@@ -82,16 +85,15 @@
   gap: 14px;
 }
 
-/* the readout never reaches the hint: it wraps above it, and the hint steps aside while a layer is picked */
+/* the readout sits on its own line above the hint at every width, so a long one wraps instead of printing over it,
+   and the hint stays in view while a layer is picked */
 .ws .iso-plate-corner[data-corner="readout"] {
-  max-width: calc(100% - 250px);
-  white-space: normal;
+  bottom: 18px;
+  left: 0;
+  right: 0;
   text-align: right;
-  line-height: 1.35;
-}
-
-.ws-stage[data-focus] ~ .ws-controls .ws-hint {
-  visibility: hidden;
+  line-height: 1.4;
+  white-space: normal;
 }
 
 .ws-hint {
@@ -148,18 +150,15 @@
 
 @media (max-width: 640px) {
   .ws .iso-plate {
-    padding: 48px 8px 84px;
+    padding: 48px 8px 86px;
+  }
+
+  .ws .iso-plate-corners {
+    inset: 18px 14px;
   }
 
   .ws .iso-plate-corner[data-corner="readout"] {
-    bottom: 44px;
-    right: 0;
-    left: 16px;
-    max-width: calc(100% - 32px);
-    text-align: right;
-    line-height: 1.4;
-    white-space: normal;
-    overflow: visible;
+    bottom: 16px;
   }
 
   .ws-controls {
@@ -224,8 +223,8 @@
 }
 
 .ws-step {
-  flex: none;
-  width: 250px;
+  flex: 0 1 250px;
+  min-width: 0;
   max-width: 38%;
   font: 10.5px/1.2 var(--anatomy-mono);
   letter-spacing: 0.06em;
@@ -236,13 +235,12 @@
   text-overflow: ellipsis;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 560px) {
   .ws-scrub {
     flex-wrap: wrap;
   }
 
   .ws-step {
-    width: auto;
     max-width: none;
     order: 3;
     flex-basis: 100%;
@@ -318,4 +316,8 @@
     width: 114%;
     margin: -4% -7% -2%;
   }
+}
+
+.ws.iso-figure .iso-legend > * {
+  min-width: 0;
 }

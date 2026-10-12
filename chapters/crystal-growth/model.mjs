@@ -10,7 +10,7 @@ export const SRC = {
   dash: "https://doi.org/10.1063/1.1735186", // W. C. Dash, Growth of silicon crystals free from dislocations, J. Appl. Phys. 30, 459 (1959)
   ohsaka: "https://authors.library.caltech.edu/5430/", // Ohsaka et al. 1997, liquid Si density at Tm
   hmcz: "https://patents.justia.com/patent/8460462", // HMCZ, oxygen below 5e17 /cm3
-  field: "https://patents.google.com/patent/US10731271", // horizontal field of at least 2000 G
+  field: "https://patents.google.com/patent/US5968264", // "The intensity of the applied magnetic field is not less than 2000 G"; a horizontal field is preferred
   purge: "https://patents.google.com/patent/US8187383", // SiO evaporated from the melt surface is entrained in the inert purge gas and discharged at the chamber bottom
 };
 
@@ -30,7 +30,7 @@ export const RUN = {
   crystalRpm: [5, 14], // SRC.tu
   crucibleRpm: [6, 12], // SRC.tu
   oxygenPpma: [23, 33], // controlled range with a cusp field. SRC.tu
-  days: [5, 7], // a pulling run at Siltronic Freiberg. SRC.siltronic
+  days: [5, 7], // a pulling run at Siltronic Freiberg, for ~300 mm ingots of "several hundred kilograms" (larger than the 140 kg Tu et al. run drawn). SRC.siltronic
   seedMm: [8, 20], // conventional seed diameter. SRC.dashPatent
   neckMm: 3, // Dash neck diameter drawn and quoted, the low end of the range. SRC.dashPatent, SRC.dash
   neckRangeMm: [3, 5], // minimum neck diameter. SRC.dashPatent
@@ -52,7 +52,7 @@ export const PULLER = {
 
 // MCZ: a magnetic field across the melt damps convection, which carries oxygen from the quartz to the crystal.
 export const MCZ = {
-  fieldG: 2000, // at least, horizontal field. SRC.field
+  fieldG: 2000, // at least, horizontal field preferred. SRC.field (US 5968264)
   oxygenBelow: 5e17, // atoms/cm3, HMCZ result. SRC.hmcz
 };
 
@@ -63,6 +63,7 @@ const NECK_LEN = 200;
 const SHOULDER_LEN = 150;
 const TAIL_LEN = 200;
 const R_SEED = 6; // 12 mm seed, inside 8-20 mm
+export const SEED_MM = R_SEED * 2;
 const R_NECK = RUN.neckMm / 2;
 const R_BODY = RUN.crystalMm / 2;
 const R_TAIL_END = 10;

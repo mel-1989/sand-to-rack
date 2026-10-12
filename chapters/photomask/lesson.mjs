@@ -7,7 +7,7 @@ export const LESSON = {
   intro: `Before a fab can print a chip it needs a stencil for every layer: a photomask. A finished design is turned into data, the data is written onto a glass blank by ${n(M.BEAMLETS)} electron beams at once, and the blank is etched, checked and sealed. Press Play to follow one mask from tape-out to pellicle.`,
   steps: [
     `<strong>Design to tape-out.</strong> Engineers describe the chip in RTL (Verilog). Synthesis maps it to a netlist of standard cells, place and route lays out the cells and wires, and sign-off checks timing, power and the foundry's design rules (DRC, LVS). The result is tape-out: a GDSII or OASIS file of polygons, one set per layer.`,
-    `<strong>Correct and fracture.</strong> Light bends round features smaller than its wavelength, so optical proximity correction (OPC) or inverse lithography (ILT) reshapes every polygon until the printed result matches the design; ILT often produces curves. The corrected data is then fractured into the writer's own format, here pixel data for ${n(M.BEAMLETS)} beamlets, streamed at up to ${M.WRITER.dataGbps} Gbit/s.`,
+    `<strong>Correct and fracture.</strong> When features approach the smallest size the scanner's optics can resolve, light diffracts and neighbouring shapes blur into each other, so optical proximity correction (OPC) or inverse lithography (ILT) reshapes every polygon until the printed result matches the design; ILT often produces curves. The corrected data is then fractured into the writer's own format, here pixel data for ${n(M.BEAMLETS)} beamlets, streamed at up to ${M.WRITER.dataGbps} Gbit/s.`,
     `<strong>Write.</strong> One cathode lights an aperture plate with ${M.WRITER.beamsSide} × ${M.WRITER.beamsSide} holes; each beamlet is switched on or off per pixel, and ${M.WRITER.reduction}:1 optics shrink the array to an ${M.WRITER.fieldUm} µm field of ${M.WRITER.beamNm} nm beams at ${M.WRITER.keV} keV. The stage carries the resist-coated blank under the column in vacuum, stripe by stripe. These are the published figures of the first production generation, the IMS MBMW-101 (2016). Later tools push further: IMS's MBMW-201 for the ${M.LATER.mbmw201Node} nm node (${M.LATER.mbmw201Year}) and MBMW-301 for 2 nm-class masks (${M.LATER.mbmw301Year}), and NuFlare's MBM-3000, which doubled its beam count and shrank each beam from ${M.LATER.nuflareBeamNm[0]} to ${M.LATER.nuflareBeamNm[1]} nm.`,
     `<strong>Develop and etch.</strong> The written blank leaves the writer for separate develop and etch tools, shown here as the bench in front. The exposed resist is developed, and the pattern is etched into the ${M.STACK.absorber} absorber down to the ${M.STACK.capMat} capping layer. Where absorber is removed, the ${M.STACK.pairs}-pair Mo/Si mirror below reflects EUV light; where it stays, the light is absorbed.`,
     `<strong>Inspect and repair.</strong> The finished pattern is compared against the design data. Defects are mapped and fixed, for example with a focused electron beam that adds or removes material.`,
@@ -15,11 +15,11 @@ export const LESSON = {
   ],
   numbers: [
     ["Beamlets", `${n(M.BEAMLETS)}`, `${M.WRITER.beamsSide} × ${M.WRITER.beamsSide} array, each ${M.WRITER.beamNm} nm at the mask, ${M.WRITER.keV} keV`],
-    ["Write time", `about ${M.WRITER.writeHours} to ${M.WRITER.writeHoursHigh} h a mask`, `IMS MBMW-101 (2016) at the 7 nm node, under ${M.WRITER.writeHours} h by IMS's figure and about ${M.WRITER.writeHoursHigh} h for the largest dies; single-beam writers can take ${M.VSB_HOURS} h or more on dense layers`],
+    ["Write time", `under ${M.WRITER.writeHours} h a mask`, `IMS MBMW-101 (2016) at the 7 nm node, by IMS's figure; single-beam writers can take ${M.VSB_HOURS} h or more on dense layers`],
     ["Mask blank", `${M.BLANK.sideMm} × ${M.BLANK.sideMm} × ${M.BLANK.thickMm} mm`, "the 6 × 6 × 0.25 inch format"],
     ["EUV mirror", `${M.STACK.pairs} Mo/Si pairs`, `period about ${M.STACK.periodNm} nm, so about ${n(M.MULTILAYER_NM)} nm in all; up to ${M.STACK.reflect} % reflectivity at ${M.STACK.wavelengthNm} nm`],
     ["Scanner reduction", `${M.SCANNER.reduction}×`, `a ${M.SCANNER.fieldMm[0]} × ${M.SCANNER.fieldMm[1]} mm wafer field is ${M.MASK_FIELD_MM[0]} × ${M.MASK_FIELD_MM[1]} mm on the mask (derived)`],
-    ["Masks per chip", `${M.MASKS_PER_CHIP[0]} to ${M.MASKS_PER_CHIP[1]}`, "one per patterned layer, for a leading-edge chip"],
+    ["Masks per chip", `about ${M.MASKS.n28} to over ${M.MASKS.n7}`, `one per patterned layer of a typical 11-metal logic design: about ${M.MASKS.n28} at 28 nm, ${M.MASKS.n14} at 14 nm, more than ${M.MASKS.n7} at 7 nm with optical patterning only (approximate industry figures)`],
   ],
   innovationsTitle: "Why it is built this way",
   innovations: [
@@ -31,6 +31,7 @@ export const LESSON = {
     ["IMS Nanofabrication: multi-beam mask writer products", "https://www.ims.co.at/en/products/"],
     ["IMS patent EP3070528: multi-beam writer column (262,144 beamlets, 50 keV, 20 nm, 200:1)", "https://data.epo.org/publication-server/rest/v1.2/patents/EP3070528NWA1/document.html"],
     ["Semiconductor Engineering: Multi-beam mask writing finally comes of age", "https://semiengineering.com/multi-beam-mask-writing-finally-comes-of-age"],
+    ["Photronics (Kasprowicz), EUV mask technology and economics, 2017 EUVL Workshop (masks per design by node)", "https://www.euvlitho.com/2017/P33.pdf"],
     ["University of Kassel: Mo/Si multilayers for EUV lithography", "https://www.uni-kassel.de/forschung/en/ina/technological-electronics/research/past-projects/multilayer-structures-for-the-lithography-in-extreme-uv-euvl"],
     ["US 9140975 B2: EUV pellicle (90 % single pass, 81 % double pass)", "https://patents.google.com/patent/US9140975B2/en"],
     ["SPIE 13273: Recent progress of multi-beam mask writer MBM-3000 (NuFlare)", "https://nanophotonics.spiedigitallibrary.org/conference-proceedings-of-spie/13273/132730O/Recent-progress-of-multi-beam-mask-writer-MBM-3000/10.1117/12.3028706.full"],

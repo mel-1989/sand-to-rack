@@ -9,7 +9,8 @@ export const POWERVIA_TEST = {
   freqPct: 6, // "6% frequency benefit"
   utilPct: 90, // "standard cell utilization of more than 90%" over large areas of the die
 };
-// IEEE Spectrum on the same chip: some areas up to 95% filled; "30 percent less power loss".
+// IEEE Spectrum on the same chip: some areas up to 95% filled; "30 percent less power loss"; Intel drills and fills its
+// nano-TSVs during front-side fabrication, before the interconnect (no source gives a per-cell count, so none is shown).
 // https://spectrum.ieee.org/backside-power-delivery
 export const SPECTRUM = { utilPeakPct: 95, m0RelaxNm: 6 }; // M0 lines "could be six nanometers further apart"
 
@@ -57,11 +58,11 @@ export const WAFER_UM = 775;
 const range = ([a, b]) => `${a}–${b}`;
 
 export const STEPS = [
-  { id: "front", name: "Transistors and signal wiring", say: "transistors, then fine signal wiring" },
+  { id: "front", name: "Transistors + wiring", say: "transistors, then fine signal wiring" },
   { id: "bond", name: "Bond a carrier wafer", say: `carrier bonded face to face · ${IMEC.bondAnnealC} °C anneal` },
   { id: "flip", name: "Flip", say: "flipped · the carrier now holds the chip" },
   { id: "thin", name: "Thin the silicon", say: `grinding · TTV < ${IMEC.ttvNm} nm` },
-  { id: "tsv", name: "Nano-TSVs", say: `nano-TSVs · ${IMEC.ntsvDepthNm} nm deep, ${IMEC.ntsvPitchNm} nm pitch` },
+  { id: "tsv", name: "Nano-TSVs", say: `nano-TSVs etched from the back (imec flow) · ${IMEC.ntsvDepthNm} nm deep, ${IMEC.ntsvPitchNm} nm pitch` },
   { id: "metal", name: "Backside power metal", say: "thick power layers built on the back" },
   { id: "bumps", name: "Bumps on the back", say: `bumps on the back · >${POWERVIA_TEST.droopPct}% less droop (Intel)` },
 ];
@@ -71,7 +72,7 @@ export const PIECES = {
   carrier: { name: "Carrier wafer", say: "carrier wafer · holds the chip once thinned" },
   signal: { name: "Signal wiring", say: `signals only · cells pack >${POWERVIA_TEST.utilPct}% (Intel)` },
   devices: { name: "Transistors", say: `transistors on ${IMEC.thinNm} nm of silicon` },
-  ntsv: { name: "Nano-TSVs", say: "nano-TSVs · Intel: per cell · TSMC: S/D" },
+  ntsv: { name: "Nano-TSVs", say: "nano-TSVs · Intel: from the front · TSMC: S/D contacts" },
   bspdn: { name: "Backside power", say: `backside power · IR drop ÷${IMEC.irDropX} (imec/Arm sim)` },
   bumps: { name: "Bumps", say: "bumps on the back · power enters here" },
   tools: { name: "Flip fixture and grinder", say: "flip fixture and back-grinder (stand-ins)" },
@@ -79,5 +80,6 @@ export const PIECES = {
 export const ORDER = ["fs", "carrier", "signal", "devices", "ntsv", "bspdn", "bumps", "tools"];
 
 export const IDLE = `${INTEL_18A.node} PowerVia · ${A16.node} Super Power Rail`;
-// at rest the readout quotes Intel, whose nano-TSV scheme is the one the right block shows
-export const DONE = `${INTEL_18A.node} PowerVia: up to ${INTEL_18A.droopX}× less droop`;
+// The right block is generic backside power, built in imec's published flow (nano-TSVs etched from the back after
+// thinning). Intel forms its nano-TSVs from the front instead; at rest the readout quotes Intel's shipping result.
+export const DONE = `backside power · ${INTEL_18A.node}: up to ${INTEL_18A.droopX}× less droop`;

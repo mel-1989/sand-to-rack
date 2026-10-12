@@ -544,27 +544,30 @@ function joints() {
     let s = rect(0, 146, Wp, 24, "hb-sub") + rect(0, 138, 150, 8, "hb-glue") + rect(0, 58, 150, 80, "hb-si");
     s += rect(112, 54, 30, 4, "hb-cu") + rect(206, 142, 34, 4, "hb-cu");
     s += `<path class="hb-wire" d="M127 50 C127 6, 200 4, 222 142"/>`;
-    s += `<ellipse class="hb-ball" cx="127" cy="49" rx="${(27 / 2).toFixed(1)}" ry="6"/>`;
+    s += `<ellipse class="hb-ball" cx="127" cy="49" rx="${(M.JOINT.wire.ballUm / 2).toFixed(1)}" ry="6"/>`;
     out.wire = { svg: s, note: `${M.pitchText(e)} µm pad pitch, edge only` };
   }
   // C4: flipped die on solder balls over the substrate, with underfill
   {
     let s = rect(0, 0, Wp, 50, "hb-si") + rect(0, 50, Wp, 92, "hb-fill") + rect(0, 142, Wp, 28, "hb-sub");
-    for (let x = 65 - 130; x < Wp + 60; x += M.ERAS[1].pitch) s += rect(x - 45, 50, 90, 5, "hb-cu") + `<ellipse class="hb-solder" cx="${x}" cy="96" rx="52" ry="45"/>` + rect(x - 45, 137, 90, 5, "hb-cu");
+    const J = M.JOINT.c4;
+    for (let x = 65 - 130; x < Wp + 60; x += M.ERAS[1].pitch) s += rect(x - J.padUm / 2, 50, J.padUm, 5, "hb-cu") + `<ellipse class="hb-solder" cx="${x}" cy="96" rx="${J.ballUm / 2}" ry="${J.ballHUm / 2}"/>` + rect(x - J.padUm / 2, 137, J.padUm, 5, "hb-cu");
     out.c4 = { svg: s, note: `${M.ERAS[1].pitch} µm pitch` };
   }
   // micro-bump: Cu pillar with a solder cap onto a pad on the die below
   {
     const p = M.ERAS[2].pitch;
     let s = rect(0, 0, Wp, 60, "hb-si") + rect(0, 60, Wp, 48, "hb-fill") + rect(0, 108, Wp, 62, "hb-si");
-    for (let x = p / 2 - 20; x < Wp + p; x += p) s += rect(x - 12.5, 60, 25, 30, "hb-cu") + `<rect class="hb-solder" x="${x - 12.5}" y="90" width="25" height="14" rx="5"/>` + rect(x - 14, 104, 28, 4, "hb-cu");
+    const J = M.JOINT.ubump;
+    for (let x = p / 2 - 20; x < Wp + p; x += p) s += rect(x - J.pillarUm / 2, 60, J.pillarUm, J.pillarHUm, "hb-cu") + `<rect class="hb-solder" x="${x - J.pillarUm / 2}" y="${60 + J.pillarHUm}" width="${J.pillarUm}" height="${J.capHUm}" rx="5"/>` + rect(x - J.padUm / 2, 104, J.padUm, 4, "hb-cu");
     out.ubump = { svg: s, note: `${p} µm pitch` };
   }
   // hybrid: two dies meet flat; Cu pads in oxide on both sides of one plane
   {
     const p = M.ERAS[3].pitch;
     let s = rect(0, 0, Wp, 72, "hb-si") + rect(0, 72, Wp, 16, "hb-ox") + rect(0, 88, Wp, 16, "hb-ox") + rect(0, 104, Wp, 66, "hb-si");
-    for (let x = p / 2; x < Wp; x += p) s += rect(x - 2.25, 84, 4.5, 4, "hb-cu") + rect(x - 2.25, 88, 4.5, 4, "hb-cu");
+    const a = M.JOINT.hybrid.padUm;
+    for (let x = p / 2; x < Wp; x += p) s += rect(x - a / 2, 84, a, 4, "hb-cu") + rect(x - a / 2, 88, a, 4, "hb-cu");
     s += `<line class="hb-plane" x1="0" y1="88" x2="${Wp}" y2="88"/>`;
     out.hybrid = { svg: s, note: `${p} µm pitch` };
   }
@@ -575,11 +578,11 @@ function joints() {
     return `<div class="hb-joint" data-era="${i}"><svg viewBox="0 0 ${Wp} ${Hp}" class="hb-sec" role="img" aria-label="${e.name} in section, ${j.note}"><defs><clipPath id="hb-clip${i}"><rect x="0" y="0" width="${Wp}" height="${Hp}"/></clipPath></defs><g clip-path="url(#hb-clip${i})">${j.svg}</g>${i === 0 ? bar : ""}<rect class="hb-frame" x="0.5" y="0.5" width="${Wp - 1}" height="${Hp - 1}"/></svg><span class="hb-jname"><span class="hb-num">${String(i + 1).padStart(2, "0")}</span>${e.name}<small>${e.since}</small></span><span class="hb-jval">${M.pitchText(e)} µm · ${per}</span></div>`;
   }).join("");
 }
-const inset = `<div class="hb-inset"><span class="hb-inset-title">Fig 1b · the joint under the die, in section, all four at one scale, with the year each first shipped <span class="hb-unit">(bar: 50 µm)</span></span><div class="hb-joints">${joints()}</div></div>`;
+const inset = `<div class="hb-inset"><span class="hb-inset-title">Fig 1b · the joint under the die, in section, all four at one scale, with the year each was introduced (micro-bump: in 2.5D stacking) <span class="hb-unit">(bar: 50 µm)</span></span><div class="hb-joints">${joints()}</div></div>`;
 
 const h = M.HYBRID;
-const caption = `A die-to-wafer bonder, drawn as a composite of the high-volume tools (Besi's ${M.BONDER.model.replace("Besi ", "")} places dies to ${M.BONDER.placeNm} nm at ${M.fmt(M.BONDER.cph)} chips an hour, about ${M.secondsPerChip.toFixed(1)} s each). The slider runs one bond cycle for each generation of joint. A wire-bonded die goes down face up and needs no flip (it really lands on a lead frame or substrate, drawn on the same wafer here for comparison); every later kind is flipped face down. C4 solder bumps at ${M.ERAS[1].pitch} µm pitch and copper micro-bumps at ${M.ERAS[2].pitch} µm (AMD's figures) are melted or pressed with a heated collet; a hybrid bond at ${M.ERAS[3].pitch} µm (AMD 3D V-Cache on TSMC SoIC, the first die-to-wafer hybrid bond in volume, 2022) is pressed at room temperature with at most ${M.BONDER.prebondN} N, and the copper joins later in a ${M.BONDER.annealC[0]}–${M.BONDER.annealC[1]} °C anneal. TSMC is at ${h.soicNow} µm and plans ${h.soic2029} µm by 2029; imec has shown ${h.imecD2W} µm die to wafer. Connections per mm² are 1 ÷ pitch², a square grid; the wire-bond pitch is drawn at the ${M.pitchText(M.ERAS[0])} µm fine-pitch bound. Machine layout, die size and heights are illustrative; Fig 1b is to scale except the oxide bond layer, and the copper recess (under ${h.recessNm} nm) is too small to draw.`;
-const scrub = `<span class="hb-scrub"><button type="button" class="hb-play" data-play aria-label="Play the bond cycles"><span class="hb-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="hb-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: four bond cycles, wire bond, C4, micro-bump, hybrid bond"><span class="hb-step" data-step>01 · wire bond · ${M.PHASES[0].label}</span></span>`;
+const caption = `A die-to-wafer bonder, drawn as a composite of the high-volume tools (Besi's ${M.BONDER.model.replace("Besi ", "")} places dies to ${M.BONDER.placeNm} nm at ${M.fmt(M.BONDER.cph)} chips an hour, about ${M.secondsPerChip.toFixed(1)} s each). The slider runs one bond cycle for each generation of joint. A wire-bonded die goes down face up and needs no flip (it really lands on a lead frame or substrate, drawn on the same wafer here for comparison); every later kind is flipped face down. C4 solder bumps at ${M.ERAS[1].pitch} µm pitch and copper micro-bumps at ${M.ERAS[2].pitch} µm (AMD's figures) are melted or pressed with a heated collet; a hybrid bond at ${M.ERAS[3].pitch} µm (AMD 3D V-Cache on TSMC SoIC, the first die-to-wafer hybrid bond in volume, 2022) is pressed at room temperature with at most ${M.BONDER.prebondN} N, and the copper joins later in a ${M.BONDER.annealC[0]}–${M.BONDER.annealC[1]} °C anneal. TSMC is at ${h.soicNow} µm and plans ${h.soic2029} µm by 2029; imec has shown ${h.imecD2W} µm die to wafer and targets ${h.imecTarget} µm. Connections per mm² are 1 ÷ pitch², a square grid; the wire-bond pitch is drawn at the ${M.pitchText(M.ERAS[0])} µm fine-pitch bound. Machine layout, die size and heights are illustrative; in Fig 1b the pitches are to scale, the bump and layer sizes are typical and illustrative (the oxide bond layer is drawn thicker), and the copper recess (under ${h.recessNm} nm) is too small to draw.`;
+const scrub = `<span class="hb-scrub"><button type="button" class="hb-play" data-play aria-label="Play the bond cycles"><span class="hb-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="hb-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: four bond cycles, wire bond, C4, micro-bump, hybrid bond"><span class="hb-step" data-step>wire bond · ${M.PHASES[0].label}</span></span>`;
 const body = `<figure class="iso-figure hb"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}${inset}<span class="hb-parts">${legend}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 
 // the live page needs the prism builder from lathe.mjs; wrap it so its helpers can't collide with the kit's

@@ -263,6 +263,33 @@ function topDots(q, r, z, every) {
   return out;
 }
 
+// exhaust bores: argon leaves the hot zone through ports in the floor, one in each cut plane where the drawn flow runs
+// down past the heater (SRC.purge: the purge gas is discharged at the chamber bottom); bore size illustrative
+const FLOW_GAP = (SUS_OUT + HEATER.rIn) / 2;
+const BORE_R = 3;
+function bores(q, z0, z1, { top = false } = {}) {
+  let fill = "";
+  let edge = "";
+  for (const { deg, n } of q.faces) {
+    const u = [Math.cos(deg * DEG), Math.sin(deg * DEG)];
+    const c = ptc(FLOW_GAP, deg, 0);
+    const p = (r, z) => [c[0] + u[0] * r, c[1] + u[1] * r, z];
+    fill += pathOf([p(-BORE_R, z0), p(BORE_R, z0), p(BORE_R, z1), p(-BORE_R, z1)], true);
+    edge += pathOf([p(-BORE_R, z0), p(-BORE_R, z1)]) + pathOf([p(BORE_R, z0), p(BORE_R, z1)]);
+    if (top) {
+      const half = Array.from({ length: 17 }, (_, i) => {
+        const t = (Math.PI * i) / 16;
+        const r = -BORE_R * Math.cos(t);
+        const s = BORE_R * Math.sin(t);
+        return [c[0] + u[0] * r - n[0] * s, c[1] + u[1] * r - n[1] * s, z1];
+      });
+      fill += pathOf(half, true);
+      edge += pathOf(half);
+    }
+  }
+  return fill ? `<path class="cz-bore" d="${fill}"/>` + L(edge, { tone: "lo" }) : "";
+}
+
 // ---- simple parts ----
 const slabShape = (plan, z, h, steps = 4) => A.slab(plan, z, h, {}, steps);
 const cylShape = (x, y, r, z, h) => A.cylinder(x, y, r, z, h, {});
@@ -341,7 +368,7 @@ function furnace() {
     z1: FLOOR[1],
     rIn: 9,
     rOut: 100,
-    inner: (q) => Dots(topDots(q, 96, FLOOR[1], 10), { size: 0.45 }),
+    inner: (q) => Dots(topDots(q, 96, FLOOR[1], 10), { size: 0.45 }) + bores(q, FLOOR[0], FLOOR[1]),
   });
   // double wall, water jacket seam bands
   shell("furnace", {
@@ -387,7 +414,7 @@ function furnace() {
 
 // ===================== hot zone =====================
 function hotZone() {
-  shell("shield", { name: "shield.felt-floor", z0: FLOOR[1], z1: INS.z0, rIn: 9, rOut: INS.rOut, tone: "lo" });
+  shell("shield", { name: "shield.felt-floor", z0: FLOOR[1], z1: INS.z0, rIn: 9, rOut: INS.rOut, tone: "lo", inner: (q) => bores(q, FLOOR[1], INS.z0, { top: true }) });
   shell("shield", {
     name: "shield.felt",
     z0: INS.z0,
@@ -799,7 +826,7 @@ const PARTS = {
   shield: { name: "Heat shield and felt", say: "graphite felt holds the heat in · the cone steers argon past the crystal and cools it" },
   heater: { name: "Graphite heater", say: `resistance heater · keeps the melt just above ${M.SI.meltC} °C` },
   crucible: { name: "Crucible and susceptor", say: `${M.RUN.hotZoneIn}-inch quartz crucible in graphite · rises as the melt is used · ${M.RUN.crucibleRpm[0]}–${M.RUN.crucibleRpm[1]} rpm` },
-  crystal: { name: "Silicon crystal", say: `Ø ${M.RUN.crystalMm} mm · ${M.ingotKg} kg · one single crystal, dislocation-free` },
+  crystal: { name: "Silicon crystal", say: `Ø ${M.RUN.crystalMm} mm · ${M.ingotKg} kg · one single crystal, dislocation-free`, seed: `only the seed so far · a ${M.SEED_MM} mm single crystal on its chuck, cut along the chosen direction`, growing: `grown so far, of ${M.ingotKg} kg · Ø up to ${M.RUN.crystalMm} mm · one single crystal, dislocation-free` },
   magnet: { name: "Cusp magnet", say: `two coils with opposed fields · damp melt convection to set oxygen (${M.RUN.oxygenPpma[0]}–${M.RUN.oxygenPpma[1]} ppma)` },
   services: { name: "Drive and vacuum", say: "crucible lift and rotation drive · vacuum pump draws the argon out" },
 };
@@ -837,7 +864,7 @@ const DATA = {
   massTable: Array.from({ length: 101 }, (_, i) => Math.round(M.grownKg((M.GROWN_MM * i) / 100) * 10) / 10),
   scale: cam.k,
   meltC: M.SI.meltC,
-  flow: { cone: SHIELD.z1 - 6, gap: (SUS_OUT + HEATER.rIn) / 2, end: HEATER.z0 - 14, rimOver: CRU_RIM - CRU_FLOOR },
+  flow: { cone: SHIELD.z1 - 6, gap: FLOW_GAP, end: FLOOR[0] + 1, rimOver: CRU_RIM - CRU_FLOOR },
 };
 void cam;
 
@@ -845,7 +872,7 @@ const legend = ORDER.map((id, index) => `<button type="button" class="cz-part" d
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 2</span><span class="iso-plate-corner" data-corner="title">Czochralski puller · cutaway</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="cz-controls"><span class="cz-hint">Hover a part · Space runs the pull</span><span class="cz-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="cz-stage" tabindex="0" role="slider" aria-label="Czochralski crystal puller, front quarter cut away. Hover, or use the arrow keys, to pick a part; Space plays or pauses the growth run; Escape resets it; the slider below steps through the seven stages." aria-valuemin="0" aria-valuemax="${ORDER.length}" aria-valuenow="0" aria-valuetext="${M.IDLE}">${svg}</div>`;
-const caption = `A ${M.RUN.crystalMm} mm crystal grown the way Tu et al. describe it: a ${M.RUN.chargeKg} kg charge in a ${M.RUN.hotZoneIn}-inch quartz crucible, crystal and crucible turning in opposite directions (${M.RUN.crystalRpm[0]}–${M.RUN.crystalRpm[1]} and ${M.RUN.crucibleRpm[0]}–${M.RUN.crucibleRpm[1]} rpm; drawn at ${M.RUN.spinCrystal} and ${M.RUN.spinCrucible}, in real time), and a cusp magnetic field to hold oxygen at ${M.RUN.oxygenPpma[0]}–${M.RUN.oxygenPpma[1]} ppma. The chamber is sized after a 24-inch puller for 300 mm crystals (Ø ${M.PULLER.vesselMm} mm vessel, ${M.PULLER.gateMm} mm gate valve). The crucible rises as the melt is used, so the melt surface stays at the same height against the heater and shield; the drawn rise follows from the charge and the density of liquid silicon (${M.SI.liquidDensity} g/cm³). Crystal length and mass come from the charge less ${M.RUN.residualKg} kg left behind (${M.ingotKg} kg, so a body of about ${Math.round(M.bodyMm / 10) * 10} mm). Illustrative: the seed and neck are drawn about five times too thick to be seen, the shoulder and tail heights, the internal layout, and the slider's pacing; a real run takes ${M.RUN.days[0]}–${M.RUN.days[1]} days, most of it the body. Ruler ticks 50 mm.`;
+const caption = `A ${M.RUN.crystalMm} mm crystal grown the way Tu et al. describe it, a smaller run than today's production ingots, which Siltronic grows to several hundred kilograms: a ${M.RUN.chargeKg} kg charge in a ${M.RUN.hotZoneIn}-inch quartz crucible, crystal and crucible turning in opposite directions (${M.RUN.crystalRpm[0]}–${M.RUN.crystalRpm[1]} and ${M.RUN.crucibleRpm[0]}–${M.RUN.crucibleRpm[1]} rpm; drawn at ${M.RUN.spinCrystal} and ${M.RUN.spinCrucible}, in real time), and a cusp magnetic field to hold oxygen at ${M.RUN.oxygenPpma[0]}–${M.RUN.oxygenPpma[1]} ppma. The chamber is sized after a 24-inch puller for 300 mm crystals (Ø ${M.PULLER.vesselMm} mm vessel, ${M.PULLER.gateMm} mm gate valve). The crucible rises as the melt is used, so the melt surface stays at the same height against the heater and shield; the drawn rise follows from the charge and the density of liquid silicon (${M.SI.liquidDensity} g/cm³). Crystal length and mass come from the charge less ${M.RUN.residualKg} kg left behind (${M.ingotKg} kg, so a body of about ${Math.round(M.bodyMm / 10) * 10} mm). Illustrative: the seed and neck are drawn about five times too thick to be seen, the shoulder and tail heights, the internal layout, and the slider's pacing; a real run takes ${M.RUN.days[0]}–${M.RUN.days[1]} days, most of it the body. Ruler ticks 50 mm.`;
 const scrub = `<span class="cz-scrub"><button type="button" class="cz-play" data-play aria-label="Play the growth run"><span class="cz-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="cz-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Growth run: 0 is the start, 1000 is the crystal removed"><span class="cz-step" data-step>ready</span></span>`;
 const body = `<figure class="iso-figure cz"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="cz-parts">${legend}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 

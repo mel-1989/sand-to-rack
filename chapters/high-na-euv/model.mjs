@@ -62,8 +62,9 @@ export const MACHINE = { tonnes: 150, crates: 250, containers: 43, priceLowM: 35
 // and "stitching" lets designers keep today's standard 6-inch masks.
 // EXE:5200B acceptance (Dec 2025): 175 wph and 0.7 nm overlay, as reported by HotHardware
 // (https://hothardware.com/news/intel-first-high-na-euv-tool). 14A: Intel's first node designed around High NA, risk
-// production 2027 and volume 2028 (Intel Foundry Direct Connect 2025, as reported by Bits&Chips,
-// https://bits-chips.com/article/intel-confirms-high-na-euv-deployment-for-14a-node ).
+// production 2027 and volume 2028, as stated at Intel Foundry Direct Connect, April 2025 (Bits&Chips, 30 April 2025,
+// https://bits-chips.com/article/intel-confirms-high-na-euv-deployment-for-14a-node ). Plan as of that date; the lesson says so.
+// The Sept 2026 Intel newsroom post above gives no 14A timing.
 export const INTEL = { wafersM: 1, overlayNm: 0.7, acceptWph: 175, risk14A: 2027, hvm14A: 2028 };
 
 // ---- the process the slider steps through, in order ----

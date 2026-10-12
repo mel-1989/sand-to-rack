@@ -22,7 +22,9 @@ export const ENDPOINT = {
   // A conductor (polysilicon gate) etch in Cl2/HBr, the work a Kiyo-class chamber does.
   // "The endpoint is determined by optical emission spectroscopy by observing the decline of a silicon peak at 405 nm",
   // with Cl2 70-90 sccm and HBr 110-130 sccm, US 6,242,350: https://patents.google.com/patent/US6242350B1/en
-  species: "Si",
+  // The same patent calls the 405 nm peak "SiClx" for its WSix step ("the change of the SiClx peak at 405 nm"), so the line is
+  // named as a silicon-product emission (Si/SiClx), not a bare atomic-Si line.
+  species: "Si/SiClₓ",
   nm: 405,
   film: "polysilicon",
   gas: "Cl₂/HBr",

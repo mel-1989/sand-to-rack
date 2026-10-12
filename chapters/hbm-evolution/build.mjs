@@ -47,13 +47,13 @@ const TRAVEL = STATION_X[N - 1] - XP;
 const BLOCK = { x: XP - 15, y: -94, w: 30, d: 20, r: 2 };
 const BLOCK_TOP = 20;
 const COLUMN = { x: XP - 6, y: -90, w: 12, d: 12, r: 1 };
-const COLUMN_TOP = 100;
+const COLUMN_TOP = 90;
 const ARM = { x: XP - 5, y: -78, w: 10, d: 68, r: 0.6 };
-const ARM_Z = 86;
-const ARM_TOP = 94;
+const ARM_Z = 77;
+const ARM_TOP = 85;
 const HEAD = { x: XP - 8, y: -10, w: 16, d: 20, r: 1.5 };
-const HEAD_Z = 76;
-const HEAD_TOP = 98;
+const HEAD_Z = 69;
+const HEAD_TOP = 89;
 
 const heightOf = (g) => (g.heightUm ?? g.drawUm ?? DRAW_UM) * Z_PER_UM;
 const topOf = (g) => Z0 + heightOf(g);
@@ -274,7 +274,7 @@ function carriage() {
   const ky = BLOCK.y + 10;
   const knob = S(k.cylinder(kx, ky, 2.4, BLOCK_TOP, 1.4, P, 20), { tone: "mid" }) + S(k.cylinder(kx, ky, 3.4, BLOCK_TOP + 1.4, 4, P, 28, 0.3), { tone: "hi", crease: "lo" }) + L(k.knurl(kx, ky, 3.4, BLOCK_TOP + 1.8, BLOCK_TOP + 5, 22, P), { tone: "lo" });
   put("carriage", [kx, ky, BLOCK_TOP + 2], knob, [A.cylinder(kx, ky, 2.4, BLOCK_TOP, 1.4, {}), A.cylinder(kx, ky, 3.4, BLOCK_TOP + 1.4, 4, {})], { name: "carriage.knob" });
-  const colSeams = L([40, 60, 80].map((z) => k.sideSeam(COLUMN, z, P, 3)).join(""), { tone: "faint" });
+  const colSeams = L([36, 54, 72].map((z) => k.sideSeam(COLUMN, z, P, 3)).join(""), { tone: "faint" });
   const colSvg = S(k.slabOf(COLUMN, BLOCK_TOP, COLUMN_TOP - BLOCK_TOP, P, 3, 0.4), { tone: "mid", inner: colSeams }) + S(k.slabOf(k.insetPlan(COLUMN, -1), COLUMN_TOP, 2, P, 3, 0.4), { tone: "mid" }) + Dots([at([COLUMN.x + 6, COLUMN.y + 6, COLUMN_TOP + 2])], { size: 0.5 });
   put("carriage", centreOf(COLUMN, BLOCK_TOP), colSvg, [slab(COLUMN, BLOCK_TOP, COLUMN_TOP - BLOCK_TOP), slab(k.insetPlan(COLUMN, -1), COLUMN_TOP, 2)], { name: "carriage.column" });
   const armSvg = S(k.slabOf(ARM, ARM_Z, ARM_TOP - ARM_Z, P, 2, 0.4), { tone: "mid", inner: L(k.sideSeam(ARM, ARM_Z + 2.4, P, 2), { tone: "faint" }) }) + Dots([at([ARM.x + 5, ARM.y + 4, ARM_TOP]), at([ARM.x + 5, ARM.y + ARM.d - 4, ARM_TOP])], { size: 0.45 });
@@ -328,6 +328,72 @@ const beams = M.GENS.map((g) => {
   return L(k.segment([XP, 0, BEAM_Z], spot, P), { tone: "lit" }) + L(k.ring(XP, 0, 1.6, zTop, P, 16), { tone: "lit" }) + Dots([at(spot)], { size: 0.8, tone: "hi" });
 });
 
+// ---- the slice: a polished cross-section of the gauged stack, magnified and mounted on its own sample block in a free
+// corner of the card. It shows what the bench stacks are too small to: the base die (DRAM buffer vs the darker logic die
+// with its metal layers), three core dies with TSVs, the micro-bump gap in underfill (or no gap: hybrid Cu-Cu pads),
+// and the PHY pad rows on the interposer in front of the base die (one row for 1,024 bits, two for 2,048).
+// Every size in it is illustrative; it swaps per station like the beam.
+const SL = { x: 0, y: 0, w: 40, d: 14, r: 0 }; // the slice's die footprint (x along, y across; the near faces are +x and +y)
+const SL_INT = { x: -2, y: -2, w: 44, d: 24, r: 0.6 }; // interposer, running forward past the dies for the PHY pads
+const SL_MOUNT = { x: -6, y: -6, w: 52, d: 32, r: 3 }; // the resin sample mount
+const SL_MOUNT_H = 6;
+const SL_INT_H = 3;
+const SL_BUMP = 2.2; // base die on its bumps
+const SL_BASE = 7;
+const SL_CORE = 7;
+const SL_GAP = 3;
+const SL_DIES = 3;
+const slTop = SL_INT_H + SL_BUMP + SL_BASE + SL_DIES * (SL_CORE + SL_GAP);
+// its own small SVG. On a wide plate it lies over this region of the figure's viewBox: top right, above and right of the
+// carriage at every station (build --where prints the carriage's extents); on a phone it drops below the bench, larger.
+const SLICE_BOX = { x: 472, y: 2, w: 164, h: 118 };
+const PL = (() => {
+  const fit = k.fitProjection(k.boxCorners(SL_MOUNT, -SL_MOUNT_H, slTop), SLICE_BOX.w, SLICE_BOX.h, { pad: 4, azimuth: AZIMUTH, elevation: ELEVATION });
+  return fit;
+})();
+const sat = (point) => k.iso(point, PL);
+const tsvX = [0.15, 0.38, 0.62, 0.85].map((f) => SL.x + SL.w * f); // TSV columns on the near y face
+const tsvY = [0.3, 0.7].map((f) => SL.y + SL.d * f); // and on the near x face
+function sliceOf(g) {
+  const hybrid = g.bond === "hybrid";
+  const logic = !!(g.base || g.future);
+  const gap = hybrid ? 0 : SL_GAP;
+  const out = [`<path class="iso-halo" d="${k.haloOf(SL_MOUNT, -SL_MOUNT_H, SL_MOUNT_H, PL)}"/>`];
+  // resin mount with its polished top
+  out.push(S(k.slabOf(SL_MOUNT, -SL_MOUNT_H, SL_MOUNT_H, PL, 6, 1), { tone: "lo", crease: "faint", inner: L(k.sideSeam(SL_MOUNT, -SL_MOUNT_H + 2, PL, 6), { tone: "faint" }) }));
+  // interposer, with the PHY pad rows on its top in front of the base die
+  out.push(S(k.slabOf(SL_INT, 0, SL_INT_H, PL, 2, 0.3), { tone: "mid", crease: "lo" }));
+  const rows = g.busBits >= 2048 ? [[SL.d + 2.6, 0], [SL.d + 5.4, 1.6]] : [[SL.d + 3.6, 0]];
+  const pads = [];
+  for (const [py, shift] of rows) for (let px = SL.x + 2 + shift; px < SL.x + SL.w - 1; px += 2.9) pads.push(sat([px, py, SL_INT_H]));
+  out.push(Dots(pads, { size: 0.9, tone: logic ? "hi" : "mid" }));
+  // bumps under the base die, in underfill
+  const z1 = SL_INT_H;
+  out.push(S(k.slabOf({ ...SL, x: SL.x + 0.6, y: SL.y + 0.6, w: SL.w - 1.2, d: SL.d - 1.2, r: 0 }, z1, SL_BUMP, PL, 2), { tone: "lo", crease: "none" }));
+  const bumpRow = (z, size) => Dots([...tsvX.map((x) => sat([x, SL.y + SL.d - 0.6, z])), ...tsvY.map((y) => sat([SL.x + SL.w - 0.6, y, z]))], { size, tone: "hi" });
+  out.push(bumpRow(z1 + SL_BUMP / 2, 1.05));
+  // base die: a DRAM-process buffer die, or (HBM4 on) a logic die, darker, with its metal layers under the top
+  const zb = z1 + SL_BUMP;
+  const baseInner = logic ? L([2.6, 4, 5.4].map((dz) => k.sideSeam(SL, zb + dz, PL, 2)).join(""), { tone: "mid" }) : L(k.sideSeam(SL, zb + 2.4, PL, 2), { tone: "faint" });
+  out.push(S(k.slabOf(SL, zb, SL_BASE, PL, 2, 0), { tone: logic ? "lo" : "mid", crease: logic ? "mid" : "lo", inner: baseInner }));
+  // core dies; TSVs run through each die as a column under its bump
+  let z = zb + SL_BASE;
+  const tsvs = (z0, h) => L([...tsvX.map((x) => k.segment([x, SL.y + SL.d, z0], [x, SL.y + SL.d, z0 + h], PL)), ...tsvY.map((y) => k.segment([SL.x + SL.w, y, z0], [SL.x + SL.w, y, z0 + h], PL))].join(""), { tone: "mid" });
+  out.push(tsvs(zb, SL_BASE));
+  for (let i = 0; i < SL_DIES; i++) {
+    if (gap > 0) {
+      out.push(S(k.slabOf({ ...SL, x: SL.x + 0.6, y: SL.y + 0.6, w: SL.w - 1.2, d: SL.d - 1.2, r: 0 }, z, gap, PL, 2), { tone: "lo", crease: "none" }));
+      out.push(bumpRow(z + gap / 2, 1.3));
+    }
+    out.push(S(k.slabOf(SL, z + gap, SL_CORE, PL, 2, 0), { tone: "hi", crease: "lo", inner: hybrid ? L(k.sideSeam(SL, z + gap + 0.01, PL, 2), { tone: "mid" }) : "" }));
+    out.push(tsvs(z + gap, SL_CORE));
+    if (hybrid) out.push(Dots([...tsvX.map((x) => sat([x, SL.y + SL.d, z + 0.02])), ...tsvY.map((y) => sat([SL.x + SL.w, y, z + 0.02]))], { size: 0.85, tone: "mid" }));
+    z += gap + SL_CORE;
+  }
+  return `<g class="hb-slice-art">${out.join("")}</g>`;
+}
+const slices = M.GENS.map(sliceOf);
+
 const unit = (vector) => {
   const o = at([0, 0, 0]);
   const p = at(vector);
@@ -342,6 +408,7 @@ const DATA = {
   shares: STATION_X.map((x) => (x - XP) / TRAVEL),
   gens: M.GENS.map((g) => ({ id: g.id, name: g.name, year: g.year, say: M.sayOf(g), short: M.shortOf(g), future: !!g.future })),
   beams,
+  slices,
   idle: M.IDLE,
 };
 
@@ -351,9 +418,10 @@ const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="h
 const PARTS = M.GENS.map((g, i) => `<button type="button" class="hb-part" data-part="${g.id}"><span class="hb-num">${String(i + 1).padStart(2, "0")}</span>${g.name}</button>`).join("");
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">HBM · seven generations</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="hb-controls"><span class="hb-hint">Hover a stack · Space plays</span><span class="hb-live" aria-live="polite" data-live></span></div>`;
-const stage = `<div class="hb-stage" tabindex="0" role="slider" aria-label="Seven generations of HBM stacks on a bench. Hover a stack, or use the arrow keys, to send the height gauge to it and read its numbers; Space plays through the generations; Escape parks the gauge." aria-valuemin="0" aria-valuemax="${N}" aria-valuenow="0" aria-valuetext="Gauge parked · ${M.IDLE}">${svg}</div>`;
+const sliceSvg = k.figureSvg({ width: SLICE_BOX.w, height: SLICE_BOX.h, label: "The gauged stack cut open and magnified on a sample mount: base die, three DRAM dies with through-silicon vias, the bond between dies and the PHY pad rows on the interposer.", body: [`<g class="hb-slice" data-slice></g>`], className: "hb-slice-svg" }).replace("<svg ", `<svg style="--hb-sx:${((SLICE_BOX.x / W) * 100).toFixed(3)}%;--hb-sy:${((SLICE_BOX.y / W) * 100).toFixed(3)}%;--hb-sw:${((SLICE_BOX.w / W) * 100).toFixed(3)}%" `);
+const stage = `<div class="hb-stage" tabindex="0" role="slider" aria-label="Seven generations of HBM stacks on a bench. Hover a stack, or use the arrow keys, to send the height gauge to it and read its numbers; Space plays through the generations; Escape parks the gauge." aria-valuemin="0" aria-valuemax="${N}" aria-valuenow="0" aria-valuetext="Gauge parked · ${M.IDLE}">${svg}${sliceSvg}</div>`;
 const g = (id) => M.GENS.find((x) => x.id === id);
-const caption = `Seven HBM stacks cut open, oldest on the left, with the per-stack peak of each generation: ${M.GENS.filter((x) => !x.future).map((x) => `${x.name} ${M.bw(x)}`).join(", ")}. The interface stayed ${(1024).toLocaleString("en-US")} bits wide for five generations while the pin speed rose from ${M.first.pinGbps} to ${g("hbm3e").pinGbps} Gb/s; HBM4 doubles it to ${(2048).toLocaleString("en-US")} bits. The stacks grew from ${M.first.high} to ${g("hbm4").high} DRAM dies yet stayed within ${M.HEIGHT_12H_UM} µm until HBM4 (${M.HEIGHT_HBM4_UM} µm), because the dies were thinned. Dots in columns are through-silicon vias; dots between dies are micro-bumps in underfill. The last stack is an expected hybrid-bonded HBM4E or HBM5 with no bumps; it has no published numbers. Footprints, die thicknesses, via and bump counts are illustrative, heights are exaggerated against the plan, and the first HBM's and the HBM4E/HBM5 stack's heights are drawn, not sourced.`;
+const caption = `Seven HBM stacks cut open, oldest on the left, with the per-stack peak of each generation: ${M.GENS.filter((x) => !x.future).map((x) => `${x.name} ${M.bw(x)}`).join(", ")}. The interface stayed ${(1024).toLocaleString("en-US")} bits wide for five generations while the pin speed rose from ${M.first.pinGbps} to ${g("hbm3e").pinGbps} Gb/s; HBM4 doubles it to ${(2048).toLocaleString("en-US")} bits. The stacks grew from ${M.first.high} to ${g("hbm4").high} DRAM dies yet stayed within the ${M.HEIGHT_12H_UM} µm height limit until HBM4 (${M.HEIGHT_HBM4_UM} µm), because the dies were thinned. The block on its own sample mount (top right, or under the bench on a phone) is a magnified cross-section of the gauged stack: its base die (a darker logic die with metal layers from HBM4 on), three of its DRAM dies with through-silicon vias as vertical lines, the micro-bumps in the underfill between dies, and the PHY pad rows on the interposer in front, one row for 1,024 bits and two for 2,048. The last stack is an expected hybrid-bonded HBM4E or HBM5, its dies joined copper pad to copper pad with no bump and no gap; it has vendor targets only (Samsung HBM4E over ${M.SAMSUNG_HBM4E.pinGbps} Gb/s a pin, about ${M.SAMSUNG_HBM4E.tbs} TB/s a stack, ${M.SAMSUNG_HBM4E.year}), and JEDEC is discussing ${M.HBM5_HEIGHT_UM[0]} to ${M.HBM5_HEIGHT_UM[1].toLocaleString("en-US")} µm for 20-high HBM5. Footprints, die thicknesses, via, bump and pad counts, and every size in the cross-section are illustrative, heights are exaggerated against the plan, and the first HBM's and the HBM4E/HBM5 stack's heights are drawn, not sourced.`;
 const scrub = `<span class="hb-scrub"><button type="button" class="hb-play" data-play aria-label="Play through the generations"><span class="hb-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="hb-range" data-scrub min="0" max="${N * 100}" step="100" value="0" aria-label="Generation: 0 is the gauge parked, then one step per generation"><span class="hb-step" data-step>parked</span></span>`;
 const body = `<figure class="iso-figure hb"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="hb-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 
@@ -364,3 +432,8 @@ console.log("wrote", out.file, `${out.kb} KB`, `${R.items.length} items`, `${R.s
 
 // the motor cable leaves the motor face beside the rail's end on screen, 18 units nearer: looked at 4x, a clear crossing
 A.auditOrExit(R, P, { crowd: [["stand.cable*", "stand.rail*"]] });
+if (process.argv.includes("--where")) {
+  const pts = { colEndTop: [COLUMN.x + TRAVEL + 12, COLUMN.y, COLUMN_TOP + 2], headEndTop: [HEAD.x + TRAVEL + 16, HEAD.y, HEAD_TOP], headEndNear: [HEAD.x + TRAVEL + 16, HEAD.y + HEAD.d, HEAD_Z], plateRightBack: [PLATE.x + PLATE.w, PLATE.y, 0], motorTop: [MOTOR.x + MOTOR.w, MOTOR.y, MOTOR_TOP], boxTop: [BOX.x + BOX.w, BOX.y, BOX_TOP], hbm4eTop: [STATION_X[6] + 13, -15, topOf(M.GENS[6])] };
+  for (const [n, p] of Object.entries(pts)) console.log(n, at(p).map(Math.round));
+  for (const sx of [XP, ...STATION_X]) { const d = sx - XP; const c = k.boxCorners({ ...COLUMN, x: COLUMN.x + d }, 0, COLUMN_TOP + 2).concat(k.boxCorners({ ...HEAD, x: HEAD.x + d }, HEAD_Z, HEAD_TOP)).map(at); console.log("carriage at", sx, "x", Math.round(Math.min(...c.map((q) => q[0]))), Math.round(Math.max(...c.map((q) => q[0]))), "ymin", Math.round(Math.min(...c.map((q) => q[1])))); }
+}

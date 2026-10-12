@@ -11,8 +11,23 @@
 }
 
 .euv .iso-plate {
-  padding: 52px 18px 60px;
+  padding: 52px 18px 76px;
   overflow: hidden;
+}
+
+/* the readout sits on its own line above the hint, so a long part readout wraps instead of printing over it */
+.euv .iso-plate-corner[data-corner="readout"] {
+  bottom: 22px;
+  left: 0;
+  right: 0;
+  text-align: right;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+/* the mirrors are the lit subject at rest; when another module is picked they step down with the rest */
+.euv-stage[data-focus] .it:not([data-on]) .iso-solid[data-lit] > .iso-edge {
+  stroke: var(--anatomy-mid);
 }
 
 .euv-stage {

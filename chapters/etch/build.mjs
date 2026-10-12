@@ -407,7 +407,9 @@ function services() {
   cyl("oes", "oes.sma", sma[0], sma[1], 6, SPEC_H, 6, { tone: "mid" }, { steps: 20 });
 
   // lines
-  line("window", "window.gasline", [[outlet[0], outlet[1], GAS_H + 6], [outlet[0], outlet[1], 576], [outlet[0], -8, 576], [0, -8, 576], [0, -8, Z_INJ[1]]], 3.6, { tone: "mid", bend: 14 });
+  // the gas line climbs behind the chamber, runs along the back of the lid under the match, and comes forward on the
+  // chamber's axis (between the coil feed posts) to drop onto the injector, so it never crosses the coil turns from the front
+  line("window", "window.gasline", [[outlet[0], outlet[1], GAS_H + 6], [outlet[0], outlet[1], 576], [0, outlet[1], 576], [0, -8, 576], [0, -8, Z_INJ[1]]], 3.6, { tone: "mid", bend: 14 });
   line("coil", "coil.coax", [[GEN.x + 47, -176, GEN_H], [GEN.x + 47, -176, COAX_Z], [MATCH.x + 30, -176, COAX_Z], [MATCH.x + 30, -176, Z_MATCH[1]]], 4.5, { tone: "mid", bend: 18 });
   line("chuck", "chuck.biascoax", [[GEN.x + GEN.w, -165, 24], [feedX, -165, 24], [feedX, BIAS.y, 24]], 4.5, { tone: "mid", bend: 18 });
   line("oes", "oes.fibre", [[VIEWPORT[0] + 22, VIEWPORT[1], VIEWPORT[2]], [sma[0], VIEWPORT[1], VIEWPORT[2]], [sma[0], sma[1], SPEC_H + 6]], 2.2, { tone: "mid", bend: 12 });
@@ -493,21 +495,21 @@ const inset = `<div class="et-inset" aria-hidden="true"><span class="et-inset-la
 <path class="et-in-pass" data-pass d=""/>
 <path class="et-in-mask" data-mask d=""/>
 <g data-ions></g>
-<path class="et-in-axis" d="M18 150V186H204"/>
+<path class="et-in-axis" d="M18 140V186H204"/>
 <path class="et-in-trace" data-trace d="M18 186"/>
 <circle class="et-in-head" data-head cx="18" cy="186" r="2"/>
-<text class="et-in-text" x="24" y="156">${M.ENDPOINT.species} ${M.ENDPOINT.nm} nm</text>
-<text class="et-in-text et-in-ar" data-ar x="204" y="16" text-anchor="end"></text>
-<text class="et-in-text et-in-note" x="204" y="26" text-anchor="end">3D NAND holes: &gt;${M.HAR.ratio}:1</text>
-<path class="et-in-lead" d="M24 40V47"/><text class="et-in-tag" x="18" y="37">resist</text>
+<text class="et-in-text" x="24" y="146">${M.ENDPOINT.species} ${M.ENDPOINT.nm} nm</text>
+<text class="et-in-text et-in-ar" data-ar x="206" y="14" text-anchor="end"></text>
+<text class="et-in-text et-in-note" x="206" y="26" text-anchor="end">3D NAND holes: &gt;${M.HAR.ratio}:1</text>
+<g data-resist-label><path class="et-in-lead" d="M24 42V47"/><text class="et-in-tag" x="14" y="39">resist</text></g>
 <text class="et-in-tag" x="84" y="100" text-anchor="middle">film</text>
 <text class="et-in-tag" x="18" y="125">stop layer</text>
-<g data-pass-label opacity="0"><path class="et-in-lead" d="M163 41L169.4 74"/><text class="et-in-tag" x="204" y="38" text-anchor="end">sidewall polymer</text></g>
+<g data-pass-label opacity="0"><path class="et-in-lead" d="M163 42L169.4 74"/><text class="et-in-tag" x="206" y="39" text-anchor="end">sidewall polymer</text></g>
 </svg></div>`;
 
 const controls = `<div class="et-controls"><span class="et-hint">Hover a part · Space plays the etch</span><span class="et-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="et-stage" tabindex="0" role="group" aria-label="ICP etch chamber, cut in half. Hover, or use the arrow keys, to pick a part; Space plays or pauses the etch; Escape resets it; the slider below steps through the process.">${svg}</div>`;
-const caption = `An ICP etch chamber of the class of Lam's ${M.KIYO.name} (its ${M.KIYO.kind} line), cut in half. RF at ${M.ICP.rfMHz} MHz in the flat coil drives current through the ceramic window and sustains a dense plasma (about ${M.densityText} at a few mTorr); a second RF supply on the chuck sets how hard ions hit the ${M.WAFER.diameterMm} mm wafer. The turbo pump and throttle valve hold the pressure in the ${M.ICP.pressureMTorr[0]}–${M.ICP.pressureMTorr[1]} mTorr window while gas flows; the spectrometer watches the plasma's light through the viewport and calls the endpoint when a product line, here the ${M.ENDPOINT.species} line at ${M.ENDPOINT.nm} nm in a ${M.ENDPOINT.film} etch, fades. Wafers arrive from a vacuum transfer module, so the chamber only pumps from transfer pressure to base; the turbo exhausts through a foreline to a dry backing pump in the subfab. Chamber, chuck and pump dimensions, the pressures shown while pumping to base, the ${M.ICP.setpointMTorr} mTorr setpoint and the trench detail are illustrative.`;
+const caption = `An ICP etch chamber of the class of Lam's ${M.KIYO.name} (its ${M.KIYO.kind} line), cut in half. RF at ${M.ICP.rfMHz} MHz in the flat coil drives current through the ceramic window and sustains a dense plasma (about ${M.densityText} at a few mTorr); a second RF supply on the chuck sets how hard ions hit the ${M.WAFER.diameterMm} mm wafer. The turbo pump and throttle valve hold the pressure in the ${M.ICP.pressureMTorr[0]}–${M.ICP.pressureMTorr[1]} mTorr window while gas flows; the spectrometer watches the plasma's light through the viewport and calls the endpoint when a product line fades, here a silicon-product emission line (${M.ENDPOINT.species}) at ${M.ENDPOINT.nm} nm in a ${M.ENDPOINT.film} etch. Wafers arrive from a vacuum transfer module, so the chamber only pumps from transfer pressure to base; the turbo exhausts through a foreline to a dry backing pump in the subfab. Chamber, chuck and pump dimensions, the pressures shown while pumping to base, the ${M.ICP.setpointMTorr} mTorr setpoint and the trench detail are illustrative.`;
 const scrub = `<span class="et-scrub"><button type="button" class="et-play" data-play aria-label="Play the etch"><span class="et-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="et-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is the start of pumping to base, 1000 is the resist stripped"><span class="et-step" data-step>01 · Pump to base</span></span>`;
 const figure = `<figure class="iso-figure et"><div class="iso-plate">${corners}${inset}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="et-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 

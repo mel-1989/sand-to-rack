@@ -488,7 +488,7 @@ function signalTower(piece, name, x, y, z) {
 }
 function services() {
   for (const x of [150, 214]) box("frame", "frame.rib", [x, WALL_Y[1], SB_TOP], [x + 5, WALL_Y[1] + 4, CEIL_Z[0]], { tone: "lo" }, { r: 0.4, extra: Dots([30, 120, 210].map((z) => at([x + 2.5, WALL_Y[1] + 4, z])), { size: 0.4, tone: "lo" }) });
-  pipe("source", "source.h2", [[262, WALL_Y[1], 200], [262, -32, 200], [262, -32, LID_TOP]], 1.6, { flange: 3, ft: 1.2 });
+  pipe("source", "source.h2", [[262, WALL_Y[1], 178], [262, -32, 178], [262, -32, LID_TOP]], 1.6, { flange: 3, ft: 1.2 });
   // cabinet between the stages and the source
   const cab = { x: 136, y: -50, w: 54, d: 46, r: 1.2 };
   const front = cab.y + cab.d;

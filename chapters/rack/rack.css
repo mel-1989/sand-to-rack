@@ -75,6 +75,20 @@
 
 .rk-flow circle {
   pointer-events: none;
+  stroke: none;
+  opacity: 0.95;
+}
+
+.rk-flow[data-kind="supply"] circle {
+  fill: var(--anatomy-blue);
+}
+
+.rk-flow[data-kind="return"] circle {
+  fill: var(--anatomy-red);
+}
+
+.rk-flow[data-kind="nvlink"] circle {
+  fill: var(--anatomy-lit);
 }
 
 .rk-controls {
@@ -157,6 +171,11 @@
   .rk-controls {
     left: 14px;
     bottom: 14px;
+  }
+
+  /* the two-line readout overlaps the stage's bottom edge here: draw the focus ring inside the drawing, above it */
+  .rk-stage:focus-visible {
+    outline-offset: -12px;
   }
 
   .rk-hint {

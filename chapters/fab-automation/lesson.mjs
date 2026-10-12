@@ -7,9 +7,9 @@ export const LESSON = {
   intro: `A wafer never travels alone and never touches open air. It rides with ${M.FOUP.lot - 1} others in a sealed pod called a FOUP, carried by vehicles that run on rails under the cleanroom ceiling, from tool to tool, for ${M.CYCLE_TEXT.replace("≈", "about ")} at the leading edge. Press Play to follow one wafer through one visit to one tool.`,
   steps: [
     `<strong>Stocker to rail.</strong> Between tools, lots wait in a stocker. An overhead hoist transport (OHT) vehicle picks up the FOUP from the stocker's port and drives along a ceiling rail. Daifuku said in ${M.AMHS.asOf} that a large fab could have up to ${M.AMHS.railKm} km of rail and ${M.AMHS.vehicles} vehicles; Samsung says one vehicle covers about ${M.AMHS.kmPerDay} km a day.`,
-    `<strong>Hoist down.</strong> Above the tool, the vehicle stops and lowers the FOUP on belts onto the load port's kinematic pins, ${fmt(M.LOAD_PORT.datumMm)} mm above the floor, the height SEMI E15.1 fixes for every tool. A hand-off signal link defined by ${M.AMHS.handoffStd}, usually carried by infrared transceivers on OHT systems, lets vehicle and port agree when it is safe to let go.`,
+    `<strong>Hoist down.</strong> Above the tool, the vehicle stops and lowers the FOUP on belts onto the load port's kinematic pins (three pins that seat the pod in exactly the same spot every time), ${fmt(M.LOAD_PORT.datumMm)} mm above the floor, the height SEMI E15.1 fixes for every tool. A hand-off signal link defined by ${M.AMHS.handoffStd}, usually carried by infrared transceivers on OHT systems, lets vehicle and port agree when it is safe to let go.`,
     `<strong>Door opens.</strong> The hoist sets the FOUP down just short of the port. The load port slides it forward against its plate, unlatches the FOUP door, pulls it inside and lowers it, so the wafers face the tool's clean front end without ever meeting the room air.`,
-    `<strong>Robot to tool.</strong> Inside the equipment front end module (EFEM), a robot slides a thin fork under one wafer, lifts it from its slot (slots are ${M.FOUP.pitchMm} mm apart), turns and passes it through a slit valve into the tool's load lock.`,
+    `<strong>Robot to tool.</strong> Inside the equipment front end module (EFEM), a robot slides a thin fork under one wafer, lifts it from its slot (slots are ${M.FOUP.pitchMm} mm apart), turns and passes it through a slit valve, a letterbox-shaped gate in the tool wall, into the tool. On a vacuum tool the wafer first enters a load lock, a small chamber pumped down to vacuum so the tool's interior never sees room air; it sits behind the EFEM wall, out of sight in the figure.`,
     `<strong>Process and return.</strong> The slit valve shuts while the tool works. Then the robot brings the wafer back to its slot, the door closes, the port slides the FOUP back off its plate, and an OHT lifts it away to the next tool.`,
     `<strong>Around and around.</strong> A wafer repeats this loop of deposit, pattern, etch, implant, polish and inspect hundreds of times, layer on layer: an advanced logic flow has ${M.FLOW.stepsLogic[0]} to ${fmt(M.FLOW.stepsLogic[1])} steps or more, and SemiEngineering projected 7 nm at ${M.FLOW.maskLayers7nm[0]} to ${M.FLOW.maskLayers7nm[1]} mask layers.`,
   ],
@@ -34,8 +34,11 @@ export const LESSON = {
     ["SIA: why ramping chip production takes time", "https://www.semiconductors.org/chipmakers-are-ramping-up-production-to-address-semiconductor-shortage-heres-why-that-takes-time/"],
     ["Samsung Semiconductor: the invisible highways inside a fab", "https://news.samsungsemiconductor.com/global/the-invisible-highways-tracing-the-journey-inside-a-semiconductor-fab/"],
     ["Wikipedia: FOUP (SEMI E47.1 sizes, pitch and weight)", "https://en.wikipedia.org/wiki/FOUP"],
+    ["Entegris: Spectra FOUP datasheet (10 mm wafer spacing, 7.3 kg with wafers)", "https://www.entegris.com/content/dam/product-assets/spectrafoups/datasheet-spectrafoups.pdf"],
     ["US patent 9,834,378, citing SEMI E15.1 load port dimensions", "https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/9834378"],
     ["SEMI E84: enhanced carrier handoff parallel I/O interface", "https://store-us.semi.org/products/e08400-semi-e84-specification-for-enhanced-carrier-handoff-parallel-i-o-interface"],
     ["CHEManager: minienvironments for semiconductor production (German)", "https://chemanager-online.com/de/themen/minienvironments-fuer-die-halbleiterproduktion-und-nano-technologie"],
+    ["Milara: EFEM, ISO 3 clean-room compliant", "https://semicon-west.german-pavilion.com/en/sites/products-services/230280"],
+    ["Averna: EFEM platform, minienvironment up to ISO Class 1", "https://www.averna.com/en/products/platforms/efem-platform"],
   ],
 };

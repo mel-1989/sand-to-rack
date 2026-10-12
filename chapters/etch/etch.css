@@ -131,12 +131,12 @@
 
 @media (max-width: 640px) {
   .et .iso-plate {
-    padding: 48px 8px 108px;
+    padding: 48px 8px 88px;
   }
 
   /* the readout hangs from the top of the reserved band, so a wrapped second line grows down, away from the stage edge */
   .et .iso-plate-corner[data-corner="readout"] {
-    top: calc(100% - 78px);
+    top: calc(100% - 70px);
     bottom: auto;
     right: 0;
     left: 16px;
@@ -233,6 +233,7 @@
 }
 
 /* ---- etch figure additions ---- */
+/* inset text is set in viewBox units: 11 at the 180 px desktop width (scale 180/220) renders at 9 px */
 .et {
   --et-glow: #b49cff;
   --et-glow-core: #efe8ff;
@@ -307,9 +308,9 @@
 .et-in-axis { fill: none; stroke: var(--anatomy-lo); stroke-width: 0.8; }
 .et-in-trace { fill: none; stroke: var(--et-glow); stroke-width: 1.2; stroke-linejoin: round; }
 .et-in-head { fill: var(--et-glow); }
-.et-in-text { font: 8px var(--anatomy-mono); fill: var(--anatomy-muted); letter-spacing: 0.04em; }
+.et-in-text { font: 11px var(--anatomy-mono); fill: var(--anatomy-muted); letter-spacing: 0.04em; }
 .et-in-ion { fill: var(--et-ion); }
-.et-in-tag { font: 7.5px var(--anatomy-mono); fill: var(--anatomy-text); letter-spacing: 0.03em; }
+.et-in-tag { font: 11px var(--anatomy-mono); fill: var(--anatomy-text); letter-spacing: 0.03em; }
 .et-in-note { fill: var(--anatomy-muted); }
 .et-in-lead { fill: none; stroke: var(--anatomy-muted); stroke-width: 0.6; }
 
@@ -317,8 +318,8 @@
   .et-inset {
     position: static;
     width: auto;
-    max-width: 210px;
-    margin: 0 auto 8px;
+    max-width: 220px;
+    margin: 0 auto 18px;
   }
 }
 
@@ -328,3 +329,24 @@
     margin-left: -4%;
   }
 }
+
+/* light theme: the dimmed rest washes out further and the picked part keeps its full shading, so the selection reads at 1x */
+[data-theme="light"] .et-stage[data-focus] .it:not([data-on]):not([data-piece="stand"]) {
+  --anatomy-hi: var(--anatomy-faint);
+  --anatomy-mid: var(--anatomy-faint);
+  --anatomy-lo: var(--anatomy-faint);
+  --anatomy-shade-0: var(--anatomy-shade-3);
+  --anatomy-shade-1: var(--anatomy-shade-3);
+  --anatomy-shade-2: var(--anatomy-shade-3);
+}
+[data-theme="light"] .et .it[data-on] {
+  --anatomy-lo: var(--anatomy-mid);
+}
+[data-theme="light"] .et .it[data-on] .iso-shade[data-shade="0"] { fill: var(--anatomy-shade-0); }
+[data-theme="light"] .et .it[data-on] .iso-shade[data-shade="1"] { fill: var(--anatomy-shade-1); }
+[data-theme="light"] .et .it[data-on] .iso-shade[data-shade="2"] { fill: var(--anatomy-shade-2); }
+[data-theme="light"] .et .it[data-on] .iso-shade[data-shade="3"] { fill: var(--anatomy-shade-3); }
+[data-theme="light"] .et .it[data-on] [data-seamless] > .iso-shade[data-shade="0"] { stroke: var(--anatomy-shade-0); }
+[data-theme="light"] .et .it[data-on] [data-seamless] > .iso-shade[data-shade="1"] { stroke: var(--anatomy-shade-1); }
+[data-theme="light"] .et .it[data-on] [data-seamless] > .iso-shade[data-shade="2"] { stroke: var(--anatomy-shade-2); }
+[data-theme="light"] .et .it[data-on] [data-seamless] > .iso-shade[data-shade="3"] { stroke: var(--anatomy-shade-3); }

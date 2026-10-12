@@ -9,7 +9,7 @@ export const LESSON = {
     `<strong>Strike the plasma.</strong> RF at ${M.ICP.rfMHz} MHz in the flat coil on top induces a current in the gas through the ceramic window. Electrons gain energy, split molecules into reactive radicals and ionise them: a dense plasma, about ${M.densityText}.`,
     `<strong>Bias on.</strong> A second RF supply on the chuck makes the wafer charge negative, so a thin dark sheath forms just above it. Ions fall through it and hit the wafer almost straight down. The coil sets how many ions there are; the bias sets how hard they hit.`,
     `<strong>The trench deepens.</strong> Radicals react with the exposed film; the ion bombardment drives that reaction on the trench floor. On the walls, where few ions land, a thin polymer or oxide layer builds up and protects them, so the cut stays vertical (anisotropic).`,
-    `<strong>Endpoint.</strong> The spectrometer watches the plasma's light through the viewport. When the film clears, the products of that reaction stop forming and their emission lines fade. In a ${M.ENDPOINT.film} gate etch in ${M.ENDPOINT.gas}, the ${M.ENDPOINT.species} line at ${M.ENDPOINT.nm} nm drops as the etch reaches the oxide underneath, and the tool stops.`,
+    `<strong>Endpoint.</strong> The spectrometer watches the plasma's light through the viewport. When the film clears, the products of that reaction stop forming and their emission lines fade. In a ${M.ENDPOINT.film} gate etch in ${M.ENDPOINT.gas}, a silicon-product emission line (${M.ENDPOINT.species}) at ${M.ENDPOINT.nm} nm drops as the etch reaches the oxide underneath, and the tool stops.`,
     `<strong>Strip.</strong> An oxygen plasma ashes the remaining resist and the sidewall polymer, often in the same chamber or a neighbouring one, before the wafer goes on to clean.`,
   ],
   numbers: [
@@ -31,7 +31,7 @@ export const LESSON = {
     ["Lam Research: Kiyo conductor etch product family", "https://www.lamresearch.com/product/kiyo-product-family/"],
     ["OIST: ICP-RIE tool specification (13.56 MHz, 2–100 mTorr)", "https://www.oist.jp/node/41134"],
     ["Miller et al., J. Res. NIST (1995): an ICP source for the GEC reference cell, densities near 10¹² cm⁻³", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4887237/"],
-    ["US 6,242,350: Cl₂/HBr polysilicon etch, endpoint on the Si line at 405 nm", "https://patents.google.com/patent/US6242350B1/en"],
+    ["US 6,242,350: Cl₂/HBr polysilicon etch, endpoint on the silicon peak at 405 nm (SiClx in its WSix step)", "https://patents.google.com/patent/US6242350B1/en"],
     ["Pfeiffer Vacuum: Working with Turbopumps (why a turbo needs a backing pump)", "https://mmrc.caltech.edu/Vacuum/Pfeiffer%20Turbo/Turbos.pdf"],
     ["EMSNow: Lam Cryo 3.0 cryogenic etch for 3D NAND", "https://www.emsnow.com/?p=42504"],
   ],

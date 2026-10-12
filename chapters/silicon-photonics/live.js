@@ -57,6 +57,17 @@ const stream = Array.from({ length: 9 }, () => make("sp-photon", 1.5));
 const bit = make("sp-bit", 4.2);
 bit.setAttribute("fill", "url(#sp-dot-grad)");
 const core = make("sp-bit-core", 1.4);
+// at phone width the drawing is about 0.45x: grow the bit, the photons and the glows so they stay visible
+const small = matchMedia("(max-width: 480px)");
+function sizeLight() {
+  const k = small.matches ? 1.6 : 1;
+  bit.setAttribute("r", (4.2 * k).toFixed(1));
+  core.setAttribute("r", (1.4 * k).toFixed(1));
+  stream.forEach((el) => el.setAttribute("r", (1.5 * k).toFixed(1)));
+  [ringGlow, pdGlow].forEach((el) => el.setAttribute("r", (7 * k).toFixed(1)));
+}
+sizeLight();
+small.addEventListener("change", sizeLight);
 
 function along(path, t) {
   const { pts, cum } = D.screen[path];
@@ -82,7 +93,6 @@ function say(text) {
 }
 
 function select(id) {
-  if (id === "board") id = null;
   if (selected === id) return;
   selected = id;
   for (const el of items) {
@@ -296,7 +306,9 @@ new IntersectionObserver(
 function pieceAt(event) {
   const hit = document.elementFromPoint(event.clientX, event.clientY);
   const item = hit && hit.closest ? hit.closest(".it") : null;
-  return item ? item.dataset.piece : null;
+  // the bench and board are the background: hovering them clears the pick; the legend button and keys still pick them
+  const piece = item ? item.dataset.piece : null;
+  return piece === "board" || piece === "bench" ? null : piece;
 }
 
 let leaveTimer = 0;

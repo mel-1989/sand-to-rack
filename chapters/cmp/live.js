@@ -74,7 +74,8 @@ function poseAt(s) {
     ? clean < 0.28 ? 0 : clean < 0.38 ? ease((clean - 0.28) / 0.1) : clean < 0.44 ? 1 : 1 - ease((clean - 0.44) / 0.14)
     : load < 0.3 ? ease(load / 0.3) : load < 0.42 ? 1 : 1 - ease((load - 0.42) / 0.2);
   const c = back ? ease(clean / 0.26) : 1 - ease((load - 0.5) / 0.5);
-  const cupWafer = back ? (clean < 0.36 ? 0 : 1 - ease((clean - 0.6) / 0.12)) : load > 0.36 ? 0 : 1;
+  // the robot lifts the wafer off the cup and sets it between the brushes in one hand-off: never half there
+  const cupWafer = back ? (clean < 0.36 || clean >= 0.66 ? 0 : 1) : load > 0.36 ? 0 : 1;
   const h = s < PH[2].t0 ? 1 : rinse < 0.45 ? 1 - ease(press) : ease((rinse - 0.45) / 0.5);
   const platen = ease(slurry / 0.6) * (1 - ease(clean / 0.5));
   const headSpin = ease(press / 0.8) * (1 - ease((rinse - 0.3) / 0.3));
@@ -83,8 +84,8 @@ function poseAt(s) {
   const sweep = ease(cond / 0.5) * (1 - ease((rinse - 0.05) / 0.4));
   const flatten = ease(flat);
   const endpoint = end >= 0 && rinse < 0.2 ? ease(end / 0.3) * (1 - ease(rinse / 0.2)) : 0;
-  const brush = ease((clean - 0.62) / 0.25);
-  return { u, c, h, platen, headSpin, slurryOn, water, sweep, flatten, dish: ease((end - 0.6) / 0.4), endpoint, brush, cupWafer, waferClean: ease((clean - 0.62) / 0.14), wetLevel: ease(slurry / 2) };
+  const brush = ease((clean - 0.68) / 0.25);
+  return { u, c, h, platen, headSpin, slurryOn, water, sweep, flatten, dish: ease((end - 0.6) / 0.4), endpoint, brush, cupWafer, waferClean: clean >= 0.66 ? 1 : 0, wetLevel: ease(slurry / 2) };
 }
 
 // ---- drawing helpers for the parts that turn ----
@@ -104,7 +105,8 @@ function spinTicks(cx, cy, r, z0, z1, count, angle) {
   }
   return out;
 }
-function windowAt(angle, lit) {
+function windowAt(angle, glow) {
+  const lit = glow > 0.02;
   const [cx, cy] = D.PLATEN;
   const pts = [];
   const r0 = 52;
@@ -114,7 +116,7 @@ function windowAt(angle, lit) {
   for (let i = 0; i <= 8; i++) pts.push([r1 - ((r1 - r0) * i) / 8, half]);
   const screen = pts.map(([r, t]) => iso([cx + r * Math.cos(angle + t * (64 / r)), cy + r * Math.sin(angle + t * (64 / r)), D.PAD_TOP], P));
   const d = pathOf2(screen, true);
-  return `<path class="cmp-window${lit ? " cmp-window-lit" : ""}" d="${d}"/><path class="iso-line" data-tone="${lit ? "lit" : "lo"}" d="${d}"/>`;
+  return `<path class="cmp-window${lit ? " cmp-window-lit" : ""}"${lit ? ` style="fill-opacity:${(0.55 * glow).toFixed(2)}"` : ""} d="${d}"/><path class="iso-line" data-tone="${glow > 0.4 ? "lit" : "lo"}" d="${d}"/>`;
 }
 function spinDots(cx, cy, r, z, count, angle) {
   const pts = [];
@@ -256,7 +258,10 @@ let last = 0;
 let holdUntil = 0;
 const ang = { platen: 0, head: 0, cond: 0, sweep: 0, roll: 0 };
 const SECONDS = 26;
+// where inside each step a reduced-motion jump lands: cup up, slurry spreading, head down, conditioner on the pad, part-polished, window lit, water on, wafer in the brushes
+const STILL_AT = { load: 0.4, slurry: 0.7, press: 0.9, condition: 0.7, flatten: 0.7, endpoint: 0.7, rinse: 0.7, clean: 0.85 };
 let lastCond = "";
+let litAt = -Infinity;
 let spoken = "";
 
 function say(text) {
@@ -324,7 +329,11 @@ function draw(pose) {
   const wx = px + 63 * Math.cos(ang.platen) - hx;
   const wy = py + 63 * Math.sin(ang.platen) - hy;
   const under = pose.h < 0.2 && Math.hypot(wx, wy) < D.WAFER_R + 10;
-  spin.pad.innerHTML = windowAt(ang.platen, pose.endpoint > 0.5 && under);
+  // the head hides the window while it reads, so it keeps glowing on a short decaying arc as it comes out from under the ring
+  if (pose.endpoint > 0.5 && under) litAt = ang.platen;
+  // with motion reduced the platen stands still, so the window simply shows lit for the whole endpoint step
+  const glow = pose.endpoint > 0.5 ? (under || still.matches ? 1 : clamp(1 - (ang.platen - litAt) / 2.2)) : 0;
+  spin.pad.innerHTML = windowAt(ang.platen, glow);
   spin.side.innerHTML = spinTicks(px, py, D.PLATEN_R, 5, 16, 12, ang.platen);
   spin.body.innerHTML = spinTicks(hx, hy, D.BODY_R, 24, D.BODY_TOP, 10, ang.head);
   spin.plate.innerHTML = spinDots(hx, hy, D.PLATE_R - 6.5, D.PLATE_TOP, 8, ang.head);
@@ -357,7 +366,7 @@ function stepLabel() {
 function readoutText(pose) {
   if (selected) return D.pieces[selected].say;
   const p = phaseAt(s);
-  if (p.id === "flatten") return `${p.say} · ${Math.round(pose.flatten * 100)} % off`;
+  if (p.id === "flatten") return `${p.say} · ${Math.round(pose.flatten * 100)} % of overburden removed`;
   return p.say;
 }
 function showPlay() {
@@ -445,7 +454,9 @@ stage.addEventListener("pointermove", (event) => {
   select(partAt(event));
   run();
 });
-stage.addEventListener("pointerleave", () => {
+stage.addEventListener("pointerleave", (event) => {
+  // a finger "leaves" on every lift: only a hovering pointer clears the selection
+  if (event.pointerType === "touch") return;
   inside = false;
   clearTimeout(leaveTimer);
   leaveTimer = setTimeout(() => {
@@ -497,12 +508,15 @@ function togglePlay() {
   if (playing) {
     playing = false;
   } else {
-    if (s >= 0.999) s = 0;
     if (still.matches) {
-      // reduced motion: jump to the next step instead of animating
-      const p = phaseAt(s);
-      s = p.t1 >= 1 ? 1 : p.t1 + 0.001;
-    } else playing = true;
+      // reduced motion: jump to the next step instead of animating, landing where that step's pose says what its label says
+      const index = s >= 0.999 ? 0 : PH.indexOf(phaseAt(s)) + 1;
+      const p = PH[index];
+      s = p ? p.t0 + (STILL_AT[p.id] ?? 0.7) * (p.t1 - p.t0) : 1;
+    } else {
+      if (s >= 0.999) s = 0;
+      playing = true;
+    }
   }
   showPlay();
   run();
@@ -534,6 +548,7 @@ document.addEventListener("keydown", (event) => {
   else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = Math.max(0, index - 1);
   else if (event.key === "Home") next = 0;
   else if (event.key === "End") next = D.order.length - 1;
+  else if (/^[1-9]$/.test(event.key) && Number(event.key) <= D.order.length) next = Number(event.key) - 1;
   if (next === null) return;
   event.preventDefault();
   quietTour();

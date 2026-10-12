@@ -25,7 +25,7 @@ export const LESSON = {
   innovationsTitle: "Why it matters",
   innovations: [
     `Network power grows with every GPU added. Cutting a port from ${M.POWER.pluggableW} W to ${M.POWER.cpoW} W frees power for compute, and NVIDIA also counts ${M.ELS.fewerLasers}× fewer lasers, because one external laser feeds many lanes.`,
-    `Micro-rings are tiny compared with the Mach-Zehnder modulators in most pluggables, so many lanes fit on a small chip right beside the switch; the price is that a ring's resonance drifts with temperature and has to be held in tune, typically by a small heater under control.`,
+    `Micro-rings are tiny compared with the Mach-Zehnder modulators that silicon-photonics pluggables use (many pluggables use an externally modulated laser instead, as in step 7), so many lanes fit on a small chip right beside the switch; the price is that a ring's resonance drifts with temperature and has to be held in tune, typically by a small heater under control.`,
     `TSMC's ${M.COUPE.name} stacks the electronic chip on the photonic chip (${M.COUPE.bond}), so driver and modulator are microns apart. TSMC's April 2024 roadmap called for qualifying it in small pluggables in ${M.COUPE.pluggableYear} and in CoWoS packages as co-packaged optics in ${M.COUPE.cpoYear}.`,
     `The next step is optics on the accelerator package itself, replacing copper for GPU-to-GPU links. The Ethernet sibling, Spectrum-X Photonics, already puts ${M.SX.engines} engines of ${M.SX.engineTbps} Tb/s around one switch chip.`,
   ],

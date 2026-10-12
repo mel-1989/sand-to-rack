@@ -42,7 +42,7 @@ export const CVD = {
   reaction: "SiHCl₃ + H₂ → Si + 3 HCl", // ISE Table 1
   slimMm: 20, // slim rods start at 20 mm diameter (ISE p. 9)
   finalMm: [150, 180], // final rod diameter set between 150 and 180 mm (ISE p. 9)
-  growEG: 1, // mm/h growth rate plausible for EG rods (ISE p. 17); ISE does not say diameter or radius
+  growEG: 1, // mm/h growth rate ISE calls 'plausible' for EG rods, citing Yang et al. 2025 (ISE p. 17); ISE does not say diameter or radius
   growSoG: 1.9, // mm/h for solar grade (ISE p. 9, p. 19)
   kWhPerKgCvdEG: 66, // CVD step electricity, EG polysilicon (ISE p. 19)
   kWhPerKgEG: [92, 124], // whole-plant electricity, EG polysilicon, 2025 estimate (ISE p. 20)
@@ -66,7 +66,7 @@ export const rodRadius = (mm) => mm / 2 / DRAW_MM;
 // Slider: five steps over 0..1. Deposition (step 4) takes the longest share.
 export const STEPS = [
   { id: "mgsi", from: 0, to: 0.16, label: "metallurgical silicon", say: `MG-Si feed · ${MGSI.puritySoG}–${MGSI.purityEG} % Si` },
-  { id: "tcs", from: 0.16, to: 0.32, label: "hydrochlorination", say: `MG-Si + HCl · ${TCS.synthesisC} °C → SiHCl₃` },
+  { id: "tcs", from: 0.16, to: 0.32, label: "TCS synthesis", say: `MG-Si + HCl · ${TCS.synthesisC} °C → SiHCl₃` },
   { id: "dist", from: 0.32, to: 0.48, label: "distillation", say: `SiHCl₃ boils at ${TCS.boilC} °C · ${DIST.passesEG} passes` },
   { id: "cvd", from: 0.48, to: 0.84, label: "deposition", say: "" },
   { id: "harvest", from: 0.84, to: 1, label: "harvest", say: `rods out · ${GRADE.egNines[0]}N–${GRADE.egNines[1]}N pure` },

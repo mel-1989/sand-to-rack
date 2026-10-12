@@ -363,5 +363,14 @@ const hint = root.querySelector(".fa-hint");
 const wording = () => hint && (hint.textContent = narrow.matches ? "Tap a part · Play runs the trip" : "Hover a part · Space plays the trip");
 wording();
 narrow.addEventListener("change", wording);
-if (still.matches) s = 0.56; // reduced motion rests on a representative moment: the wafer on its way into the tool
+// reduced motion rests mid-step on the wafer's way into the tool, so the first Play press moves on to the next step
+function midOf(id) {
+  let acc = 0;
+  for (const step of D.T.steps) {
+    if (step.id === id) return (acc + 0.5 * step.sec) / TOTAL;
+    acc += step.sec;
+  }
+  return 0;
+}
+if (still.matches) s = midOf("into");
 show();

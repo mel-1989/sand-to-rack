@@ -6,7 +6,7 @@ export const GPU = {
   name: "Rubin",
   dies: 2, // two reticle-limited compute dies
   transistorsB: 336, // both dies together, billions
-  node: "TSMC N3P",
+  node: "TSMC 3 nm (N3P reported)", // NVIDIA names no node; N3P per trade press: https://www.igorslab.de/en/rubin-takes-off-nvidia-starts-production-of-its-next-generation-gpu-and-secures-exclusive-hbm4-memory/
   link: "NV-HBI", // die-to-die interface
   packaging: "CoWoS-L",
   nvfp4Inference: 50, // PFLOPS, "Transformer Engine compute" (adaptive compression), NVIDIA Table 2: https://developer.nvidia.com/blog/inside-the-nvidia-rubin-platform-six-new-chips-one-ai-supercomputer/
@@ -21,7 +21,7 @@ export const HBM = {
   gbPerStack: 36,
   busBits: 2048, // per stack
   totalTBs: 22, // peak, all stacks
-  heightUm: 775, // JEDEC nominal package height, 12-high and 16-high
+  heightUm: 775, // JEDEC HBM4 height limit (720 µm through HBM3E): https://www.trendforce.com/news/2026/07/07/news-samsung-sk-hynix-reportedly-reconsider-hybrid-bonding-timeline-16-high-hbm4e-may-be-earliest-adoption/
   footprintMm: [11, 12.4], // approximate; vendors differ
 };
 

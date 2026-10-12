@@ -286,6 +286,7 @@
   stroke-linecap: round;
 }
 
+/* Deliberate subject colour: the UV lamp's violet has no kit variable; it is set for both themes here, keyed on data-theme so the runtime toggle follows. */
 .dc {
   --dc-uv: #a98bff;
 }

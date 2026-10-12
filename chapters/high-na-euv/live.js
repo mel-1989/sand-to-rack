@@ -189,11 +189,14 @@ function render(T, calm) {
   fade(masks.B, ramp(sw, 0.55, 0.7));
 
   // the fields: half A fills as it scans, then half B, then the seam and the die outline light; the rest of the wafer follows
-  for (const cell of cellA) fade(cell, pose.a * 0.9);
-  for (const cell of cellB) fade(cell, pose.b * 0.9);
+  // the die being printed is outlined in the lit tone from the first half on, so its two halves read at 1x;
+  // half A fills brighter than half B, so the seam between them shows as a step in tone
+  for (const cell of cellA) fade(cell, pose.a * 0.95);
+  for (const cell of cellB) fade(cell, pose.b * 0.5);
   const st = T >= t0("stitch") ? u("stitch") : 0;
-  fade(seam, T >= t0("stitch") ? ramp(st, 0.15, 0.3) * (1 - ramp(st, 0.55, 0.7)) : 0);
-  fade(dieLine, T >= t0("stitch") ? ramp(st, 0.25, 0.4) : 0);
+  const seamOn = T < t0("half2") ? 0 : T < t0("stitch") ? ramp(pose.b, 0.02, 0.2) : 1 - ramp(st, 0.55, 0.7);
+  fade(seam, seamOn);
+  fade(dieLine, T < t0("half1") ? 0 : ramp(u("half1"), 0, 0.12));
   const done = T >= t0("stitch") ? clamp((st - 0.45) / 0.5) * rest.length : 0;
   rest.forEach((group, i) => {
     const v = clamp(done - i) * 0.45;

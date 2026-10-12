@@ -20,7 +20,7 @@ export const LESSON = {
     ["Overdrive", `${M.OVERDRIVE_UM} µm`, `typical; ${M.OVERDRIVE_RANGE_UM[0]}-${M.OVERDRIVE_RANGE_UM[1]} µm across card designs`],
     ["Probe card price", "hundreds of thousands of dollars", `the largest full-wafer-contact cards, per Rudolph Technologies (undated); Aehr Test puts an HBM wafer-level burn-in card at $${M.HBM_CARD_K},000, which sacrificial pads can cut by up to ${M.SAC_PAD_SAVE}${M.NB}%`],
     ["Fastest high-speed I/O card", `${M.PAM4_GBPS}${M.NB}Gb/s`, `Advantest Pin Scale Multilevel Serial, PAM4, for SerDes-type links; general digital pins run at up to ${M.DIGITAL_GBPS}${M.NB}Gb/s`],
-    ["Advantest + Teradyne", `about ${M.ATE_SHARE} %`, "combined share of the tester market"],
+    ["Advantest + Teradyne", `about ${M.ATE_SHARE} %`, "combined share of the tester market, per a Wing VC estimate"],
   ],
   innovationsTitle: "Why it matters now",
   innovations: [
@@ -37,7 +37,7 @@ export const LESSON = {
     ["Rudolph Technologies (Solid State Technology): probe card analysis and cost", "https://sst.semiconductor-digest.com/?p=35397"],
     ["Plum Five: 300 mm production prober chuck temperature options", "https://plumfive.co.jp/semicon/en/product/wafer_prober/list/index.html"],
     ["Electronic Design: probe-card metrology and overdrive", "https://www.electronicdesign.com/home/article/21200247/measurement-repeatability-key-to-probe-card-metrology"],
-    ["AnandTech: TSMC N5 defect density", "https://www.anandtech.com/show/16028"],
+    ["AnandTech: TSMC N5 defect density", "https://adminnet.anandtech.com/print/16028/better-yield-on-5nm-than-7nm-tsmc-update-on-defect-rates-for-n5"],
     ["Wing VC: the chip testing bottleneck (test times, tester market)", "https://wing.vc/content/the-chip-testing-bottleneck"],
   ],
 };

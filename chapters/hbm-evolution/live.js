@@ -5,6 +5,7 @@ const layers = stage.querySelector(".hb-layers");
 const live = root.querySelector("[data-live]");
 const readout = root.querySelector("[data-readout]");
 const beamEl = stage.querySelector("[data-beam]");
+const sliceEl = stage.querySelector("[data-slice]");
 const partButtons = [...root.querySelectorAll(".hb-part")];
 const scrubInput = root.querySelector("[data-scrub]");
 const playButton = root.querySelector("[data-play]");
@@ -41,6 +42,8 @@ let frame = 0;
 let last = 0;
 let spoken = "";
 let lit = null;
+let dragging = false;
+let sliceFor = -2;
 
 const DWELL = 2.6;
 const PARK_DWELL = 1.4;
@@ -121,13 +124,27 @@ function readoutText() {
   return D.gens[target].short;
 }
 
+// the step label follows the carriage itself, so a rewind (Escape) names each station as the gauge passes it;
+// while it travels to a station, it names that target so the label agrees with the readout and legend
 function stepLabel() {
-  if (target < 0) return "parked";
-  const g = D.gens[target];
-  return `${pad(target)} · ${g.name} · ${g.year ?? "next"}`;
+  if (target >= 0 && Math.abs(pos.x - target) > 0.015) {
+    const g = D.gens[target];
+    return `→ ${pad(target)} · ${g.name} · ${g.year ?? "next"}`;
+  }
+  const at = Math.round(pos.x);
+  if (at < 0) return "parked";
+  const g = D.gens[at];
+  return `${pad(at)} · ${g.name} · ${g.year ?? "next"}`;
 }
 
 function show() {
+  // first, so the readout below reads the beam's current station; the beam for the station the gauge is at
+  const station = target >= 0 ? target : -1;
+  // under reduced motion the beam jumps on in the same tick, so switch stations whenever it changes
+  if (station !== beamFor && (beam.x < 0.02 || still.matches)) {
+    beamFor = station;
+    beamEl.innerHTML = station >= 0 ? D.beams[station] : "";
+  }
   const text = readoutText();
   if (readout.textContent !== text) readout.textContent = text;
   const step = stepLabel();
@@ -135,14 +152,17 @@ function show() {
   playText.textContent = playing ? "Pause" : target === N - 1 && beam.x > 0.5 ? "Replay" : "Play";
   playButton.toggleAttribute("data-playing", playing);
   playButton.setAttribute("aria-label", playing ? "Pause" : "Play through the generations");
-  if (document.activeElement !== scrubInput) scrubInput.value = String(Math.round((pos.x + 1) * 100));
-  // the beam for the station the gauge is at
-  const station = target >= 0 ? target : -1;
-  if (station !== beamFor && beam.x < 0.02) {
-    beamFor = station;
-    beamEl.innerHTML = station >= 0 ? D.beams[station] : "";
-  }
+  // only a pointer drag owns the thumb; with keyboard focus on the slider (Space plays) it still follows the carriage
+  const value = String(Math.round((pos.x + 1) * 100));
+  if (!dragging && scrubInput.value !== value) scrubInput.value = value;
   beamEl.style.opacity = beamFor >= 0 ? beam.x.toFixed(3) : "0";
+  // the magnified cross-section shows the station the carriage is at (the first stack while it is parked, dimmed)
+  const at = Math.max(0, Math.round(pos.x));
+  if (at !== sliceFor) {
+    sliceFor = at;
+    sliceEl.innerHTML = D.slices[at];
+  }
+  sliceEl.toggleAttribute("data-idle", target < 0);
   stage.toggleAttribute("data-measuring", beam.x > 0.5);
 }
 
@@ -244,7 +264,24 @@ function genAt(event) {
   const hit = document.elementFromPoint(event.clientX, event.clientY);
   const item = hit && hit.closest ? hit.closest(".it") : null;
   const index = item ? IDS.indexOf(item.dataset.piece) : -1;
-  return index;
+  if (index >= 0 || event.pointerType !== "touch") return index;
+  // at phone width the stacks are small: a tap within a finger's reach of one picks the nearest
+  const reach = 14;
+  let best = -1;
+  let bestD = Infinity;
+  IDS.forEach((id, i) => {
+    const el = root.querySelector(`.it[data-piece="${id}"]`);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const dx = Math.max(r.left - event.clientX, 0, event.clientX - r.right);
+    const dy = Math.max(r.top - event.clientY, 0, event.clientY - r.bottom);
+    const d = Math.hypot(dx, dy);
+    if (d <= reach && d < bestD) {
+      bestD = d;
+      best = i;
+    }
+  });
+  return best;
 }
 
 stage.addEventListener("pointermove", (event) => {
@@ -353,6 +390,10 @@ scrubInput.addEventListener("input", () => {
   show();
   run();
 });
+
+scrubInput.addEventListener("pointerdown", () => (dragging = true));
+for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) scrubInput.addEventListener(type, () => (dragging = false));
+window.addEventListener("pointerup", () => (dragging = false));
 
 playButton.addEventListener("click", togglePlay);
 

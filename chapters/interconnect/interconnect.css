@@ -345,3 +345,12 @@
   --ic-cu: color-mix(in srgb, var(--ic-copper) 26%, var(--anatomy-paper));
   --ic-cu-side: color-mix(in srgb, var(--ic-copper) 20%, var(--anatomy-paper));
 }
+
+/* SnAg solder caps on the copper pillars: tin grey */
+.ic-solder > .iso-top {
+  fill: color-mix(in srgb, var(--anatomy-hi) 44%, var(--anatomy-paper));
+}
+
+.ic-solder > .iso-shade {
+  fill: color-mix(in srgb, var(--anatomy-hi) 28%, var(--anatomy-paper));
+}

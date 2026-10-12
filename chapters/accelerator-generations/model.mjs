@@ -1,5 +1,6 @@
 // The facts the figure shows. Every readout, caption number and lesson number reads from here.
-// One entry per NVIDIA data-center GPU package, oldest first. FLOPS are dense unless a field says sparse.
+// One entry per NVIDIA data-center GPU package, oldest first. FLOPS are dense unless a field says otherwise
+// (`sparse` is 2:4 structured sparsity; Rubin's `inference` is NVIDIA's Transformer Engine figure, not sparsity).
 
 const SRC = {
   volta: "https://images.nvidia.com/content/volta-architecture/pdf/volta-architecture-whitepaper.pdf",
@@ -9,6 +10,7 @@ const SRC = {
   h100: "https://www.nvidia.com/en-us/data-center/h100/",
   blackwell: "https://nvidianews.nvidia.com/news/nvidia-blackwell-platform-arrives-to-power-a-new-era-of-computing",
   dgxb200: "https://www.nvidia.com/en-us/data-center/dgx-b200/",
+  gb200: "https://www.nvidia.com/en-us/data-center/gb200-nvl72/",
   b200power: "https://glennklockwood.com/garden/processors/b200",
   rubin: "https://www.guru3d.com/story/nvidia-details-rubin-gpu-architecture-with-hbm4-nvlink-6-and-336-billion-transistors/",
   rubinBlog: "https://developer.nvidia.com/blog/inside-the-nvidia-rubin-platform-six-new-chips-one-ai-supercomputer/",
@@ -17,6 +19,7 @@ const SRC = {
   rubinCES2: "https://siliconangle.com/2026/01/05/nvidia-debuts-rubin-chip-336b-transistors-50-petaflops-ai-performance/",
   rubinNode: "https://www.igorslab.de/en/rubin-takes-off-nvidia-starts-production-of-its-next-generation-gpu-and-secures-exclusive-hbm4-memory/",
   rubinPower: "https://technews.tw/2025/09/04/nvidia-rubin-gpu-use-microchannel-lid/",
+  rubinPowerKuo: "https://www.ctee.com.tw/news/20260107701081-430704",
   hbm4: "https://www.servethehome.com/sk-hynix-hbm-packaging-at-hot-chips-2026/",
 };
 export { SRC };
@@ -92,16 +95,22 @@ export const GENS = [
     dieMm2: null, // per-die area not disclosed; drawn at the reticle limit
     transistorsB: 208, // Blackwell press release: 208 billion
     hbm: { gen: "HBM3e", stacks: 8, sites: 8 }, // Blackwell technical overview via glennklockwood: 8 stacks
-    memGB: 180, // DGX B200 page: 1,440 GB for 8 GPUs = 180 GB usable each (other sources quote 186 or 192 GB)
-    bwTBs: 8, // DGX B200 page: 64 TB/s for 8 GPUs, derived per GPU
-    flops: { fmt: "FP4", dense: 9000, unit: "TF" }, // DGX B200 page: "FP4 Tensor Core 144 PFLOPS | 72 PFLOPS" (sparse | dense), 8 GPUs → 9 PF dense per GPU
-    sparse: 18000, // DGX B200 page: 144 PF FP4 sparse for 8 GPUs → 18 PF per GPU
-    watts: 1000, // HGX B200 configuration, per NVIDIA technical brief via glennklockwood (up to 1,200 W in GB200)
+    // Per-GPU figures are for B200 as built into GB200 (two B200 GPUs per Grace Blackwell superchip), the
+    // configuration NVIDIA's Rubin comparison (developer blog, Table 2) and chapters/rack use. GB200 NVL72 page,
+    // superchip column: "372 GB HBM3E", "16 TB/s", "FP4 Tensor Core 40 | 20 PFLOPS" (sparse | dense); halved per GPU.
+    // The same GPU in DGX/HGX B200 is rated lower: DGX B200 page 1,440 GB, 64 TB/s, FP4 144 | 72 PF for 8 GPUs,
+    // i.e. 180 GB, 8 TB/s, 9 PF dense per GPU at 1,000 W (dgx* fields below).
+    memGB: 186, // GB200 NVL72 page: 372 GB per superchip / 2 GPUs; glennklockwood: "186 GB HBM3e (8 stacks)"
+    bwTBs: 8, // GB200 NVL72 page: 16 TB/s per superchip / 2 GPUs
+    flops: { fmt: "FP4", dense: 10000, unit: "TF" }, // GB200 NVL72 page: 20 PF dense per superchip / 2; NVIDIA Rubin blog Table 2: Blackwell 10 PF NVFP4
+    sparse: 20000, // GB200 NVL72 page: 40 PF FP4 sparse per superchip / 2
+    watts: 1200, // glennklockwood (NVIDIA Blackwell technical brief): GB200 "1200 W maximum"; HGX B200 "configured at 1,000 W"
+    dgx: { memGB: 180, dense: 9000, watts: 1000 }, // DGX B200 page (÷ 8) and glennklockwood: the same GPU in DGX/HGX B200
     nvlinkGBs: 1800, // Blackwell press release: 1.8 TB/s per GPU
     dieLinkTBs: 10, // Blackwell press release: 10 TB/s chip-to-chip link (NV-HBI)
     packaging: "CoWoS-L",
     new: "two dies as one GPU over a 10 TB/s link; FP4 with micro-tensor scaling",
-    src: [SRC.blackwell, SRC.dgxb200, SRC.b200power],
+    src: [SRC.blackwell, SRC.gb200, SRC.dgxb200, SRC.b200power],
   },
   {
     id: "rubin",
@@ -120,15 +129,20 @@ export const GENS = [
     // NVIDIA developer blog, Table 2: NVFP4 training 35 PFLOPS, footnoted "Dense compute"; HPCwire and SiliconANGLE
     // report the same 35 PF training figure from CES 2026.
     flops: { fmt: "NVFP4", dense: 35000, unit: "TF" },
-    // NVIDIA developer blog: "up to 50 PetaFLOPS NVFP4 for inference" (footnoted "Transformer Engine compute");
-    // Guru3D's spec table (source: NVIDIA): "Up to 50 PFLOPS (Sparse NVFP4)".
-    sparse: 50000,
-    watts: 2300, // NOT an NVIDIA spec: TechNews (Sept 2025), citing a J.P. Morgan note, "dual-die version ... up to 2,300 W"
+    // NVIDIA developer blog, Table 2: NVFP4 inference 50 PFLOPS, footnoted "* Transformer Engine compute"
+    // (35 PF training is footnoted "** Dense compute"). It is not a 2:4-sparsity number, so it
+    // compares only with Blackwell's 10 PF inference figure in the same table (5x), not with B200's sparse FP4.
+    inference: 50000,
+    // Not an NVIDIA spec: NVIDIA publishes no per-GPU TDP for Rubin (developer blog has no power row). Commercial Times
+    // (Jan 2026), citing analyst Ming-Chi Kuo: VR200 NVL72 Max-Q about 1.8 kW and Max-P about 2.3 kW per GPU;
+    // TechNews (Sept 2025), citing a J.P. Morgan note: "up to 2,300 W". The bars and power row use the upper figure.
+    watts: 2300,
+    wattsLo: 1800,
     wattsReported: true,
     nvlinkGBs: 3600, // Guru3D: NVLink 6, 3.6 TB/s
     packaging: "CoWoS-L",
     new: "HBM4 with a 2,048-bit interface per stack; NVFP4; NVLink 6",
-    src: [SRC.rubinBlog, SRC.rubin, SRC.hbm4Jedec, SRC.rubinCES, SRC.rubinCES2, SRC.rubinNode, SRC.rubinPower],
+    src: [SRC.rubinBlog, SRC.rubin, SRC.hbm4Jedec, SRC.rubinCES, SRC.rubinCES2, SRC.rubinNode, SRC.rubinPowerKuo, SRC.rubinPower],
   },
 ];
 
@@ -149,11 +163,13 @@ const join = (terms) => terms.join("\u00a0· ");
 const fmt = (v, d = 0) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 export const flopsText = (g, v = g.flops.dense) => (v >= 5000 ? `${fmt(v / 1000)} PF` : `${fmt(v)} TF`);
 export const bwText = (g) => (g.bwTBs < 1 ? `${fmt(g.bwTBs * 1000)} GB/s` : `${fmt(g.bwTBs, Number.isInteger(g.bwTBs) ? 0 : 2)} TB/s`);
-export const wattText = (g) => (g.wattsReported ? `≈${fmt(g.watts / 1000, 1)}\u00a0kW` : `${fmt(g.watts)} W`); // the caption says Rubin's is an estimate
+export const wattText = (g) => (g.wattsReported ? `≈${fmt(g.wattsLo / 1000, 1)}–${fmt(g.watts / 1000, 1)}\u00a0kW` : `${fmt(g.watts)}\u00a0W`); // the caption says Rubin's is an estimate
 export const transText = (g) => `${fmt(g.transistorsB, g.transistorsB % 1 ? 1 : 0)} B`;
 
-// The readout while a package is lit: short enough to wrap to two lines at 390 px.
-export const sayOf = (g) => join([`${g.name} ${g.year}`, `${transText(g)} transistors`, `${g.memGB} GB ${g.hbm.gen}`, bwText(g), `${flopsText(g)} ${g.flops.fmt}${g.flops.note ? ` ${g.flops.note}` : ""}`, wattText(g)]);
+// The readout while a package is lit: short enough to wrap to two lines at 390 px. Words inside a term are joined
+// with no-break spaces, so a line breaks only between terms.
+const nb = (s) => s.replace(/ /g, "\u00a0");
+export const sayOf = (g) => join([`${g.name} ${g.year}`, `${transText(g)} transistors`, `${g.memGB} GB ${g.hbm.gen}`, bwText(g), `${flopsText(g)} ${g.flops.fmt}`, wattText(g)].map(nb));
 
 const first = GENS[0];
 const last = GENS[GENS.length - 1];

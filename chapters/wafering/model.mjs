@@ -11,8 +11,8 @@ export const WAFER = {
   thicknessTolUm: 25,
   notchDepthMm: 1.0, // +0.25 / -0.00 mm, SEMI standard notch
   notchAngleDeg: 90, // +5° / -1°
-  notchAxis: "<110>", // notch orientation, ±1°
-  orientation: "<100>", // crystal orientation of the face, ±1°
+  notchAxis: "⟨110⟩", // notch orientation, ±1° (Miller direction family, written with angle brackets, not < >)
+  orientation: "⟨100⟩", // crystal orientation of the face, ±1°
   particlesMax: 200, // front-side particles ≥ 0.20 µm per wafer (LPD/COP), the datasheet's limit
   particleSizeUm: 0.2,
 };
@@ -52,8 +52,14 @@ export const LINE = {
 // Slurry vs diamond wire. Lapmaster Wolters (wire-saw maker): slurry grit moves at most half the wire speed,
 // diamond grit at wire speed; slurry gives "lower subsurface damage" and a "smoother surface".
 // https://www.precision-surface.com/what-is-wafering-/-slicing/
-// Review (Micromachines 2023): the dominant method of cutting silicon wafers has shifted from free-abrasive slurry
-// sawing to fixed-abrasive diamond wire sawing (driven by solar wafers). https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10456952/
+// Review (Micromachines 2023): the dominant method "has shifted from free abrasive slurry wire sawing to fixed abrasive
+// DWS" (diamond wire sawing), which is "widely applied" in semiconductor manufacturing; it does not limit this to solar.
+// https://pmc.ncbi.nlm.nih.gov/articles/PMC10456952/
+// NanoSteel, US8356590B2: slurry cutting gives "lower edge chipping compared to diamond wire cutting", and "slurry abrasive
+// wire cutting appears to be used prevalently in cutting large diameter silicon ingots". https://patents.google.com/patent/US8356590B2/en
+// Shin-Etsu Chemical, US4344260A: the rod is "first ground to have a cross section larger than the desired wafer by a margin",
+// then each sliced wafer is contour-ground "to the exact diameter and outer shape" and chamfered in one mounting.
+// https://patents.google.com/patent/US4344260A/en
 // Shin-Etsu Handotai, US10043673B2: double-side polishing is the primary polish; "In the final polishing process,
 // single-side polishing is often employed". https://patents.google.com/patent/US10043673
 
@@ -82,7 +88,7 @@ export const STEPS = [
     id: "grind",
     name: "Grind and notch",
     part: "ingot",
-    say: `ground to ${WAFER.diameterMm} mm · a ${WAFER.notchDepthMm.toFixed(1)} mm notch groove marks ${WAFER.notchAxis}`,
+    say: `ground round to just over ${WAFER.diameterMm} mm · a ${WAFER.notchDepthMm.toFixed(1)} mm notch groove marks ${WAFER.notchAxis}`,
   },
   {
     id: "mount",
@@ -100,13 +106,13 @@ export const STEPS = [
     id: "edge",
     name: "Edge grind",
     part: "edger",
-    say: "a grooved wheel rounds the edge so it will not chip",
+    say: `a grooved wheel rounds the edge and trims it to ${WAFER.diameterMm} ± ${WAFER.diameterTolMm} mm`,
   },
   {
     id: "etch",
-    name: "Lap and etch",
+    name: "Etch",
     part: "etcher",
-    say: `lapped ~${LINE.lapUmPerSide} µm a side · etched to strip saw damage`,
+    say: "an alkaline or acid etch strips the damaged layer · lapping comes first, off this station",
   },
   {
     id: "polish",
@@ -163,5 +169,10 @@ export function sharesAt(s) {
 
 export const IDLE = `${WAFER.diameterMm} mm wafers · ${WAFER.thicknessUm} µm · sliced hundreds at a time`;
 
+// Drawing only: the notch is drawn NOTCH_DRAWN units (= NOTCH_DRAWN / U mm) deep, far deeper than its true 1 mm, so it can be seen.
+export const NOTCH_DRAWN = 3.5;
+export const notchScale = Math.round(NOTCH_DRAWN / U / WAFER.notchDepthMm); // ≈ 14 times true depth
+// Drawing only: how much larger the as-grown crystal is drawn before step 01 grinds it round (world units of radius).
+export const STOCK_DRAWN = 4;
 // Drawing only: the angle round the ingot (0 = +x, 90° = up) where the notch groove is drawn, turned to face the reader.
 export const NOTCH_ANGLE = 0.35;

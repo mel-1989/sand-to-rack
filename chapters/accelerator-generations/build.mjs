@@ -15,7 +15,7 @@ const SLUG = "accelerator-generations";
 
 // ---- world: 1 unit = 1 mm in plan; heights of the packages are exaggerated ----
 const W = 720;
-const H = 340;
+const H = 300;
 const AZIMUTH = 74;
 const ELEVATION = 34;
 
@@ -312,19 +312,19 @@ function gantry() {
   const parts = [];
   const shapes = [];
   const stack = [
-    [5, 44, 4, "mid"], // objective
-    [12, 48, 3.2, "hi"], // ring light
-    [8, 51.2, 9, "mid"], // tube
-    [9.6, 60.2, 2.4, "mid"], // focus collar
-    [8, 62.6, ARM_Z - 62.6, "mid"], // camera body up to the arm
+    [5, 24, 4, "mid"], // objective, its front about 13 mm above the dies (working distance, illustrative)
+    [12, 28, 3.2, "hi"], // ring light
+    [8, 31.2, 13, "mid"], // tube
+    [9.6, 44.2, 2.4, "mid"], // focus collar
+    [8, 46.6, ARM_Z - 46.6, "mid"], // camera body up to the arm
   ];
   for (const [r, z, h, tone] of stack) {
     parts.push(S(k.cylinder(hx, hy, r, z, h, P, 36, 0.3), { tone, crease: tone === "hi" ? "lo" : "faint" }));
     shapes.push(cylShape(hx, hy, r, z, h));
   }
-  parts.push(L(k.knurl(hx, hy, 9.6, 60.4, 62.4, 40, P), { tone: "lo" }));
-  parts.push(L(k.sideArc(hx, hy, 8, 74, P, 24), { tone: "faint" }));
-  put("gantry.head", "bench", [hx, hy, 64], parts.join(""), shapes, opts);
+  parts.push(L(k.knurl(hx, hy, 9.6, 44.4, 46.4, 40, P), { tone: "lo" }));
+  parts.push(L([58, 74].map((z) => k.sideArc(hx, hy, 8, z, P, 24)).join(""), { tone: "faint" }));
+  put("gantry.head", "bench", [hx, hy, 55], parts.join(""), shapes, opts);
 }
 
 // ---- the terminal: case on a plinth, bezel, status lamp, and the bar display ----
@@ -422,7 +422,7 @@ const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="
 const controls = `<div class="ag-controls"><span class="ag-hint">Hover a package · Space runs the gantry</span><span class="ag-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="ag-stage" tabindex="0" role="slider" aria-label="Five NVIDIA GPU packages on a bench, V100 to Rubin. Hover, or use the arrow keys, to pick a generation; Space plays or pauses the inspection gantry; Escape returns it to the start; the slider below steps through the generations." aria-valuemin="0" aria-valuemax="${M.GENS.length}" aria-valuenow="0" aria-valuetext="${M.IDLE}">${svg}</div>`;
 const [v, a, h, b, r] = M.GENS;
-const caption = `Each package sits in its own nest on a ruled plate (ruler ticks every 2 mm); the silicon is drawn at true size. ${v.name} (${v.year}): one ${v.dieMm2} mm² die and ${v.hbm.stacks} ${v.hbm.gen} stacks. ${a.name} and ${h.name}: one ${a.dieMm2} and ${h.dieMm2} mm² die with six memory sites, ${a.hbm.stacks} of them live; the sixth is drawn as an inactive dummy (NVIDIA says only that five are enabled). ${b.name} and ${r.name}: two reticle-limited dies (drawn at ${M.RETICLE_MM.join(" × ")} mm, since NVIDIA does not publish per-die area) working as one GPU, with ${b.hbm.stacks} stacks each. B200 memory, bandwidth and FLOPS are per-GPU shares of NVIDIA's DGX B200 totals. Die areas are NVIDIA's; die aspect, HBM footprints, substrate outlines and all heights are illustrative. FLOPS are dense, in the lowest-precision format each generation supports (Rubin: ${M.flopsText(r)} ${r.flops.fmt} dense, ${M.flopsText(r, r.sparse)} sparse). The Rubin power figure (≈) is an analyst estimate, not an NVIDIA spec; Rubin's process variant (N3P) is reported, not confirmed.`;
+const caption = `Each package sits in its own nest on a ruled plate (ruler ticks every 2 mm); the silicon is drawn at true size. ${v.name} (${v.year}): one ${v.dieMm2} mm² die and ${v.hbm.stacks} ${v.hbm.gen} stacks. ${a.name} and ${h.name}: one ${a.dieMm2} and ${h.dieMm2} mm² die with six memory sites, ${a.hbm.stacks} of them live; the sixth is drawn as an inactive dummy (NVIDIA says only that five are enabled). ${b.name} and ${r.name}: two reticle-limited dies (drawn at ${M.RETICLE_MM.join(" × ")} mm, since NVIDIA does not publish per-die area) working as one GPU, with ${b.hbm.stacks} stacks each. B200 memory, bandwidth, FLOPS and power are for the GPU in a GB200 superchip (half of NVIDIA's per-superchip figures); in a DGX/HGX B200 server the same GPU is rated ${b.dgx.memGB} GB, ${M.flopsText(b, b.dgx.dense)} dense, ${b.dgx.watts.toLocaleString("en-US")} W. Die areas are NVIDIA's; die aspect, HBM footprints, substrate outlines and all heights are illustrative. FLOPS are dense, in the lowest-precision format each generation supports (Rubin: ${M.flopsText(r)} ${r.flops.fmt} dense, NVIDIA's training figure; it quotes ${M.flopsText(r, r.inference)} for inference with its Transformer Engine). Rubin's power (≈${(r.wattsLo / 1000).toFixed(1)}–${(r.watts / 1000).toFixed(1)} kW, Max-Q / Max-P) is an analyst estimate; NVIDIA publishes no TDP, and the bar uses the upper figure; Rubin's process variant (N3P) is reported, not confirmed.`;
 const scrub = `<span class="ag-scrub"><button type="button" class="ag-play" data-play aria-label="Play the inspection run"><span class="ag-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="ag-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Generations: the gantry visits each package from 2017 to 2026"><span class="ag-step" data-step>ready</span></span>`;
 const body = `<figure class="iso-figure ag"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="ag-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 

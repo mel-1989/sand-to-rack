@@ -260,12 +260,17 @@
 
 @media (max-width: 640px) {
   .hna .iso-plate {
-    padding: 48px 4px 92px;
+    padding: 48px 4px 124px;
   }
 
-  .hna-stage > svg {
+  /* beats the kit's .iso-plate .iso-svg { margin: 0 auto } */
+  .hna .hna-stage > svg.hna-svg {
     width: 112%;
     margin-left: -6%;
+  }
+
+  .hna-stage:focus-visible {
+    outline-offset: 3px;
   }
 
   .hna .iso-plate-corner[data-corner="readout"] {
@@ -330,16 +335,37 @@
 .hna-die {
   fill: none;
   stroke: var(--anatomy-lit);
-  stroke-width: 0.8;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
+.hna-seam .hna-ray {
+  stroke-width: 1.6;
 }
 
 /* the side-by-side under the lesson */
+.hna-cmp-row {
+  display: flex;
+  max-width: 640px;
+  margin: 4px 0 10px;
+}
 .hna-cmp svg {
   display: block;
-  width: 100%;
-  max-width: 640px;
+  flex: 1 1 0;
+  min-width: 0;
   height: auto;
-  margin: 4px 0 10px;
+}
+@media (max-width: 480px) {
+  .hna-cmp-row {
+    flex-direction: column;
+    max-width: 340px;
+    gap: 8px;
+  }
+
+  .hna-cmp svg {
+    flex: none;
+    width: 100%;
+  }
 }
 .hna-cmp-glow { fill: var(--anatomy-lit); fill-opacity: 0.1; stroke: none; }
 .hna-cmp-ray { fill: none; stroke: var(--anatomy-strong); stroke-width: 1.2; stroke-linejoin: round; }

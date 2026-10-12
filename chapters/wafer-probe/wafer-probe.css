@@ -9,8 +9,18 @@
 }
 
 .wp .iso-plate {
-  padding: 52px 24px 60px;
+  padding: 52px 24px 80px;
   overflow: hidden;
+}
+
+/* the readout sits on its own line above the hint at every width, so a long one wraps instead of printing over it */
+.wp .iso-plate-corner[data-corner="readout"] {
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  text-align: right;
+  line-height: 1.4;
+  white-space: normal;
 }
 
 .wp-stage {
@@ -130,19 +140,17 @@
 }
 
 @media (max-width: 640px) {
+  /* a band under the drawing holds up to two lines of readout directly above the hint */
   .wp .iso-plate {
-    padding: 48px 8px 84px;
+    padding: 46px 8px 72px;
+  }
+
+  .wp .iso-plate-corners {
+    inset: 18px 14px;
   }
 
   .wp .iso-plate-corner[data-corner="readout"] {
-    bottom: 44px;
-    right: 0;
-    left: 16px;
-    max-width: calc(100% - 32px);
-    text-align: right;
-    line-height: 1.4;
-    white-space: normal;
-    overflow: visible;
+    bottom: 16px;
   }
 
   .wp-controls {
@@ -272,7 +280,3 @@
 .wp-leds circle, .wp-leds .iso-dot { transition: fill 100ms linear; }
 .wp-leds[data-on] circle, .wp-leds[data-on] .iso-dot { fill: var(--wp-pass); }
 .wp-probes[data-on] .iso-dot, .wp-probes[data-on] circle { fill: var(--anatomy-lit); }
-
-@media (max-width: 640px) {
-  .wp .iso-plate { padding-top: 36px; }
-}

@@ -186,7 +186,7 @@ function fixture() {
     put("manifold", "manifold", [x, PIPE_Y, 8], S(k.cylinder(x, PIPE_Y, 8, SILL_TOP, 1.6, P, 32), { tone: "mid" }) + S(k.cylinder(x, PIPE_Y, 5, SILL_TOP + 1.6, pedZ - SILL_TOP - 1.6, P, 28), { tone: "mid" }), [cyl(x, PIPE_Y, 8, SILL_TOP, 1.6), cyl(x, PIPE_Y, 5, SILL_TOP + 1.6, pedZ - SILL_TOP - 1.6)], { name: `${owner}.foot`, owner });
     put("manifold", "manifold", ballC, S(G.sphereOf(ballC, BALL_R, P, { steps: 40 }), { tone: "hi" }), [A.ball(ballC, BALL_R, {})], { name: `${owner}.tee`, owner });
     const flowLine = [[x, PIPE_Y, rimZ + 1], [x, PIPE_Y, BEAM_Z - 4]];
-    put("manifold", "manifold", [x, PIPE_Y, (rimZ + BEAM_Z) / 2], S(k.cylinder(x, PIPE_Y, 4.5, rimZ, BEAM_Z - 3 - rimZ, P, 32), { tone: "hi", crease: "lo", inner: L([40, 62].map((z) => k.sideArc(x, PIPE_Y, 4.5, z, P, 20)).join(""), { tone: "faint" }) }), [cyl(x, PIPE_Y, 4.5, rimZ, BEAM_Z - 3 - rimZ)], { name: `${owner}.pipe`, owner, flow: { pts: flowLine, dir: index ? 1 : -1 } });
+    put("manifold", "manifold", [x, PIPE_Y, (rimZ + BEAM_Z) / 2], S(k.cylinder(x, PIPE_Y, 4.5, rimZ, BEAM_Z - 3 - rimZ, P, 32), { tone: "hi", crease: "lo", inner: L([40, 62].map((z) => k.sideArc(x, PIPE_Y, 4.5, z, P, 20)).join(""), { tone: "faint" }) }), [cyl(x, PIPE_Y, 4.5, rimZ, BEAM_Z - 3 - rimZ)], { name: `${owner}.pipe`, owner, flow: { pts: flowLine, dir: index ? 1 : -1, kind: index ? "return" : "supply", stage: 4 } });
     put("manifold", "manifold", [x, PIPE_Y, BEAM_Z - 1.5], S(k.cylinder(x, PIPE_Y, 8, BEAM_Z - 3, 3, P, 32, 0.3), { tone: "mid" }) + Dots(G.dotsOf(G.frameAlong([x, PIPE_Y, BEAM_Z - 3], [0, 0, 1]), 0, 6.2, 6, P, { all: true }), { size: 0.38 }), [cyl(x, PIPE_Y, 8, BEAM_Z - 3, 3)], { name: `${owner}.flange`, owner });
     // socket: a turned body along +y from the ball rim to the coupler face at y = −160
     const F = G.frameAlong([x, PIPE_Y, UQD_Z], [0, 1, 0]);
@@ -207,7 +207,9 @@ function fixture() {
   const cables = [];
   for (let x = CART.x + 3; x < CART.x + CART.w - 1; x += 3.2) cables.push(k.segment([x, CART.y + CART.d, SILL_TOP], [x, CART.y + CART.d, BEAM_Z], P));
   const cartInner = L(cables.join(""), { tone: "faint" });
-  put("spine", "spine", centreOf(CART, 40), box(CART, SILL_TOP, BEAM_Z - SILL_TOP, "mid", { bevel: 0.4, steps: 2, inner: cartInner }), [slab(CART, SILL_TOP, BEAM_Z - SILL_TOP, 2)], { name: "spine.cartridge" });
+  const cartFace = CART.y + CART.d;
+  const pulses = NV_X.map((x) => [[x, cartFace, 23], [x, cartFace, BEAM_Z - 1]]);
+  put("spine", "spine", centreOf(CART, 40), box(CART, SILL_TOP, BEAM_Z - SILL_TOP, "mid", { bevel: 0.4, steps: 2, inner: cartInner }), [slab(CART, SILL_TOP, BEAM_Z - SILL_TOP, 2)], { name: "spine.cartridge", flow: { lines: pulses, dir: 1, kind: "nvlink", stage: 5 } });
   NV_X.forEach((x) => {
     const rec = { x: x - 6, y: CART.y + CART.d, w: 12, d: 18, r: 0.6 };
     const face = faceRect(x - 4, x + 4, rec.y + rec.d, 10.5, 19.5);
@@ -431,7 +433,7 @@ function hose(name, control, dir) {
   ROUTES.push({ name, total, dir });
   const parts = Tube.tubePieces(line, r, P, { maxLength: 14, spacing: 1.2 });
   parts.forEach((part, index) => {
-    put("plates", "plates", part.mid, Tube.tubeSvg(part, { tone: "hi" }), [A.tube(part.points, part.radii)], { name: `${name}:${index}`, route: name, chunk: index, owner: name, slide: true, flow: { pts: part.points, from: part.from, dir, route: name, total } });
+    put("plates", "plates", part.mid, Tube.tubeSvg(part, { tone: "hi" }), [A.tube(part.points, part.radii)], { name: `${name}:${index}`, route: name, chunk: index, owner: name, slide: true, flow: { pts: part.points, from: part.from, dir, route: name, total, kind: dir > 0 ? "supply" : "return", stage: 4 } });
   });
 }
 
@@ -464,7 +466,7 @@ function miniRack() {
   const lowEnd = M.RACK.layout[4] + M.RACK.layout[3];
   const groupsAll = [
     { name: "mini.low", from: 0, to: lowEnd, tone: "mid", group: "rack" },
-    { name: "mini.switch", from: lowEnd, to: lowEnd + M.RACK.layout[2], tone: "hi", group: "spine" },
+    { name: "mini.switch", from: lowEnd, to: lowEnd + M.RACK.layout[2], tone: "mid", group: "spine" },
     { name: "mini.mid", from: lowEnd + M.RACK.layout[2], to: OURS, tone: "mid", group: "rack" },
     { name: "mini.high", from: OURS + 1, to: MINI_SLOTS.length, tone: "mid", group: "rack" },
   ];
@@ -475,7 +477,14 @@ function miniRack() {
       svg += slab1(i, MINI_SLOTS[i] === "power" ? "lo" : g.tone);
       shapes.push(slab(slotPlan, MINI_Z + i * MINI_U, MINI_U, 2));
     }
-    put("stand", g.group, centreOf(slotPlan, MINI_Z + ((g.from + g.to) / 2) * MINI_U), svg, shapes, { name: g.name });
+    let flow = null;
+    if (g.group === "spine") {
+      const face = slotPlan.y + slotPlan.d;
+      const lines = [];
+      for (let i = g.from; i < g.to; i += 2) lines.push([[slotPlan.x + 3, face, MINI_Z + (i + 0.5) * MINI_U], [slotPlan.x + slotPlan.w - 3, face, MINI_Z + (i + 0.5) * MINI_U]]);
+      flow = { lines, dir: 1, kind: "nvlink", stage: 5 };
+    }
+    put("stand", g.group, centreOf(slotPlan, MINI_Z + ((g.from + g.to) / 2) * MINI_U), svg, shapes, { name: g.name, flow });
   }
   put("stand", "rack", centreOf(slotPlan, MINI_Z + (OURS + 0.5) * MINI_U), slab1(OURS, "hi"), [slab(slotPlan, MINI_Z + OURS * MINI_U, MINI_U, 2)], { name: "mini.ours", slide: MINI_SLIDE });
   // posts and cap
@@ -503,22 +512,24 @@ if (!process.argv.includes("--fast")) A.settle(R, P);
 R.items.sort((a, b) => a.key - b.key);
 
 // flow paths: screen points of each tube chunk's centreline, with 3D arc length along its route
+// A flow is one polyline (pts) or several (lines, joined by "|"); kind sets its tint, stage the step that starts it.
 function flowData(flow) {
   if (!flow) return "";
-  const pts = flow.pts;
-  let along = flow.from ?? 0;
-  const out = [];
-  pts.forEach((p, i) => {
-    if (i) along += G.len3(G.sub3(p, pts[i - 1]));
-    const [sx, sy] = at(p);
-    out.push(`${sx.toFixed(1)},${sy.toFixed(1)},${along.toFixed(1)}`);
-  });
-  return ` data-flow="${out.join(" ")}" data-dir="${flow.dir}"`;
+  const one = (pts, from = 0) => {
+    let along = from;
+    return pts.map((p, i) => {
+      if (i) along += G.len3(G.sub3(p, pts[i - 1]));
+      const [sx, sy] = at(p);
+      return `${sx.toFixed(1)},${sy.toFixed(1)},${along.toFixed(1)}`;
+    }).join(" ");
+  };
+  const text = flow.lines ? flow.lines.map((pts) => one(pts)).join("|") : one(flow.pts, flow.from ?? 0);
+  return ` data-flow="${text}" data-dir="${flow.dir}" data-kind="${flow.kind}" data-stage="${flow.stage}"`;
 }
 const groups = R.items.map((item, index) => {
   const [mx, my, mz] = item.move;
   const [sx, sy, sz] = item.slide;
-  const flow = item.flow ? `<g class="rk-flow iso-dots" data-tone="lit"${flowData(item.flow)}></g>` : "";
+  const flow = item.flow ? `<g class="rk-flow"${flowData(item.flow)}></g>` : "";
   return `<g class="it" data-piece="${item.piece}" data-g="${item.group}" data-k="${item.key.toFixed(2)}" data-m="${mx.toFixed(1)},${my.toFixed(1)},${mz.toFixed(1)}" data-s="${sx.toFixed(1)},${sy.toFixed(1)},${sz.toFixed(1)}" data-i="${index}">${item.svg}${flow}</g>`;
 });
 
@@ -548,7 +559,7 @@ const PARTS = GROUPS.map((id, index) => `<button type="button" class="rk-part" d
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">GB200 NVL72 · compute tray</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="rk-controls"><span class="rk-hint">Hover a part · Space plays the build</span><span class="rk-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="rk-stage" tabindex="0" role="slider" aria-label="GB200 NVL72 compute tray and rack. Hover, or use the arrow keys, to pick a part; Space plays or pauses the build from parts to a running rack; Escape resets it; the slider below steps through it." aria-valuemin="0" aria-valuemax="${GROUPS.length}" aria-valuenow="0" aria-valuetext="${M.IDLE}">${svg}</div>`;
-const caption = `One of the ${M.RACK.computeTrays} compute trays of an NVIDIA GB200 NVL72 rack. The 1U tray carries ${M.TRAY.superchips} GB200 superchips: ${M.TRAY.gpus} Blackwell GPUs (${M.GPU.dies} dies and ${M.GPU.transistorsB} billion transistors each, about ${M.hbmPerGpu} GB of HBM3E each, derived from ${M.GPU.superchipHbmGB} GB a superchip) and ${M.TRAY.grace} Grace CPUs, all under liquid cold plates. At the back it meets the rack three ways at once: two blind-mate ${M.TRAY.uqd} couplers on the coolant manifold (inlet up to ${M.COOL.inletMaxC} °C, return up to ${M.COOL.returnMaxC} °C, up to ${M.COOL.rackLpm} L/min a rack), a clip on the ${M.RACK.busbarV} V DC bus bar, and NVLink connectors into one of ${M.RACK.cartridges} cable cartridges that hold over ${fmt(M.RACK.copperCables)} copper cables. The scale model shows the whole rack: ${M.RACK.layout[0]} power shelves, ${M.RACK.layout[1]} compute trays, ${M.RACK.layout[2]} NVLink switch trays (lit when the spine connects), ${M.RACK.layout[3]} compute trays and ${M.RACK.layout[4]} power shelves (one vendor's layout). Tray width and height are to scale (ruler ticks 10 mm); its depth, board layout, connector count and the rack slice are illustrative, and the lid is drawn over the front bay only so the cold plates stay in view.`;
+const caption = `One of the ${M.RACK.computeTrays} compute trays of an NVIDIA GB200 NVL72 rack. The 1U tray carries ${M.TRAY.superchips} GB200 superchips: ${M.TRAY.gpus} Blackwell GPUs (${M.GPU.dies} dies and ${M.GPU.transistorsB} billion transistors each, about ${M.hbmPerGpu} GB of HBM3E each, derived from ${M.GPU.superchipHbmGB} GB a superchip) and ${M.TRAY.grace} Grace CPUs, all under liquid cold plates. At the back it meets the rack three ways at once: two blind-mate ${M.TRAY.uqd} couplers on the coolant manifold (inlet up to ${M.COOL.inletMaxC} °C, return up to ${M.COOL.returnMaxC} °C, up to ${M.COOL.rackLpm} L/min a rack), a clip on the ${M.RACK.busbarV} V DC bus bar, and NVLink connectors into one of ${M.RACK.cartridges} cable cartridges that hold over ${fmt(M.RACK.copperCables)} copper cables. The scale model shows the whole rack: ${M.RACK.layout[0]} power shelves, ${M.RACK.layout[1]} compute trays, ${M.RACK.layout[2]} NVLink switch trays (they light, with signal pulses running through them and up the cable cartridge, when the spine connects), ${M.RACK.layout[3]} compute trays and ${M.RACK.layout[4]} power shelves (one vendor's layout). Tray width and height are to scale (ruler ticks 10 mm); its depth, board layout, connector count and the rack slice are illustrative, and the lid is drawn over the front bay only so the cold plates stay in view.`;
 const scrub = `<span class="rk-scrub"><button type="button" class="rk-play" data-play aria-label="Play the build"><span class="rk-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="rk-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Build: 0 is parts on the bench, 1000 is a running rack"><span class="rk-step" data-step>parts out</span></span>`;
 const body = `<figure class="iso-figure rk"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="rk-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 

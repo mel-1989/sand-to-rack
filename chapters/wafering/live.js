@@ -124,8 +124,10 @@ function drawWeb(shares) {
   if (sig === shownWeb) return;
   shownWeb = sig;
   innerLeftEl.innerHTML = web.left ? lineSvg(web.left, { tone: "mid", className: "wf-wire" }) : "";
-  dyn.el.innerHTML = web.right ? lineSvg(web.right, { tone: "mid", className: "wf-wire" }) : "";
-  kerfEl.innerHTML = web.kerfs ? lineSvg(web.kerfs, { tone: "mid" }) : "";
+  dyn.el.innerHTML = web.right ? lineSvg(web.right, { tone: "mid", className: "wf-wire wf-over" }) : "";
+  kerfEl.innerHTML = web.kerfs ? lineSvg(web.kerfs, { tone: "lo" }) : "";
+  // once kerfs show, the web wires that pass over the cut block step back so the slices read
+  svgEl.toggleAttribute("data-kerfs", !!web.kerfs);
 }
 
 // the carriers turn while the upper platen is down, from lowering (step 6) to lifting (step 7)
@@ -147,8 +149,42 @@ function drawSpin() {
     const [x, y, z, r, a0, rate] = p;
     const a = a0 + rate * phase;
     const pt = (rad, t) => [x + rad * Math.cos(t), y + rad * Math.sin(t), z];
-    el.setAttribute("d", path([pt(r, a - 0.035), pt(r - 1.6, a), pt(r, a + 0.035)]));
+    const w = D.notch / r;
+    el.setAttribute("d", path([pt(r, a - w), pt(r - D.notch, a), pt(r, a + w)]));
   }
+}
+
+// ---- step 01: the as-grown crystal (a dashed shell, drawn oversize) is ground round from the near end back ----
+const stockEl = layers.querySelector("[data-stock]");
+let shownStock = -1;
+function drawStock(grind) {
+  const g = Math.round(grind * 400) / 400;
+  if (g === shownStock) return;
+  shownStock = g;
+  if (g >= 1) {
+    stockEl.innerHTML = "";
+    return;
+  }
+  const rg = W.r + D.stock;
+  const y0 = -W.li / 2;
+  const yf = W.li / 2 - W.li * g; // the grinding front: ground behind it (nearer the reader), as-grown beyond
+  const ring = (y, r, visibleOnly) => {
+    const pts = [];
+    const runs = [];
+    for (let j = 0; j <= 96; j++) {
+      const t = (j / 96) * Math.PI * 2;
+      const ok = !visibleOnly || Math.cos(t) * VV[0] + Math.sin(t) * VV[2] > 0;
+      if (ok) pts.push([r * Math.cos(t), y, W.zc0 + r * Math.sin(t)]);
+      else if (pts.length) runs.push(pts.splice(0));
+    }
+    if (pts.length) runs.push(pts.splice(0));
+    return runs.filter((run) => run.length > 1).map(path).join("");
+  };
+  // silhouette generators: where the radius is square to the view
+  const ts = Math.atan2(-VV[0], VV[2]);
+  const gens = [ts, ts + Math.PI].map((t) => path([[rg * Math.cos(t), y0, W.zc0 + rg * Math.sin(t)], [rg * Math.cos(t), yf, W.zc0 + rg * Math.sin(t)]])).join("");
+  const d = ring(yf, rg, false) + ring(y0, rg, true) + gens + (g > 0 ? ring(yf, W.r, false) : "");
+  stockEl.innerHTML = `<path d="${d}"/>`;
 }
 
 // ---- placing and depth-sorting the moving pieces ----
@@ -188,6 +224,7 @@ function render() {
   const grind = index > 0 ? 1 : smooth(clamp01((t - 0.1) / 0.75));
   svgEl.style.setProperty("--wf-ridges", (1 - grind).toFixed(3));
   svgEl.style.setProperty("--wf-notch", grind.toFixed(3));
+  drawStock(grind);
   svgEl.toggleAttribute("data-cutting", index === 2 && t > 0.04 && t < 0.97);
   svgEl.toggleAttribute("data-etching", index === 4 && t > 0.35 && t < 0.7);
   svgEl.toggleAttribute("data-mirror", index === 6 && t > 0.35);

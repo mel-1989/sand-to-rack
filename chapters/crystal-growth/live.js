@@ -424,6 +424,13 @@ function processText(s) {
   if (s.phase === 6) return `${step.label} · ${fmt(D.kg.ingot)} kg crystal · ${s.gate > 0.5 ? "gate valve shut" : "lifting into the pull chamber"}`;
   return `${step.label} · ${fmt(s.kg, 1)} kg grown · ${fmt(pulledMm)} mm pulled · crucible up ${fmt(s.lift * D.lift * 5)} mm`;
 }
+// the crystal's readout follows the run: only the seed before the neck starts, the mass grown so far while it grows
+function partText(id, s) {
+  const part = D.parts[id];
+  if (id !== "crystal" || progress <= 0.0005 || s.phase === 6) return part.say;
+  if (s.phase < 2) return part.seed;
+  return `${fmt(s.kg, 1)} kg ${part.growing}`;
+}
 const stepLabel = (s) => `${s.phase + 1} / 7 · ${D.steps[s.phase].label}`;
 
 // ---- interaction state ----
@@ -499,7 +506,7 @@ function render() {
       layer.g.style.display = text === "0" ? "none" : "";
     }
   }
-  const text = selected ? `${D.parts[selected].name}: ${D.parts[selected].say}` : progress <= 0.0005 && !playing && !touring ? D.idle : processText(s);
+  const text = selected ? `${D.parts[selected].name}: ${partText(selected, s)}` : progress <= 0.0005 && !playing && !touring ? D.idle : processText(s);
   say(text);
   describe(text);
   const label = progress <= 0.0005 ? "ready" : progress >= 0.9995 ? "7 / 7 · done" : stepLabel(s);
@@ -544,7 +551,6 @@ function run() {
 }
 
 function quietTour() {
-  if (touring) progress = progress;
   touring = false;
   tookOver = true;
   clearTimeout(idleTimer);
@@ -656,7 +662,8 @@ document.addEventListener("keydown", (event) => {
   if (event.metaKey || event.ctrlKey || event.altKey || !visible) return;
   const target = event.target;
   if (target !== document.body && target !== stage && !root.contains(target)) return;
-  if (target === scrubInput && event.key !== " " && event.key !== "Escape") return;
+  // the slider keeps its native keys, Space included; only Escape resets from it
+  if (target === scrubInput && event.key !== "Escape") return;
   if (target instanceof HTMLButtonElement && (event.key === " " || event.key === "Enter")) return;
   if (event.key === " ") {
     event.preventDefault();

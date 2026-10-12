@@ -117,9 +117,18 @@ function select(id) {
 // A swipe by the reader forgets which specimen was followed, so the next pick pans back to it.
 let followed = null;
 let followedAt = -1e9;
+// Edge fades show that the strip goes on past the card edge: data-more-left / data-more-right drive a CSS mask.
+function edges() {
+  const room = stage.scrollWidth - stage.clientWidth;
+  stage.toggleAttribute("data-more-left", panning.matches && stage.scrollLeft > 2);
+  stage.toggleAttribute("data-more-right", panning.matches && room > 2 && stage.scrollLeft < room - 2);
+}
 stage.addEventListener("scroll", () => {
   if (performance.now() - followedAt > 900) followed = null;
+  edges();
 }, { passive: true });
+addEventListener("resize", edges);
+panning.addEventListener("change", edges);
 function follow(id, force = false) {
   if (!panning.matches || !id || (id === followed && !force)) return;
   followed = id;
@@ -141,14 +150,15 @@ function scrubTo(s) {
   describe();
 }
 
-// Springs only run when one carriage is sent somewhere on its own (Escape closes all, staggered).
+// Escape rewinds the slider to closed in about a second (newest specimen first), or jumps under reduced motion.
+const REWIND = 1;
 function closeAll() {
-  let index = 0;
-  for (const id of [...IDS].reverse()) {
-    const state = piece[id];
-    if (state.target === 0 && state.x === 0) continue;
-    state.pending = { value: 0, at: clock + (still.matches ? 0 : index++ * SPRING.stagger) };
+  const from = Math.max(sliderValue(), progress());
+  if (from <= 0.001 || still.matches) {
+    scrubTo(0);
+    return;
   }
+  playing = { from, to: 0, t: 0, seconds: REWIND };
 }
 
 function progress() {
@@ -453,7 +463,9 @@ playButton.addEventListener("click", () => {
 if (still.matches) touring = false;
 const narrow = matchMedia("(hover: none), (max-width: 480px)");
 const hint = root.querySelector(".tr-hint");
-const wording = () => hint && (hint.textContent = narrow.matches ? "Tap a part · play below" : "Hover a part · Space plays");
+const wording = () => hint && (hint.textContent = panning.matches ? "Tap a part · swipe · play below" : narrow.matches ? "Tap a part · play below" : "Hover a part · Space plays");
 wording();
 narrow.addEventListener("change", wording);
+panning.addEventListener("change", wording);
+edges();
 refresh();

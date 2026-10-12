@@ -31,6 +31,8 @@
   display: block;
   width: 100%;
   height: auto;
+  /* the puller is tall: cap it so the crucible and the play/slider row fit one laptop screen (letterboxed sideways) */
+  max-height: min(70vh, 900px);
   overflow: visible;
 }
 
@@ -241,18 +243,20 @@
 }
 
 /* Exception to the token rule, on purpose: molten silicon and its glow are the subject, and the kit has no warm
-   token, so these four colours are set here per theme (they still switch at runtime with body[data-theme]). */
+   token, so one warm hue per theme is set here and the melt is mixed from it and the kit's own shade tokens
+   (they still switch at runtime with body[data-theme]). In dark the melt glows orange while it is hot and
+   falls back toward the kit's shade as --cz-heat drops in the cool-down. */
 .cz {
   --cz-glow: #ff7a3d;
-  --cz-melt-top: #5c3e2a;
-  --cz-melt-side: #3e2a1d;
-  --cz-ring: #ffd9b0;
+  --cz-melt-top: color-mix(in oklab, #c8641e calc(35% + 55% * var(--cz-heat, 0.8)), var(--anatomy-shade-1));
+  --cz-melt-side: color-mix(in oklab, #a04a14 calc(30% + 45% * var(--cz-heat, 0.8)), var(--anatomy-shade-3));
+  --cz-ring: #ffe2c2;
 }
 
 [data-theme="light"] .cz {
   --cz-glow: #e0521b;
-  --cz-melt-top: #f7dcc2;
-  --cz-melt-side: #efc9a6;
+  --cz-melt-top: color-mix(in oklab, #f2b98a 60%, var(--anatomy-top));
+  --cz-melt-side: color-mix(in oklab, #e6a172 60%, var(--anatomy-shade-1));
   --cz-ring: #d0581a;
 }
 
@@ -276,7 +280,7 @@
 .cz-meniscus {
   fill: none;
   stroke: var(--cz-ring);
-  stroke-width: 1.1;
+  stroke-width: calc(0.9 + 0.5 * var(--cz-heat, 0.8));
   stroke-linecap: round;
 }
 
@@ -342,4 +346,14 @@ body:not([data-theme="light"]) .cz .cz-ingot {
   --anatomy-shade-2: var(--cz-lt);
   --anatomy-shade-3: var(--cz-lt);
   --anatomy-top: var(--cz-lt);
+}
+
+/* exhaust bores in the floor: an opening reads darker than the cut face around it, in both themes */
+.cz-bore {
+  fill: var(--anatomy-page);
+  stroke: none;
+}
+
+[data-theme="light"] .cz-bore {
+  fill: color-mix(in oklab, var(--anatomy-text) 24%, var(--anatomy-face));
 }

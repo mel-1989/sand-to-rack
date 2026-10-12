@@ -8,6 +8,7 @@ export const FIRST = {
   model: "S-6000",
   maker: "Hitachi",
   kev: 1, // "a low acceleration voltage of approximately 1 keV" to prevent charging and damage
+  // "through-the-lens system that detected secondary electrons through a lens magnetic field to ensure signal symmetry"
   semiInLens: 1989, // semi-in-lens objective: lens field on the wafer side, shorter focal length
   schottky: 1994, // Schottky emission gun, for a stable beam current
   retarding: 1994, // retarding field, higher resolution at low landing energy
@@ -36,7 +37,7 @@ export const OVERLAY = {
   mmoNm: 0.9, // "≥220 wph at 0.9 nm Matched Machine Overlay": scanner-to-scanner matching, "ASML acceptance test, overlay towards etched reference wafers"
   wph: "≥220", // wafers per hour at that overlay, at 30 mJ/cm2 (the slide says "≥220 wph")
   previousNm: 1.1, // "For comparison, the NXE:3600D spec is 1.1nm" (MMO)
-  opoNm: 1.4, // NXE:3800E "supporting 1.4 nm OPO (m+3σ)": on-product overlay, on real product wafers
+  opoNm: 1.4, // NXE:3800E "supporting 1.4 nm OPO (m+3σ)": on-product overlay; a 2023 design target, the first full build was still in integration
   opoPrevNm: 1.7, // NXE:3600D "Enabling 1.7nm On Product Overlay"
 };
 
@@ -44,8 +45,10 @@ export const OVERLAY = {
 // https://ir.kla.com/news-events/press-releases/detail/14/kla-introduces-breakthrough-electron-beam-defect-inspection
 export const ESL10 = { year: 2020, pixelsB: 10 }; // "10 billion pixels of information per scan", one high current-density beam
 
-// ASML product page, HMI eScan 1100 (first installation announced 25 Apr 2022): 25 beams (5 x 5), up to 15x the throughput of single-beam tools
-// https://www.asml.com/en/products/metrology-and-inspection-systems/hmi-escan-1100
+// ASML press release, 25 Apr 2022, "ASML announces installation of first HMI eScan 1100 multibeam system":
+// "With 25 beams (5x5), the eScan 1100 is able to increase throughput by up to 15 times" over single e-beam tools
+// https://www.asml.com/en/news/press-releases/2022/asml-announces-installation-of-first-hmi-escan-1100-multibeam-system
+// product page: https://www.asml.com/en/products/metrology-and-inspection-systems/hmi-escan-1100
 export const ESCAN1100 = { year: 2022, beams: 25, gainX: 15 };
 
 // US patent 6,947,805 B1, "Dynamic metrology sampling techniques for identified lots" (its worked example, not an industry standard)
@@ -72,7 +75,7 @@ export const passes = Math.abs(RUN.cdNm - RUN.targetNm) <= RUN.specNm;
 export const inControl = Math.abs(RUN.cdNm - RUN.targetNm) <= RUN.limitNm;
 export const lot = RUN.history.length + 1;
 
-const f1 = (v) => (v < 0 ? "−" : "") + Math.abs(v).toFixed(1);
+export const f1 = (v) => (v < 0 ? "−" : "") + Math.abs(v).toFixed(1);
 
 // The process the slider steps through, in order. `say` is the readout while that step runs.
 export const STEPS = [
@@ -90,7 +93,7 @@ export const PARTS = {
   condenser: { name: "Condenser lenses", say: "two magnetic lenses set the beam current" },
   scan: { name: "Scan coils", say: `sweep the spot · ${RUN.rows} lines a frame` },
   objective: { name: "Objective lens", say: "focuses the beam to a nanometre spot" },
-  detector: { name: "Secondary electron detector", say: "counts secondary electrons from the surface" },
+  detector: { name: "Secondary electron detector", say: "secondary electrons rise up through the objective lens to it" },
   stage: { name: "Stage and wafer", say: "x-y stage · read by a laser interferometer" },
   chamber: { name: "Chamber and load lock", say: "load lock keeps the chamber in vacuum" },
   optical: { name: "Optical alignment / inspection head", say: "finds alignment marks · scans dies for defects" },

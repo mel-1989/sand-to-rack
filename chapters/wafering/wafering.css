@@ -278,3 +278,20 @@
 .wf-dyn * {
   pointer-events: none;
 }
+
+.wf-stock path {
+  fill: none;
+  stroke: var(--anatomy-lo);
+  stroke-width: var(--anatomy-weight);
+  stroke-dasharray: 3 2.4;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.wf-over {
+  transition: opacity 400ms var(--anatomy-ease);
+}
+
+.wf-svg[data-kerfs] .wf-over {
+  opacity: 0.35;
+}

@@ -52,6 +52,7 @@ let last = 0;
 let playing = false;
 let tookOver = false;
 let shownRadius = -1;
+let shownZoom = "";
 let shownStep = -1;
 let spoken = "";
 
@@ -97,10 +98,11 @@ function stepSay(index) {
 }
 
 // Steps 1-3 happen in the feed skid: dots walk along the pipe being used, bubbles rise in the
-// hydrochlorinator's sight glass, and the column's trays light one after another, bottom to top.
+// TCS reactor's sight glass, and the column's trays light one after another, bottom to top.
 // All of it follows s, so a scrub moves it and a reduced-motion jump simply lands on the next pose.
 const bubbles = [...root.querySelectorAll(".pz-bubble")].map((el, i, all) => ({ el, x: ((i * 0.382 + 0.1) % 1) * 0.7 + 0.15, phase: i / all.length }));
 const trays = [...root.querySelectorAll(".pz-tray")];
+const vapour = [...root.querySelectorAll(".pz-vapour")];
 let shownProcess = "";
 function drawProcess(index) {
   const step = D.steps[index];
@@ -122,7 +124,20 @@ function drawProcess(index) {
     }
   }
   const hot = id === "dist" ? Math.floor(u * trays.length * 2) % trays.length : -1;
-  trays.forEach((tray, i) => tray.toggleAttribute("data-hot", i === hot || i === hot - 1));
+  trays.forEach((tray, i) => {
+    tray.toggleAttribute("data-hot", i === hot || i === hot - 1);
+    tray.toggleAttribute("data-warm", id === "dist" && i < hot - 1);
+  });
+  if (id === "dist" && D.vapour) {
+    const v = D.vapour;
+    vapour.forEach((dot, i) => {
+      const rise = (i / vapour.length + u * 3) % 1;
+      const sway = Math.sin((rise * 3 + i * 0.7) * 6.28) * v.w * 0.25;
+      dot.setAttribute("cx", (v.x0 + (v.x1 - v.x0) * rise + sway).toFixed(2));
+      dot.setAttribute("cy", (v.y0 + (v.y1 - v.y0) * rise).toFixed(2));
+      dot.style.opacity = (Math.min(1, rise * 6, (1 - rise) * 6) * 0.9).toFixed(2);
+    });
+  }
 }
 
 function draw() {
@@ -144,6 +159,16 @@ function draw() {
       if (text) node.el.setAttribute("transform", text);
       else node.el.removeAttribute("transform");
     }
+  }
+  // camera pull-back: once the lifted eye would pass the top margin, scale the scene about the bench's bottom centre
+  const Z = D.zoom;
+  const reach = Z.cy - (Z.top - Z.lift * share);
+  const f = Math.min(1, (Z.cy - Z.margin) / reach);
+  const zoom = f > 0.9995 ? "" : `translate(${Z.cx} ${Z.cy}) scale(${f.toFixed(4)}) translate(${-Z.cx} ${-Z.cy})`;
+  if (zoom !== shownZoom) {
+    shownZoom = zoom;
+    if (zoom) layers.setAttribute("transform", zoom);
+    else layers.removeAttribute("transform");
   }
   const next = nodes.map((_, index) => index).sort((a, b) => nodes[a].key + nodes[a].lift * (nodes[a].piece === "bell" ? share : 0) - (nodes[b].key + nodes[b].lift * (nodes[b].piece === "bell" ? share : 0)));
   if (next.some((index, at) => index !== order[at])) {

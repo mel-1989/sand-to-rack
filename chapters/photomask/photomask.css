@@ -357,7 +357,7 @@
   }
 
   .pm .iso-plate {
-    padding-bottom: 92px;
+    padding-bottom: 100px;
   }
 }
 
@@ -433,4 +433,9 @@
   fill: var(--anatomy-lit);
   opacity: 0;
   pointer-events: none;
+}
+
+/* the bench mask fades in after the write; a short ease covers a jump when the reader picks it */
+.pm-svg .it[data-piece="mask"] {
+  transition: opacity 200ms var(--anatomy-ease);
 }

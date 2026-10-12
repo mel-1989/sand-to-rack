@@ -12,8 +12,8 @@ export const LESSON = {
     `<strong>HBM2E (${g("hbm2e").year}).</strong> Still eight dies on the same 1,024-bit interface, but each die doubles to ${g("hbm2e").dieGb} Gb and the pins run at ${g("hbm2e").pinGbps} Gb/s: ${g("hbm2e").gbps} GB/s and ${g("hbm2e").gb} GB a stack in SK hynix's part.`,
     `<strong>HBM3 (${g("hbm3").year}).</strong> The pin rate nearly doubles to ${g("hbm3").pinGbps} Gb/s (${g("hbm3").gbps} GB/s a stack), the channels go from 8 to 16, and stacks reach ${g("hbm3").high} dies. Twelve dies fit in the same ${M.HEIGHT_12H_UM} µm as eight because each die is ground thinner.`,
     `<strong>HBM3E (${g("hbm3e").year}).</strong> ${g("hbm3e").pinGbps} Gb/s a pin, about ${M.bw(g("hbm3e"))} a stack, and ${g("hbm3e").gb} GB in a 12-high stack of ${g("hbm3e").dieGb} Gb dies. Eight-high stacks of the same dies hold ${M.HBM3E_8H_GB} GB (Micron).`,
-    `<strong>HBM4 (${g("hbm4").year}).</strong> The interface doubles to ${n(g("hbm4").busBits)} bits for the first time since HBM began, so ${g("hbm4").pinGbps} Gb/s a pin gives ${M.bw(g("hbm4"))} a stack. The base die becomes a logic die made in a foundry, and the height limit rises to ${M.HEIGHT_HBM4_UM} µm. The first 12-high stacks hold ${g("hbm4").gb} GB (SK hynix, Micron); the standard allows up to ${M.HBM4_MAX_HIGH}-high and ${M.HBM4_MAX_GB} GB.`,
-    `<strong>Next: HBM4E and HBM5.</strong> 16 and then 20 dies are expected. At 16 dies (HBM4E) and above, hybrid bonding is expected to begin replacing micro-bumps; makers have so far stayed with thermo-compression and MR-MUF. In hybrid bonding, copper pads on facing dies fuse directly with no bump and no gap.`,
+    `<strong>HBM4 (${g("hbm4").year}).</strong> The interface doubles to ${n(g("hbm4").busBits)} bits for the first time since HBM began, so ${g("hbm4").pinGbps} Gb/s a pin gives ${M.bw(g("hbm4"))} a stack; in Rubin, ${M.rubinStacks} stacks deliver ${M.RUBIN.tbs} TB/s, about ${M.rubinPerStack} TB/s each (about ${M.rubinPin.toFixed(1)} Gb/s a pin). The base die moves to a logic process (SK hynix has it made at TSMC), and the height limit rises to ${M.HEIGHT_HBM4_UM} µm. The first 12-high stacks hold ${g("hbm4").gb} GB (SK hynix, Micron); the standard allows up to ${M.HBM4_MAX_HIGH}-high and ${M.HBM4_MAX_GB} GB.`,
+    `<strong>Next: HBM4E and HBM5.</strong> 16 and then 20 dies are expected. At 16 dies (HBM4E) and above, hybrid bonding is expected to begin replacing micro-bumps; makers have so far stayed with thermo-compression and MR-MUF. In hybrid bonding, copper pads on facing dies fuse directly with no bump and no gap. There are vendor targets only so far: Samsung aims HBM4E at over ${M.SAMSUNG_HBM4E.pinGbps} Gb/s a pin and about ${M.SAMSUNG_HBM4E.tbs} TB/s a stack for ${M.SAMSUNG_HBM4E.year}, and JEDEC is discussing a ${M.HBM5_HEIGHT_UM[0]} to ${n(M.HBM5_HEIGHT_UM[1])} µm height limit for 20-high HBM5.`,
   ],
   numbers: [
     ["Bandwidth per stack", `${M.bw(g("hbm1"))} → ${M.bw(g("hbm4"))}`, `HBM (${g("hbm1").year}) to HBM4 (${g("hbm4").year}), JEDEC peaks: ${M.growth}×`],
@@ -27,13 +27,13 @@ export const LESSON = {
   innovations: [
     "<strong>Through-silicon vias.</strong> Copper-filled holes run straight through each thinned die, so every die in the stack reaches the base die over thousands of short vertical wires instead of long bond wires.",
     "<strong>Thinner dies, same height.</strong> Grinding each DRAM die thinner is what lets 8, then 12, then 16 dies fit under one height limit, so a stack sits level with the compute die beside it under one cold plate.",
-    "<strong>Gap fill.</strong> SK hynix's mass reflow molded underfill (MR-MUF) floods the gaps between all dies at once; Samsung and Micron laminate a film between dies and bond each one under heat and pressure. Both remove heat and keep thin dies from warping.",
-    "<strong>A logic base die.</strong> In HBM4 the bottom die is built on a foundry logic process (SK hynix uses TSMC), with faster, smaller transistors that drive twice as many pins at lower power.",
+    "<strong>Gap fill.</strong> SK hynix's mass reflow molded underfill (MR-MUF) floods the gaps between all dies at once; Samsung and Micron laminate a film between dies and bond each one under heat and pressure. Both fill the gap around the same micro-bumps, remove heat and keep thin dies from warping; SK hynix carries an Advanced MR-MUF into HBM4.",
+    "<strong>A logic base die.</strong> In HBM4 the bottom die moves to a logic process (SK hynix has it made at TSMC), with faster, smaller transistors that drive twice as many pins at lower power.",
     "<strong>Hybrid bonding next.</strong> Bonding copper pad to copper pad with no bump removes the gap between dies, which saves height for 16 to 20 dies and shortens the path heat must cross.",
   ],
   sources: [
     ["KitGuru: SK hynix ships first-generation HBM, JESD235 (2015)", M.SOURCES.hbm1],
-    ["AnandTech: SK hynix HBM2E in mass production, 3.6 Gb/s (2020)", M.SOURCES.hbm2e],
+    ["AnandTech (archived): SK hynix HBM2E in mass production, 3.6 Gb/s (2020)", M.SOURCES.hbm2e],
     ["JEDEC: HBM2 update to the HBM standard, JESD235A (2016)", M.SOURCES.hbm2],
     ["JEDEC: HBM3 standard, JESD238 (2022)", M.SOURCES.hbm3],
     ["JEDEC: HBM4 standard, JESD270-4 (2025), via Business Wire", M.SOURCES.hbm4],
@@ -41,6 +41,8 @@ export const LESSON = {
     ["SK hynix 12-high HBM4 samples, 36 GB, via KED Global (2025)", M.SOURCES.hynix4s],
     ["SK hynix 12-high HBM3E, 36 GB at 9.6 Gb/s, via KED Global (2024)", M.SOURCES.hbm3e],
     ["Micron: HBM3E volume production, over 1.2 TB/s (2024)", M.SOURCES.micron3e],
+    ["TrendForce: Samsung targets over 13 Gb/s for HBM4E (OCP Global Summit, 2025)", M.SOURCES.samsung4e],
+    ["NVIDIA: inside the Rubin platform, 288 GB and 22 TB/s of HBM4 (2026)", M.SOURCES.rubin],
     ["TrendForce: HBM height limits and the hybrid-bonding timeline (2026)", M.SOURCES.height],
   ],
 };

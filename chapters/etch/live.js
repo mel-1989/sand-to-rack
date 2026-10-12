@@ -25,6 +25,7 @@ const trace = root.querySelector("[data-trace]");
 const head = root.querySelector("[data-head]");
 const arText = root.querySelector("[data-ar]");
 const passLabel = root.querySelector("[data-pass-label]");
+const resistLabel = root.querySelector("[data-resist-label]");
 
 const N = D.steps.length;
 const SECONDS = 4.2; // per step while playing
@@ -185,6 +186,8 @@ function drawInset(ph) {
   for (const x of xs) f += `H${x - hw}V${(60 + d).toFixed(1)}H${x + hw}V60`;
   film.setAttribute("d", `${f}H206V108Z`);
   const mt = 12 * (1 - ph.strip);
+  // the resist tag and its leader fade with the mask, as the sidewall-polymer tag does
+  resistLabel.setAttribute("opacity", clamp((mt - 0.2) / 6).toFixed(2));
   if (mt < 0.2) mask.setAttribute("d", "");
   else {
     const edges = [14, ...xs.flatMap((x) => [x - hw, x + hw]), 206];
@@ -424,6 +427,20 @@ scrubInput.addEventListener("input", () => {
   takeOver();
   playing = false;
   s = Number(scrubInput.value) / 1000;
+  draw();
+  run();
+});
+
+// arrow keys on the slider jump a whole process step (to the next or previous step boundary), not 0.1% at a time
+scrubInput.addEventListener("keydown", (event) => {
+  const fwd = event.key === "ArrowRight" || event.key === "ArrowUp" || event.key === "PageUp";
+  const back = event.key === "ArrowLeft" || event.key === "ArrowDown" || event.key === "PageDown";
+  if (!fwd && !back) return;
+  event.preventDefault();
+  takeOver();
+  playing = false;
+  const u = s * N;
+  s = fwd ? Math.min(N, Math.floor(u + 1e-6) + 1) / N : Math.max(0, Math.ceil(u - 1e-6) - 1) / N;
   draw();
   run();
 });

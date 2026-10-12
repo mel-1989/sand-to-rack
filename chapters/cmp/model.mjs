@@ -33,7 +33,8 @@ export const REFLEXION = {
 // Tseng et al. (IBM Research, DuPont), "Optimization of Within-Die Planarity and Defectivity for CMP",
 // AVS NCCAVS CMP user group, 2023. https://nccavs-usergroups.avs.org/wp-content/uploads/2023/01/P1-WTTseng.pdf
 export const PLANARITY = {
-  criticalNm: "a few", // tolerance for within-die and within-wafer topography on critical layers is "on the order of a few nm"
+  criticalNm: "a few", // WiDNU/WiWNU tolerance in topography and line height is "on the order of a few nm for some critical layers" (embedded memory, stacked-FET); short-range, within a macro
+  longRangeNm: "hundreds of", // long-range planarity topography target: "100s of nm" in advanced nodes
   longRangeUm: [100, 1000], // long-range planarity length scale
   shortRangeUm: [0.1, 1], // short-range planarity length scale
   platens: 3, // their 300 mm commercial polisher
@@ -62,16 +63,16 @@ export const HEAD_RPM = MIRRA.headRpm[1];
 export const PHASES = [
   { id: "load", t0: 0.0, t1: 0.14, label: "Load the wafer", say: "load cup lifts the wafer into the head · head carries it to the platen" },
   { id: "slurry", t0: 0.14, t1: 0.25, label: "Slurry on", say: `slurry on · ${MIRRA.slurryMlMin} ml/min · platen spins up to ${PLATEN_RPM} rpm` },
-  { id: "press", t0: 0.25, t1: 0.37, label: "Head lowers, both spin", say: `head down · ${REFLEXION.bulkPsi} psi (Reflexion LK) · platen ${PLATEN_RPM} / head ${HEAD_RPM} rpm (Mirra, ${MIRRA.psi[0]}–${MIRRA.psi[1]} psi)` },
+  { id: "press", t0: 0.25, t1: 0.37, label: "Head lowers, both spin", say: `head down · ${REFLEXION.bulkPsi} psi on bulk copper (Reflexion LK) · head and platen both turn` },
   { id: "condition", t0: 0.37, t1: 0.49, label: "Conditioner sweeps", say: `diamond disc · ${REFLEXION.condLbf} lbf · ${REFLEXION.condRpm} rpm · ${REFLEXION.sweepsPerMin} sweeps/min` },
   { id: "flatten", t0: 0.49, t1: 0.67, label: "Copper polishes flat", say: `bulk copper · ${BULK_NM} nm/min · ${REFLEXION.bulkWiwnu} % non-uniformity` },
-  { id: "endpoint", t0: 0.67, t1: 0.76, label: "Endpoint", say: `window sees the barrier · stop · final clear runs ${CLEAR_NM} nm/min` },
+  { id: "endpoint", t0: 0.67, t1: 0.76, label: "Endpoint", say: `endpoint signal stops the polish · on a 3-platen tool this is platen 2's slow clear, ${CLEAR_NM} nm/min` },
   { id: "rinse", t0: 0.76, t1: 0.87, label: "Rinse", say: "slurry off · DI water rinses the pad · head lifts" },
   { id: "clean", t0: 0.87, t1: 1.0, label: "Brush clean", say: `wafer to the cleaner · brush scrub, dry · dishing under ${REFLEXION.dishingAvgA / 10} nm` },
 ];
 
 export const PIECES = {
-  platen: { name: "Platen and pad", say: `platen and polyurethane pad · ${PLATEN_RPM} rpm in a Mirra study · endpoint window in the pad` },
+  platen: { name: "Platen and pad", say: `polyurethane pad on the platen · ${PLATEN_RPM} rpm (Mirra) · endpoint window` },
   head: { name: "Carrier head", say: `wafer face down · zoned membrane · ${REFLEXION.bulkPsi} psi on bulk copper` },
   slurry: { name: "Slurry arm", say: `slurry ${MIRRA.slurryMlMin} ml/min and DI rinse nozzles` },
   cond: { name: "Pad conditioner", say: `diamond disc · ${REFLEXION.condLbf} lbf · ${REFLEXION.condRpm} rpm · ${REFLEXION.sweepsPerMin} sweeps/min` },

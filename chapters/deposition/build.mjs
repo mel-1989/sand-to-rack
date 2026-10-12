@@ -368,6 +368,10 @@ function ald() {
   can("ald", 222, 117, 9, 26, 14, { bevel: 0.4, inner: L(k.sideArc(222, 117, 9, 30, P, 24), { tone: "faint" }), extra: L(k.knurl(222, 117, 9, 31, 39, 26, P), { tone: "lo" }), name: "ald.pumpmotor" });
   pipe("ald.foreline", [[204, pump.y, 15], [204, 58, 15]], 3.2);
   for (const v of VALVES) feedLine(`ald.feed${v.id}`, [[v.x, -40, Z.lid + 4], [v.x, -70, Z.lid + 4], [v.x, -70, 52]], 1.5);
+  // the manifold's outlet: one short line from its front face down into the showerhead's gas inlet flange
+  const riser = { x: PX - 4, y: -12, w: 8, d: 8, r: 0.8 };
+  block("ald", 0, riser, Z.lid + 2.4, 6.6, { bevel: 0.3, extra: L(k.ring(PX, -8, 1.8, Z.lid + 9, P, 16), { tone: "lo" }), name: "ald.riser" });
+  feedLine("ald.outlet", [[PX, -24, Z.lid + 5.5], [PX, riser.y, Z.lid + 5.5]], 1.5);
 }
 
 // a straight line with a bolted flange on each end
@@ -493,7 +497,7 @@ const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="
 const controls = `<div class="dz-controls"><span class="dz-hint">Hover a chamber · Space plays the run</span><span class="dz-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="dz-stage" tabindex="0" role="slider" aria-label="Deposition cluster tool. Hover, or use the arrow keys, to pick a chamber; Space plays or pauses the run, which carries one wafer from a load lock into the ALD chamber and grows a film one atomic layer per cycle; Escape resets; the slider below steps through it." aria-valuemin="0" aria-valuemax="${M.ORDER.length}" aria-valuenow="0" aria-valuetext="${M.IDLE}">${svg}</div>`;
 const caption = `A single-wafer cluster tool keeps every chamber under vacuum and moves wafers between them with a robot, so a film stack can be built without the wafer ever meeting air. Here a ${M.TOOL.waferMm} mm wafer comes through a load lock, the robot carries it into the ALD chamber, lift pins lower it onto a pedestal heated to ${M.ALD.tempC} °C, and the valves pulse ${M.ALD.precursor} (filled dots), purge with ${M.ALD.purge}, pulse ${M.ALD.coreactant} (rings) and purge again. Each cycle adds about ${M.ALD.gpcNm} nm of ${M.ALD.film}, roughly ${Math.round(M.ALD.monolayerShare * 100)}% of a monolayer, so about ${Math.round(M.cyclesPerNm)} cycles make a nanometre. Plan sizes follow the ruler (100 mm ticks); heights, the showerhead gap and the film thickness are exaggerated, chamber layout is illustrative, and the slider's step lengths are proportions, not seconds.`;
-const scrub = `<span class="dz-scrub"><button type="button" class="dz-play" data-play aria-label="Play the run"><span class="dz-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="dz-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is the wafer in the load lock, 1000 is ${M.CYCLES} ALD cycles done"><span class="dz-step" data-step>${SEGS[0].label}</span></span>`;
+const scrub = `<span class="dz-scrub"><button type="button" class="dz-play" data-play aria-label="Play the run"><span class="dz-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="dz-range" data-scrub min="0" max="1000" step="10" value="0" aria-label="Process: 0 is the wafer in the load lock, 1000 is ${M.CYCLES} ALD cycles done"><span class="dz-step" data-step>${SEGS[0].label}</span></span>`;
 const body = `<figure class="iso-figure dz"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="dz-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 
 const CSS = readFileSync(join(HERE, "deposition.css"), "utf8");

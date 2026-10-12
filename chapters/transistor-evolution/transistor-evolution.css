@@ -278,6 +278,22 @@
     width: 175%;
     max-width: none;
   }
+
+  /* the strip runs past the card edge: fade the side that has more to swipe to */
+  .tr-stage[data-more-right] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent);
+  }
+
+  .tr-stage[data-more-left] {
+    -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 44px), transparent);
+    mask-image: linear-gradient(to left, #000 calc(100% - 44px), transparent);
+  }
+
+  .tr-stage[data-more-left][data-more-right] {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 44px, #000 calc(100% - 44px), transparent);
+  }
 }
 
 /* one part of the lit specimen picked by hover or tap: its outline stays lit, the rest of the specimen steps down */
@@ -292,5 +308,65 @@
 }
 
 .tr-mat[data-pick] {
+  fill: var(--anatomy-lit);
+}
+
+/* CFET: the p-type sheets and the p-type epitaxy share a lighter tone, so "n stacked on p" reads without hovering */
+.tr-sip {
+  fill: var(--anatomy-mid);
+}
+
+.it[data-on] .tr-sip-edge {
+  stroke: var(--anatomy-lit);
+}
+
+.tr-ptype .iso-top {
+  fill: color-mix(in srgb, var(--anatomy-mid) 38%, var(--anatomy-top));
+}
+
+.tr-ptype .iso-shade {
+  fill: color-mix(in srgb, var(--anatomy-mid) 30%, var(--anatomy-shade-1));
+}
+
+.tr-ptype .iso-shade[data-shade="0"] {
+  fill: color-mix(in srgb, var(--anatomy-mid) 24%, var(--anatomy-shade-0));
+}
+
+.it[data-on] .tr-ptype .iso-top {
+  fill: color-mix(in srgb, var(--anatomy-mid) 22%, var(--anatomy-lit-top));
+}
+
+.it[data-on] .tr-ptype .iso-shade {
+  fill: color-mix(in srgb, var(--anatomy-mid) 18%, var(--anatomy-lit-shade));
+}
+
+/* planar cut face: the flat channel gets a lighter tone and the thick (illustrative) gate dielectric a band over it, so the one-sided grip reads at 1x */
+.tr-sib {
+  fill: var(--anatomy-mid);
+}
+
+.tr-oxb {
+  fill: var(--anatomy-lo);
+}
+
+.it[data-on] .tr-sib-edge {
+  stroke: var(--anatomy-lit);
+}
+
+/* CFET n-type sheets: the plain silicon tone at rest, a step under the p-type sheets when lit */
+.tr-sin {
+  fill: var(--anatomy-lo);
+}
+
+.it[data-on] .tr-sin {
+  fill: color-mix(in srgb, var(--anatomy-hi) 45%, var(--anatomy-card));
+}
+
+.it[data-on] .tr-sin-edge {
+  stroke: var(--anatomy-lit);
+}
+
+/* a picked section path always wins over the tone rules above */
+.tr-stage .it .tr-mat[data-pick] {
   fill: var(--anatomy-lit);
 }

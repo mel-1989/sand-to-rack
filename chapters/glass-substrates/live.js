@@ -270,6 +270,8 @@ let spoken = "";
 function describe() {
   const text = selected ? `${D.pieces[selected].name}: ${D.pieces[selected].say}` : `${stepLabel(s)}: ${PH[phaseIndex(s)].say}`;
   if (stage.getAttribute("aria-valuetext") !== text) stage.setAttribute("aria-valuetext", text);
+  const step = stepLabel(s);
+  if (scrubInput.getAttribute("aria-valuetext") !== step) scrubInput.setAttribute("aria-valuetext", step);
   if (document.activeElement === stage && text !== spoken) {
     spoken = text;
     live.textContent = text;
@@ -297,7 +299,10 @@ function select(id) {
   for (const node of nodes) setOn(node.el, id !== null && node.part === id);
   if (id) stage.setAttribute("data-focus", "");
   else stage.removeAttribute("data-focus");
-  partButtons.forEach((b) => setOn(b, b.dataset.part === id));
+  partButtons.forEach((b) => {
+    setOn(b, b.dataset.part === id);
+    b.setAttribute("aria-pressed", b.dataset.part === id ? "true" : "false");
+  });
   root.toggleAttribute("data-coupons", id === "coupons");
   render();
   describe();
@@ -376,7 +381,9 @@ stage.addEventListener("pointermove", (event) => {
   if (id && id !== "base" && touring) takeOver();
   select(id);
 });
-stage.addEventListener("pointerleave", () => {
+stage.addEventListener("pointerleave", (event) => {
+  // a touch tap fires pointerleave right after pointerup: keep the tapped part lit
+  if (event.pointerType === "touch") return;
   clearTimeout(leaveTimer);
   leaveTimer = setTimeout(() => select(null), 240);
 });
@@ -405,7 +412,9 @@ partButtons.forEach((button) => {
   };
   button.addEventListener("pointerenter", show);
   button.addEventListener("focus", show);
-  button.addEventListener("pointerleave", hide);
+  button.addEventListener("pointerleave", (event) => {
+    if (event.pointerType !== "touch") hide();
+  });
   button.addEventListener("blur", hide);
   button.addEventListener("click", show);
 });
@@ -417,7 +426,8 @@ if (sectionsBox) {
     clearTimeout(leaveTimer);
     select("coupons");
   });
-  sectionsBox.addEventListener("pointerleave", () => {
+  sectionsBox.addEventListener("pointerleave", (event) => {
+    if (event.pointerType === "touch") return;
     clearTimeout(leaveTimer);
     leaveTimer = setTimeout(() => select(null), 240);
   });
@@ -431,6 +441,11 @@ stage.addEventListener("focus", () => {
   describe();
 });
 
+// a still that shows a step doing its work: the laser step once every row is written, the others mid-step
+function stillOf(i) {
+  const p = PH[i];
+  return p.id === "laser" ? p.t1 - 0.002 : (p.t0 + p.t1) / 2;
+}
 function togglePlay() {
   takeOver();
   if (playing) {
@@ -440,9 +455,9 @@ function togglePlay() {
   }
   if (s >= 0.999) s = 0;
   if (still.matches) {
-    // reduced motion: jump to the start of the next step instead of animating
+    // reduced motion: jump to a still of the next step instead of animating
     const i = phaseIndex(s);
-    jumpTo(i + 1 < PH.length ? PH[i + 1].t0 + 0.001 : 1);
+    jumpTo(i + 1 < PH.length ? stillOf(i + 1) : 1);
     return;
   }
   playing = true;
@@ -482,10 +497,30 @@ document.addEventListener("keydown", (event) => {
 });
 
 scrubInput.addEventListener("input", () => {
+  // read the value first: select(null) re-renders, and render() writes scrubInput.value from s,
+  // which would overwrite a track click made while a part is selected
+  const x = Number(scrubInput.value) / 1000;
+  clearTimeout(leaveTimer);
   takeOver();
   playing = false;
+  s = clamp(x);
   select(null);
-  jumpTo(Number(scrubInput.value) / 1000);
+  jumpTo(x);
+});
+// arrow keys on the slider step from one process step to the next (0.1% a press was too fine to use)
+scrubInput.addEventListener("keydown", (event) => {
+  const dir = event.key === "ArrowRight" || event.key === "ArrowUp" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowDown" ? -1 : 0;
+  if (!dir || event.metaKey || event.ctrlKey || event.altKey) return;
+  event.preventDefault();
+  clearTimeout(leaveTimer);
+  takeOver();
+  playing = false;
+  // forward: this step's still if short of it, else the next step's; back: mirror image
+  const i = phaseIndex(s);
+  const here = stillOf(i);
+  const x = dir > 0 ? (s < here - 0.003 ? here : i + 1 < PH.length ? stillOf(i + 1) : 1) : s > here + 0.003 ? here : i > 0 ? stillOf(i - 1) : 0;
+  select(null);
+  jumpTo(x);
 });
 playButton.addEventListener("click", togglePlay);
 
@@ -496,4 +531,6 @@ const wording = () => hint && (hint.textContent = narrow.matches ? "Tap a part Â
 wording();
 narrow.addEventListener("change", wording);
 if (still.matches) touring = false;
+partButtons.forEach((b) => b.setAttribute("aria-pressed", "false"));
 render();
+describe();

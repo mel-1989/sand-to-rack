@@ -39,6 +39,17 @@ LAYER.sort((a, b) => a.index - b.index);
 const padItem = layersEl.querySelector("[data-pad]").closest(".it");
 const padGroup = layersEl.querySelector("[data-pad]");
 const phaseGroups = [...layersEl.querySelectorAll("[data-phase]")];
+const ubmFilm = layersEl.querySelector("[data-ubm]");
+const ubmItem = ubmFilm.closest(".it");
+const BUMPS = [...layersEl.querySelectorAll("[data-bump]")].map((g) => ({
+  item: g.closest(".it"),
+  disc: g.querySelector('[data-b="disc"]'),
+  pillar: [...g.querySelectorAll('[data-b="pillar"]')],
+  cap: [...g.querySelectorAll('[data-b="cap"]')],
+  dome: g.querySelector('[data-b="dome"]'),
+}));
+const BUMP_STEPS = new Set(["pad", "ubm", "pillar", "reflow"]);
+const PLATING = new Set(["plate", "pillar"]);
 
 // ---- the process timeline ----
 const SEQ = D.seq;
@@ -137,7 +148,7 @@ function setLayer(L, mode, t) {
 }
 
 function headAt(step) {
-  if (step.step !== "plate") return 0;
+  if (!PLATING.has(step.step)) return 0;
   const t = step.t;
   if (t < 0.18) return ease(t / 0.18);
   if (t > 0.85) return ease((1 - t) / 0.15);
@@ -153,34 +164,81 @@ function apply() {
     else if (L.index > active) setLayer(L, "hidden", 0);
     else setLayer(L, step.step, step.t);
   }
-  // passivation and pads
-  const padOn = done || step.step === "pad";
+  // passivation and pads, then the bumps
+  const bumping = !done && BUMP_STEPS.has(step.step);
+  const padOn = done || bumping;
   show(padItem, padOn);
-  if (padOn) padGroup.setAttribute("opacity", done ? "1" : String(Math.max(0.05, ease(step.t)).toFixed(3)));
-  if (done) padGroup.removeAttribute("opacity");
+  if (!done && step.step === "pad") padGroup.setAttribute("opacity", String(Math.max(0.05, ease(step.t)).toFixed(3)));
+  else padGroup.removeAttribute("opacity");
+  bumpsAt(done ? "done" : bumping ? step.step : "none", step.t);
   // the cell
   headShare = done ? 0 : headAt(step);
   const spinning = headShare > 0.98;
   const phase = spinning ? Math.floor(step.t * 70) % D.phases : 0;
   for (const g of phaseGroups) show(g, Number(g.dataset.phase) === phase);
   stage.toggleAttribute("data-flowing", spinning && !still.matches);
-  const fillStage = step.step === "plate" && step.t < 0.6;
-  const amps = headShare > 0.98 ? (fillStage ? D.amps.fill : D.amps.burden) : 0;
-  const text = `${amps.toFixed(amps < 10 ? 1 : 0)} mA/cm²`;
+  const amps = ampsAt(step);
+  const text = ampsText(amps);
   if (psu.textContent !== text) psu.textContent = text;
   stage.dataset.active = done ? "" : step.step;
   return { step, done };
 }
 
+// the plating current: one value feeds both the supply's display and the readout
+function ampsAt(step) {
+  if (headShare <= 0.98) return 0;
+  if (step.step === "pillar") return D.amps.pillar;
+  return step.t < 0.6 ? D.amps.fill : D.amps.burden;
+}
+const ampsText = (amps) => `${amps.toFixed(amps < 10 ? 1 : 0)}\u00a0mA/cm²`;
+
+// bump stage: "none", "done", or the active bump step with its share t
+let bumpKey = "";
+function bumpsAt(mode, t) {
+  const key = mode === "pad" || mode === "none" || mode === "done" ? mode : `${mode}:${t.toFixed(3)}`;
+  if (key === bumpKey) return;
+  bumpKey = key;
+  // the blanket film: sputtered in, kept through plating, etched away between the bumps
+  let film = 0;
+  if (mode === "ubm") film = ease(clamp(t / 0.8));
+  else if (mode === "pillar") film = 1;
+  else if (mode === "reflow") film = 1 - ease(clamp((t - 0.15) / 0.3));
+  show(ubmItem, film > 0.001);
+  if (film > 0.001 && film < 1) ubmFilm.setAttribute("opacity", film.toFixed(3));
+  else ubmFilm.removeAttribute("opacity");
+  show(ubmFilm, film > 0.001);
+  // pillar then cap grow while the head is down; reflow turns the flat cap into a dome
+  let pillar = 0;
+  let cap = 0;
+  if (mode === "pillar") {
+    pillar = clamp((t - 0.18) / 0.45);
+    cap = clamp((t - 0.63) / 0.22);
+  } else if (mode === "reflow" || mode === "done") {
+    pillar = 1;
+    cap = 1;
+  }
+  const domed = mode === "done" || (mode === "reflow" && t >= 0.6);
+  const n = D.pillarPhases;
+  const pj = Math.round(pillar * n);
+  const cj = Math.round(cap * n);
+  for (const b of BUMPS) {
+    show(b.item, pj > 0);
+    show(b.disc, film < 0.999 && pj > 0);
+    b.pillar.forEach((g, i) => show(g, i + 1 === pj));
+    b.cap.forEach((g, i) => show(g, !domed && i + 1 === cj));
+    show(b.dome, domed);
+  }
+}
+
 function layerName(step) {
-  return step.step === "pad" ? "Pads" : D.layers[step.layer].name;
+  return BUMP_STEPS.has(step.step) ? "Bumps" : D.layers[step.layer].name;
 }
 
 function stepLabel() {
   if (s >= 0.9995) return "finished stack";
   if (s <= 0.0005) return "bare transistors";
   const step = stepAt(s);
-  if (step.step === "pad") return "passivation + bond pads";
+  if (BUMP_STEPS.has(step.step)) return `bumps · ${D.steps[step.step].name}`;
   return `${layerName(step)} · ${D.steps[step.step].name}`;
 }
 
@@ -189,9 +247,15 @@ function readoutText() {
   if (s >= 0.9995) return D.idle;
   if (s <= 0.0005) return "transistors done · no wiring yet";
   const step = stepAt(s);
-  if (step.step === "pad") return "passivation · aluminium bond pads";
   const name = layerName(step);
-  if (step.step === "plate" && step.t >= 0.6) return `${name} · overburden · ${D.amps.burden}+ mA/cm²`;
+  if (PLATING.has(step.step)) {
+    // words from the same instant as the supply: no current while the head travels
+    if (headShare < 0.98) return step.t < 0.5 ? `${name} · wafer entering bath · current off` : `${name} · lift · rinse/spin dry`;
+    const amps = ampsText(ampsAt(step));
+    if (step.step === "pillar") return step.t < 0.63 ? `${name} · Cu pillar in resist · ${amps}` : `${name} · SnAg cap · ${amps}`;
+    if (step.t >= 0.6) return `${name} · overburden · ${amps}`;
+    return `${name} · ${D.rpm[0]}–\u2060${D.rpm[1]}\u00a0rpm · ${amps} · bottom-up fill`;
+  }
   return `${name} · ${D.steps[step.step].say}`;
 }
 

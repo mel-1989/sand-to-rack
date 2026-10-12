@@ -15,7 +15,6 @@ const GROWN = process.argv.includes("--grown");
 
 // ---- world layout (x, y on the floor, z up; 1 unit ≈ 13.3 mm for the rods, the rest illustrative) ----
 const W = 680;
-const H = 760;
 const AZIMUTH = 45;
 const ELEVATION = 30;
 const VA = AZIMUTH; // the floor angle that points at the viewer
@@ -37,7 +36,6 @@ const JACKET = [53.6, 55.4]; // the cooling-water gap between the bell's two wal
 const Z_B = 228; // top of the cutaway
 const Z_C = 252; // top of the bell's cylinder
 const DOME_H = 40;
-const LIFT = 146; // how far the crane lifts the bell at harvest
 
 const RING = 36; // rod circle radius
 const CHUCK_Z = BP_TOP + 9; // rods start on the graphite chucks
@@ -45,6 +43,8 @@ const ROD_TOP = CHUCK_Z + 120; // bridge axis height (illustrative rod length)
 const R_SLIM = M.rodRadius(M.CVD.slimMm);
 const R_FINAL = M.rodRadius(M.FINAL_MM);
 const R_DRAW = GROWN ? R_FINAL : R_SLIM;
+// how far the crane lifts the bell at harvest: just enough for its flange to clear the grown hairpins
+const LIFT = Math.ceil(ROD_TOP + R_FINAL + 6 - FL.z0);
 
 const HOPPER = { x: -220, y: 58, w: 40, d: 34, r: 2 };
 const HOP_Z = 16;
@@ -62,7 +62,7 @@ const PIECES = {
   rods: { name: "Silicon rods", say: "", move: [0, 0, 0] },
   base: { name: "Baseplate and electrodes", say: "baseplate · electrodes, chucks, nozzles", move: [0, 0, 0] },
   hopper: { name: "MG-Si feed bin", say: "", move: [0, 0, 0] },
-  fbr: { name: "Hydrochlorinator", say: "", move: [0, 0, 0] },
+  fbr: { name: "TCS reactor", say: "", move: [0, 0, 0] },
   column: { name: "Distillation column", say: "", move: [0, 0, 0] },
   power: { name: "Power supply", say: "power supply · current heats the rods", move: [0, 0, 0] },
   stand: { name: "Bench", say: "", move: [0, 0, 0] },
@@ -71,12 +71,19 @@ const STAGGER = ["bell", "rods", "base", "hopper", "fbr", "column", "power", "st
 const SPRING = { stagger: 0.05, stiffness: 64, damping: 14.2, substeps: 4 };
 const ORDER = ["hopper", "fbr", "column", "rods", "bell", "base", "power"];
 
-const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [0, 0, Z_C + DOME_H + LIFT], [-R_OUT, R_OUT, Z_C + DOME_H + LIFT], [R_OUT, -R_OUT, Z_C + DOME_H + LIFT], [COL.at[0], COL.at[1], COL.z1 + 18]],
-  W,
-  H,
-  { pad: 26, azimuth: AZIMUTH, elevation: ELEVATION },
-);
+// Fit the resting machine tightly; the viewBox height follows the fit (width-bound), so the card has
+// no empty band above the bell. At harvest live.js pulls the camera back about the bench just enough
+// to keep the lifted bell (and its lifting eye) inside the frame.
+const PAD = 26;
+const FIT = [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [0, 0, Z_C + DOME_H + 13], [-R_OUT, R_OUT, Z_C + DOME_H], [R_OUT, -R_OUT, Z_C + DOME_H], [COL.at[0], COL.at[1], COL.z1 + 18]];
+const H = (() => {
+  const flat = FIT.map((point) => k.iso(point, { origin: [0, 0], scale: 1, azimuth: AZIMUTH, elevation: ELEVATION }));
+  const xs = flat.map(([x]) => x);
+  const ys = flat.map(([, y]) => y);
+  const scale = (W - PAD * 2) / (Math.max(...xs) - Math.min(...xs));
+  return Math.ceil((Math.max(...ys) - Math.min(...ys)) * scale + PAD * 2);
+})();
+const P = k.fitProjection(FIT, W, H, { pad: PAD, azimuth: AZIMUTH, elevation: ELEVATION });
 const V = G.viewOf(P);
 const KS = G.scaleOf(P);
 const at = (point) => k.iso(point, P);
@@ -420,9 +427,10 @@ function bell() {
   port(VA + 52, Z_C - 6, 3, 5, "water-out", false);
 }
 
-// ---- feed skid: MG-Si bin, hydrochlorinator, distillation column ----
+// ---- feed skid: MG-Si bin, TCS reactor, distillation column ----
 let FBR_SHELL, COL_SHELL;
 let TRAYS = 0;
+let VAPOUR = null;
 function hopper() {
   const legs = k.corners(HOPPER, 3);
   for (const [x, y] of byDepth(legs)) put("hopper", [x, y, HOP_Z / 2], S(k.cylinder(x, y, 3.4, 0, 1.4, P, 20), { tone: "mid" }) + S(k.cylinder(x, y, 2, 1.4, HOP_Z - 1.4, P, 20), { tone: "mid", crease: "none" }), [A.cylinder(x, y, 3.4, 0, 1.4, {}), A.cylinder(x, y, 2, 1.4, HOP_Z - 1.4, {})], { name: R.nameFor("hopper.leg") });
@@ -465,7 +473,7 @@ function fbr() {
   nozzle("fbr", v.shape, [x, y], 45, FBR.r, 52, 5.2, { tag: "manway", length: 2.4 });
   nozzle("fbr", v.shape, [x, y], 12, FBR.r, 20, 2.4, { tag: "hcl-in", length: 4 });
   gauge("fbr", v.shape, [x, y], 5, FBR.r, 74, { reading: 0.4 });
-  // sight glass onto the fluidised bed; live.js lifts bubbles through it during hydrochlorination
+  // sight glass onto the fluidised bed; live.js lifts bubbles through it during TCS synthesis
   const n = polar(SIGHT.deg, 1, 0);
   const end = padOn("fbr", v.shape, [x + n[0] * (FBR.r - 0.6), y + n[1] * (FBR.r - 0.6), SIGHT.z], n, SIGHT.r, 2.6, { name: "fbr.sight-pad", tone: "mid" });
   const F2 = G.frameAlong(end, n);
@@ -489,7 +497,13 @@ function column() {
   // a copy of each tray seam that live.js lights in turn, bottom to top, while the column runs
   const hot = trays.map((d, i) => `<path class="pz-tray" data-tray="${i}" d="${d}"/>`).join("");
   TRAYS = trays.length;
-  const v = vessel("column", [x, y, COL.z0], COL.r, length, 6, { inner: L(trays.join(""), { tone: "faint" }) + hot, name: "column.shell" });
+  // vapour dots that live.js walks up the column's near face, from the bottom tray to the overhead draw
+  const face = polar(VA - 52, COL.r * 0.85); // clear of the ladder on the front-left
+  const lo = at([x + face[0], y + face[1], COL.z0 + 14]);
+  const hi = at([x + face[0], y + face[1], COL.z1 - 12]);
+  VAPOUR = { x0: lo[0], y0: lo[1], x1: hi[0], y1: hi[1], w: COL.r * KS * 0.35, n: 8 };
+  const vapour = Array.from({ length: VAPOUR.n }, (_, i) => `<circle class="pz-vapour" data-v="${i}" r="${(1.25 + (i % 2) * 0.4).toFixed(2)}" cx="${lo[0].toFixed(1)}" cy="${lo[1].toFixed(1)}"/>`).join("");
+  const v = vessel("column", [x, y, COL.z0], COL.r, length, 6, { inner: L(trays.join(""), { tone: "faint" }) + hot + vapour, name: "column.shell" });
   COL_SHELL = v.shape;
   put("column", [x, y, COL.z0 / 2], S(k.cylinder(x, y, COL.r + 3, 0, 2, P, 40), { tone: "mid" }) + S(k.cylinder(x, y, COL.r - 1, 2, COL.z0 + 3 - 2, P, 40), { tone: "mid", crease: "none" }), [A.cylinder(x, y, COL.r + 3, 0, 2, {}), A.cylinder(x, y, COL.r - 1, 2, COL.z0 + 1, { seated: true, cut: v.shape })], { name: "column.skirt" });
   gauge("column", v.shape, [x, y], 75, COL.r, 150, { reading: 0.25 });
@@ -546,19 +560,22 @@ function power() {
 }
 
 function plumbing() {
-  // MG-Si screw feeder: bin to the hydrochlorinator's lower nozzle
+  // MG-Si screw feeder: bin to the TCS reactor's lower nozzle
   const [fx, fy] = FBR.at;
   const p1 = padOn("fbr", FBR_SHELL, [fx, fy + FBR.r - 0.6, 26], [0, 1, 0], 4.6, 4, { name: "fbr.feed-pad", tone: "mid" });
   pipe("hopper", [[fx, HOPPER.y, 26], p1], 2.8, { name: "hopper.feeder", bands: [0.5], flow: "feeder" });
-  // hydrochlorinator top to the column's feed tray
+  // TCS reactor top to the column's feed tray
   const [cx, cy] = COL.at;
   const topS = FBR.z1;
   const p2a = padOn("fbr", FBR_SHELL, [fx, fy, topS - 0.6], [0, 0, 1], 3.6, 3, { name: "fbr.top-pad", tone: "mid" });
   const p2b = padOn("column", COL_SHELL, [cx, cy + COL.r - 0.5, 120], [0, 1, 0], 3.6, 3.5, { name: "column.feed-pad", tone: "mid" });
   pipe("fbr", [p2a, [fx, fy, 120], p2b], 2.2, { name: "fbr.crude", flow: "crude" });
-  // purified TCS from the column foot to the reactor's inlet, under the baseplate
-  const p3a = padOn("column", COL_SHELL, [cx + COL.r - 0.5, cy, 18], [1, 0, 0], 3.6, 3.5, { name: "column.draw-pad", tone: "mid" });
-  pipe("column", [p3a, [-12, cy, 18], [-12, -12, 18], [-12, -12, BP_Z]], 2.2, { name: "column.tcs", bands: [0.3, 0.62], flow: "tcs" });
+  // purified TCS leaves overhead (it boils at 31.8 °C; the heavy metal chlorides stay in the sump),
+  // drops beside the column and runs under the baseplate to the reactor's inlet
+  const DRAW_Z = COL.z1 - 14;
+  const DROP_X = cx + COL.r + 9;
+  const p3a = padOn("column", COL_SHELL, [cx + COL.r - 0.5, cy, DRAW_Z], [1, 0, 0], 3.6, 3.5, { name: "column.draw-pad", tone: "mid" });
+  pipe("column", [p3a, [DROP_X, cy, DRAW_Z], [DROP_X, cy, 18], [-12, cy, 18], [-12, -12, 18], [-12, -12, BP_Z]], 2.2, { name: "column.tcs", bands: [0.12, 0.45, 0.75], flow: "tcs" });
   // off-gas: H2, HCl and chlorosilanes leave through the baseplate to the recovery plant under the floor
   const SLEEVE = { x: 4, y: 12, w: 14, d: 14, r: 2 };
   put("base", centreOf(SLEEVE, 0), S(k.slabOf(SLEEVE, 0, 3, P, 3, 0.4), { tone: "mid" }) + Dots(k.corners(SLEEVE, 2.2).map(([x, y]) => at([x, y, 3])), { size: 0.42 }), [A.slab(SLEEVE, 0, 3, {}, 3)], { name: "base.floor-sleeve" });
@@ -595,7 +612,7 @@ const groups = R.items.map((item, index) => {
   return `<g class="it${item.piece === "rods" ? " pz-rod" : ""}" data-piece="${item.piece}" data-k="${item.key.toFixed(2)}" data-m="${mx.toFixed(1)},${my.toFixed(1)},${mz.toFixed(1)}" data-i="${index}"${extra}>${item.svg}</g>`;
 });
 
-const LABEL = `A Siemens polysilicon reactor, cut away at the front, on a bench beside its feed skid. Left to right: a bin of metallurgical silicon lumps feeding a fluidised-bed hydrochlorinator, a distillation column, and the reactor: a steel bell jar with a double, water-cooled wall, bolted to a baseplate that carries ${M.ROD_PAIRS * 2} electrodes holding ${M.ROD_PAIRS} U-shaped silicon rods. A power cabinet feeds the electrodes.`;
+const LABEL = `A Siemens polysilicon reactor, cut away at the front, on a bench beside its feed skid. Left to right: a bin of metallurgical silicon lumps feeding a fluidised-bed trichlorosilane reactor, a distillation column, and the reactor: a steel bell jar with a double, water-cooled wall, bolted to a baseplate that carries ${M.ROD_PAIRS * 2} electrodes holding ${M.ROD_PAIRS} U-shaped silicon rods. A power cabinet feeds the electrodes.`;
 const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="pz-layers">${groups.join("")}</g>`], className: "pz-svg" });
 
 const unit = (vector) => {
@@ -621,6 +638,9 @@ const DATA = {
   idle: M.IDLE,
   sight: SIGHT_BOX,
   trays: TRAYS,
+  vapour: VAPOUR,
+  // camera pull-back at harvest: scale .pz-layers about the bench's bottom centre so the lifted eye stays >= 8 px inside
+  zoom: { cx: W / 2, cy: H - PAD, top: at([0, 0, Z_C + DOME_H + 13])[1], lift: at([0, 0, 0])[1] - at([0, 0, LIFT])[1], margin: 8 },
 };
 DATA.pieces.hopper.say = M.STEPS[0].say;
 DATA.pieces.fbr.say = M.STEPS[1].say;
@@ -631,7 +651,7 @@ const PARTS = ORDER.map((id, index) => `<button type="button" class="pz-part" da
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">Siemens reactor · cutaway</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="pz-controls"><span class="pz-hint">Hover a part · Space plays the process</span><span class="pz-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="pz-stage" tabindex="0" role="group" aria-label="Siemens polysilicon reactor and feed skid. Hover a part, or use the arrow keys, to pick it; Space plays the process from sand to rods or pauses it; Escape resets; the slider below steps through the five stages.">${svg}</div>`;
-const caption = `Polysilicon for chips is made in about five stages. Quartz is reduced with carbon in an arc furnace running above ${M.MGSI.furnaceC} °C to metallurgical-grade silicon of ${M.MGSI.puritySoG}–${M.MGSI.purityEG} % (the bin). Ground silicon reacts with HCl at about ${M.TCS.synthesisC} °C in a fluidised bed to give trichlorosilane, SiHCl₃ (the hydrochlorinator). SiHCl₃ boils at ${M.TCS.boilC} °C, so it is distilled to purity, ${M.DIST.passesEG} times for electronic grade (the column). In the Siemens reactor, current heats thin silicon rods to about ${M.CVD.rodC} °C under a steel bell jar, and SiHCl₃ with hydrogen deposits silicon on them (${M.CVD.reaction}) until they grow from ${M.CVD.slimMm} mm to ${M.CVD.finalMm[0]}–${M.CVD.finalMm[1]} mm across. Then the bell is lifted and the rods are harvested, crushed and etched: ${M.GRADE.egNines[0]}N–${M.GRADE.egNines[1]}N pure. Rod diameters follow the ruler (small ticks ≈ ${((M.DRAW_MM * 5) / 10).toFixed(1)} cm, large ticks ≈ ${((M.DRAW_MM * 25) / 10).toFixed(0)} cm); the rod count, rod length, vessel sizes and the skid beside the reactor are illustrative and not to scale.`;
+const caption = `Polysilicon for chips is made in about five stages. Quartz is reduced with carbon in an arc furnace running above ${M.MGSI.furnaceC} °C to metallurgical-grade silicon of ${M.MGSI.puritySoG}–${M.MGSI.purityEG} % (the bin). Ground silicon reacts with HCl at about ${M.TCS.synthesisC} °C in a fluidised bed to give trichlorosilane, SiHCl₃ (the TCS reactor). SiHCl₃ boils at ${M.TCS.boilC} °C, so it is distilled to purity, ${M.DIST.passesEG} times for electronic grade (the column). In the Siemens reactor, current heats thin silicon rods to about ${M.CVD.rodC} °C under a steel bell jar, and SiHCl₃ with hydrogen deposits silicon on them (${M.CVD.reaction}) until they grow from ${M.CVD.slimMm} mm to ${M.CVD.finalMm[0]}–${M.CVD.finalMm[1]} mm across. Then the bell is lifted and the rods are harvested, crushed and etched: ${M.GRADE.egNines[0]}N–${M.GRADE.egNines[1]}N pure. Rod diameters follow the ruler (small ticks ≈ ${((M.DRAW_MM * 5) / 10).toFixed(1)} cm, large ticks ≈ ${((M.DRAW_MM * 25) / 10).toFixed(0)} cm); the rod count, rod length, vessel sizes and the skid beside the reactor are illustrative and not to scale.`;
 const scrub = `<span class="pz-scrub"><button type="button" class="pz-play" data-play aria-label="Play the process"><span class="pz-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="pz-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is the raw silicon, 1000 is the harvested rods"><span class="pz-step" data-step>01 · metallurgical silicon</span></span>`;
 const body = `<figure class="iso-figure pz"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="pz-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 

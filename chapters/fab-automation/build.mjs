@@ -14,7 +14,7 @@ const POSE_SRC = readFileSync(join(HERE, "pose.js"), "utf8");
 const { poseAt, offsetsOf } = new Function(`${POSE_SRC}; return { poseAt, offsetsOf };`)();
 
 // ---- world (1 unit = 10 mm; x, y on the floor, z up) ----
-const W = 640;
+const W = 600;
 const H = 760;
 const AZIMUTH = 45;
 const ELEVATION = 36;
@@ -84,7 +84,7 @@ const P = k.fitProjection(
   ],
   W,
   H,
-  { pad: 18, azimuth: AZIMUTH, elevation: ELEVATION },
+  { pad: 12, azimuth: AZIMUTH, elevation: ELEVATION },
 );
 const V = G.viewOf(P);
 const at = (point) => k.iso(point, P);
@@ -224,16 +224,26 @@ function ceiling() {
 function stocker() {
   const s = STOCKER;
   const panels = [];
-  for (const z of [60, 120, 180]) panels.push(seam(s, z, 3));
+  for (const z of [60, 96, 186]) panels.push(seam(s, z, 3));
   let svg = box(s, 0, STOCKER_H, { tone: "mid", inner: L(panels.join(""), { tone: "faint" }) }, 3, 0.8);
-  // window on the +x face showing shelves of FOUPs, and a row of vents below it on the same face
+  // window on the +x face: two shelves, each holding a FOUP (to scale), seen through the glass; vents below on the same face
   const wx = s.x + s.w;
-  svg += L(slotX(wx, s.y + 12, s.y + s.d - 12, 130, 172), { tone: "lo" });
-  const shelf = [];
-  for (const z of [144, 158]) shelf.push(k.segment([wx, s.y + 12, z], [wx, s.y + s.d - 12, z], P));
-  svg += L(shelf.join(""), { tone: "faint" });
+  const win = { y0: s.y + 6, y1: s.y + s.d - 6, z0: 100, z1: 178 };
+  const winPath = slotX(wx, win.y0, win.y1, win.z0, win.z1);
+  let racks = `<path class="iso-face fa-cavity" d="${winPath}"/>`;
+  const shelfPlan = plan(wx - 40, wx - 0.5, win.y0, win.y1, 0);
+  const foupPlan = plan(wx - 36, wx - 1.6, 63, 103, 1.2);
+  const flangePlan = plan(wx - 22, wx - 14, 79, 87, 0.6);
+  for (const z of [win.z0, 139]) {
+    racks += box(shelfPlan, z - 1.5, 1.5, { tone: "lo", crease: "none" }, 2, 0);
+    racks += box(foupPlan, z, FOUP_TOP - FOUP_Z, { tone: "hi", crease: "lo", inner: L(seam(foupPlan, z + 3, 3), { tone: "faint" }) }, 3, 0.6);
+    racks += box(flangePlan, z + FOUP_TOP - FOUP_Z, 2, { tone: "mid" }, 2, 0.2);
+    racks += L(slotX(wx - 1.6, 67, 99, z + 3, z + 30), { tone: "lo" });
+  }
+  svg += `<clipPath id="fa-stk-win"><path d="${winPath}"/></clipPath><g clip-path="url(#fa-stk-win)">${racks}</g>`;
+  svg += L(winPath, { tone: "lo" });
   const vents = [];
-  for (let i = 0; i < 6; i++) vents.push(slotX(wx, s.y + 16, s.y + s.d - 16, 96 + i * 4, 97.6 + i * 4));
+  for (let i = 0; i < 6; i++) vents.push(slotX(wx, s.y + 16, s.y + s.d - 16, 30 + i * 4, 31.6 + i * 4));
   svg += L(vents.join(""), { tone: "lo" });
   svg += box(k.insetPlan(s, 4), STOCKER_H, 3, { tone: "mid" }, 3, 0.4);
   svg += screws(k.corners(s, 2.5), STOCKER_H, 0.45);
@@ -278,7 +288,7 @@ function tool() {
   for (const [x, y, r] of lids) {
     let l = S(k.cylinder(x, y, r, TOOL_H, 4, P, 56, 0.5), { tone: "mid", inner: L(k.sideArc(x, y, r, TOOL_H + 1.6, P, 40), { tone: "faint" }) });
     // the raised centre of each lid lights, with the signal tower, while the slit valve is shut and the tool runs
-    l += `<g class="fa-lamp" data-lamp>${S(k.cylinder(x, y, r - 5, TOOL_H + 4, 3, P, 48, 0.4), { tone: "mid" })}</g>`;
+    l += `<g class="fa-lamp fa-lamp-lid" data-lamp>${S(k.cylinder(x, y, r - 5, TOOL_H + 4, 3, P, 48, 0.4), { tone: "mid" })}</g>`;
     l += L(k.ring(x, y, r - 8, TOOL_H + 7, P, 40), { tone: "lo" });
     const bolts = [];
     for (let i = 0; i < 12; i++) bolts.push([x + (r - 2.2) * Math.cos((i / 12) * 2 * Math.PI), y + (r - 2.2) * Math.sin((i / 12) * 2 * Math.PI)]);

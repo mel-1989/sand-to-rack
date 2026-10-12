@@ -26,6 +26,27 @@ export const OPTICS = {
   layers: 100, // "up to 100 layers" of the multilayer coating (ZEISS)
   fieldMm: [26, 33], // scanned field at the wafer (ASML NXE:3400B page)
 };
+// Resolution: ASML, the Rayleigh criterion (https://www.asml.com/en/technology/lithography-principles/rayleigh-criterion):
+// "CD = k1 • λ / NA"; NA "defining how much light they can collect"; "The physical limit lithography is k1 = 0.25."
+export const RAYLEIGH = {
+  k1Limit: 0.25, // ASML: the physical limit
+  k1Typical: 0.3, // illustrative: a practical k1 a little above the limit, not an ASML number
+};
+export const HALF_PITCH_NM = (RAYLEIGH.k1Typical * LIGHT.wavelengthNm) / OPTICS.na; // derived: 0.3 × 13.5 / 0.33 ≈ 12 nm
+export const HALF_PITCH_LIMIT_NM = (RAYLEIGH.k1Limit * LIGHT.wavelengthNm) / OPTICS.na; // derived: ≈ 10 nm at k1 = 0.25
+
+// ---- deep-UV immersion, which still prints most layers ----
+// https://www.asml.com/en/products/duv-lithography-systems/twinscan-nxt2100i : ArF 193 nm, NA 1.35, resolution ≤ 38 nm.
+// https://www.asml.com/en/news/stories/2021/twinscan-20-years-innovation : "a pool of ultra-pure water between the lens and the wafer",
+// "Immersion made it possible to create systems with an NA up to 1.35", dry NA "about 0.93"; double patterning splits "one complex
+// layer pattern into two (or more) simpler patterns" and "requires twice as many exposure steps".
+// https://www.asml.com/en/products/duv-lithography-systems : immersion systems "are the workhorses of the industry"; most layers do not need the newest tools.
+export const DUV = {
+  wavelengthNm: 193,
+  na: 1.35,
+  dryNa: 0.93,
+  resolutionNm: 38, // NXT:2100i, "≤ 38 nm"
+};
 export const RETICLE_FIELD_MM = OPTICS.fieldMm.map((v) => v * OPTICS.reduction); // derived: 104 x 132 mm on the mask
 export const POB_PASS = OPTICS.reflectance ** OPTICS.pobMirrors; // derived: 0.7^6 ≈ 0.118 of the light leaves the six projection mirrors
 export const DROPLET_GAP_MM = (LIGHT.dropletSpeedMs / LIGHT.dropletsPerS) * 1000; // derived: 70 m/s ÷ 50 kHz = 1.4 mm between droplets
@@ -42,8 +63,15 @@ export const SCANNER = {
   overlayNm: 0.9,
   gainVs3600D: 37, // percent
   // Tom's Hardware (https://www.tomshardware.com/tech-industry/semiconductors/asmls-planned-low-na-euv-machine-price-hikes-reportedly-frustrate-tsmc-lithography-machine-maker-comes-knocking-to-make-bank-on-tsmcs-profitable-fabs-potentially-costing-the-taiwanese-chipmaker-billions):
-  // NXE:3400C and 3600D at about $160-195 M, the 3800E higher still; trade-press estimates, ASML publishes no price.
+  // NXE:3400C and 3600D at about $160-195 M, and "the latest NXE:3800E is climbing even further"; trade-press estimates, ASML publishes no price.
   priceM: [160, 195],
+  // NXE:3800E: "a price tag of around $180 million each" at its March 2024 launch (Tom's Hardware, reproduced at
+  // https://semiwiki.com/forum/threads/asml-delivers-cutting-edge-new-chipmaking-tool-%E2%80%94-third-generation-euv-enables-2nm-processors-and-beyond.19854/);
+  // press estimate, not an ASML price.
+  price3800eM: 180,
+  // Later reported at 230 wph: Börse Global, 26 May 2026, citing ASML management at a Taiwan media briefing
+  // (https://www.boerse-global.de/asml-aktie-230-wafer-pro-stunde-mit-nxe3800e/789595). Secondary; the 20-F's 220 stays the headline.
+  wphLater: 230,
   // TWINSCAN dual stage, also NA 0.33 and 26 x 33 mm: https://www.asml.com/en/products/euv-lithography-systems/twinscan-nxe-3600d (per-wafer measurements at a
   // metrology position while another, just-measured wafer is exposed)
   waferStages: 2,

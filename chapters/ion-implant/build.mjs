@@ -355,7 +355,8 @@ function coupon() {
     const xa = x0 + lane * i + (i ? 0.4 : 3.4);
     const xb = x0 + lane * (i + 1) - 0.4;
     const band = ptsPath([[xa, yF, zTop], [xb, yF, zTop], [xb, yF, zBot], [xa, yF, zBot]], true);
-    const peak = ptsPath([[xa, yF, top - depth], [xb, yF, top - depth]]);
+    // the projected-range marker runs the lane's full width, face edge or divider to divider, so both ends land on lines
+    const peak = ptsPath([[x0 + lane * i, yF, top - depth], [x0 + lane * (i + 1), yF, top - depth]]);
     return `<g class="ii-depth" data-species="${id}"><path class="ii-band" d="${band}"/>${L(peak, { tone: "lit" })}</g>`;
   }).join("");
   const names = M.SPECIES_ORDER.map((id, i) => `<g transform="${k.sideMatrix([x0 + lane * i + lane / 2 - (id === "As" ? 2.4 : 1.3), yF], COUPON_Z[0] + 4, P, "left")}"><text class="ii-lane" data-species="${id}" font-size="4.2" x="0" y="0">${id}</text></g>`).join("");
@@ -387,20 +388,12 @@ function anneal() {
   for (const [x, y] of byDepth(posts)) turned("anneal", AZ([x, y, 34]), discP(0, 16, 2.4), { tone: "mid", name: "anneal.post" });
   // quartz window hung under the lamp head: the lamps sit above it, the wafer below
   turned("anneal", F, discP(47.2, 50, 34), { tone: "lo", name: "anneal.window", extra: `<path class="ii-lamps" d="${G.arcOf(F, 47.2, 34, P)}"/>` });
-  // lamp head: a honeycomb of lamp cells, each a hexagonal reflector round a bulb end
-  const cells = [];
-  const bulbs = [];
-  const pitch = 7.2;
-  const hex = (x, y, r) => ptsPath(Array.from({ length: 6 }, (_, i) => [x + r * Math.cos((i * 60 + 30) * DEG), y + r * Math.sin((i * 60 + 30) * DEG), 64]), true);
-  for (let row = -6; row <= 6; row++) for (let col = -6; col <= 6; col++) {
-    const x = cx + (col + (row % 2 ? 0.5 : 0)) * pitch;
-    const y = cy + row * pitch * 0.866;
-    if (Math.hypot(x - cx, y - cy) > 36) continue;
-    cells.push(hex(x, y, pitch / Math.sqrt(3) - 0.35));
-    bulbs.push(at([x, y, 64]));
-  }
-  const honey = L(cells.join(""), { tone: "lo", free: true }) + Dots(bulbs, { size: 0.55, tone: "mid" }) + `<path class="ii-lampcells" d="${cells.join("")}"/>`;
-  turned("anneal", F, discP(50, 64, 44), { tone: "hi", bevel: 0.6, name: "anneal.lamphead", attrs: "data-lamps", inner: L(G.arcOf(F, 56, 44, P), { tone: "faint" }), extra: honey });
+  // lamp head: the lamps (a honeycomb of tungsten-halogen bulbs in reflector cells) sit in its underside and shine
+  // down through the quartz window; from above you see only its closed, water-cooled lid: a bolted cover plate,
+  // the lamp-power connector in the middle and the two cooling-water fittings
+  const lid = L(G.circleOf(F, 64, 34, P), { tone: "faint" }) + Dots(G.dotsOf(F, 64, 31, 12, P, { all: true }), { size: 0.45 });
+  turned("anneal", F, discP(50, 64, 44), { tone: "hi", bevel: 0.6, name: "anneal.lamphead", attrs: "data-lamps", inner: L(G.arcOf(F, 56, 44, P), { tone: "faint" }), extra: lid });
+  turned("anneal", F, discP(64, 67, 7), { tone: "mid", bevel: 0.4, name: "anneal.connector", extra: Dots(G.dotsOf(F, 67, 5, 6, P, { all: true }), { size: 0.38 }) });
   for (const [x, y] of byDepth([[cx + 30, cy - 30], [cx + 36, cy - 14]])) turned("anneal", AZ([x, y, 64]), discP(0, 5, 2.6), { tone: "mid", bevel: 0.3, name: "anneal.water" });
 }
 
@@ -459,7 +452,7 @@ function rejected() {
       }
       pts.push(end);
       const e = at(end);
-      const spark = hit !== "outer" ? `<circle class="ii-spark" cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="0.9"/>` : "";
+      const spark = `<circle class="ii-spark ii-rspark" cx="${e[0].toFixed(1)}" cy="${e[1].toFixed(1)}" r="1.2"/>`; // where it strikes a wall or the exit plate
       // split the path so each part sorts on its own against the walls
       const half = Math.max(2, Math.floor(pts.length / 2));
       [pts.slice(0, half + 1), pts.slice(half)].forEach((part, index) => {
@@ -562,7 +555,7 @@ if (!process.argv.includes("--fast")) A.settle(R, P);
 R.items.sort((a, b) => a.key - b.key);
 const groups = R.items.map((item, index) => `<g class="it" data-piece="${item.piece}" data-i="${index}" ${item.attrs ?? ""}>${item.svg}</g>`);
 
-const LABEL = `An ion implanter and a rapid thermal anneal chamber on one bed. From the back left: three dopant gas bottles feeding a valve manifold on the ion source; an insulator bushing and three extraction electrodes; a flight tube into the analyzer magnet, shown with its upper pole removed so the beam can be seen bending; the exit plate with the resolving slit; a ten-ring acceleration column; the scanner housing; and the end station, its vacuum chamber cut away, where a tilted platen carries the wafer up and down through the scanned beam beside a Faraday cup. Behind it are the load lock, the wafer handler with two FOUPs on load ports, and the operator console, with a cleaved witness piece in front. At the back sits the lamp-heated anneal chamber, a separate tool, cut open to show its wafer under a quartz window and a honeycomb of lamps.`;
+const LABEL = `An ion implanter and a rapid thermal anneal chamber on one bed. From the back left: three dopant gas bottles feeding a valve manifold on the ion source; an insulator bushing and three extraction electrodes; a flight tube into the analyzer magnet, shown with its upper pole removed so the beam can be seen bending; the exit plate with the resolving slit; a ten-ring acceleration column; the scanner housing; and the end station, its vacuum chamber cut away, where a tilted platen carries the wafer up and down through the scanned beam beside a Faraday cup. Behind it are the load lock, the wafer handler with two FOUPs on load ports, and the operator console, with a cleaved witness piece in front. At the back sits the lamp-heated anneal chamber, a separate tool, cut open to show its wafer under a quartz window; the lamp head above it has a closed, water-cooled lid, and its lamps face down through the window onto the wafer.`;
 const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="ii-layers">${groups.join("")}</g>`], className: "ii-svg" });
 
 const O = at([0, 0, 0]);
@@ -599,7 +592,7 @@ const SPECIES_BUTTONS = M.SPECIES_ORDER.map((id) => `<button type="button" class
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 9</span><span class="iso-plate-corner" data-corner="title">Ion implanter · anatomy</span><span class="iso-plate-corner" data-corner="readout" data-readout>${DATA.idle}</span></div>`;
 const controls = `<div class="ii-controls"><span class="ii-hint">Hover a part · Space plays</span><span class="ii-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="ii-stage" tabindex="0" role="slider" aria-label="Ion implanter and anneal chamber. Hover, or use the arrow keys, to pick a part; Space plays or pauses the implant; Escape resets it; the slider below steps through the process." aria-valuemin="0" aria-valuemax="${M.ORDER.length}" aria-valuenow="0" aria-valuetext="${DATA.idle}">${svg}</div>`;
-const caption = `An ion implanter, then a lamp anneal. The source turns ${M.SPECIES.B.gas}, ${M.SPECIES.P.gas} or ${M.SPECIES.As.gas} into a plasma; the electrodes pull ions out; the analyzer magnet bends each ion on a radius that grows with the square root of its mass, so only the chosen ion lines up with the slit. The column then raises the energy (real tools span about ${M.MIN_KEV} keV to ${M.TOOLS.maxMeV} MeV across high-current, medium-current and high-energy classes), the scanner sweeps the beam side to side while the platen, tilted ${M.TILT_DEG}° to stop channelling, slides the wafer up and down through it, and a Faraday cup at the edge of the sweep counts the charge that sets the dose (about ${M.sci(M.TOOLS.doseRange[0])} to ${M.sci(M.TOOLS.highCurrentDose[1])} ions per cm² across tool classes). At ${M.RECIPE.finalKeV} keV boron stops about ${M.SPECIES.B.rpNm} nm deep, phosphorus ${M.SPECIES.P.rpNm} nm and arsenic ${M.SPECIES.As.rpNm} nm (SRIM), as the cleaved witness piece at the front right shows: its face carries a depth ruler and all three bands, the chosen dopant lit. The implanted wafer then goes back through the load lock to its FOUP and on to a separate anneal tool, drawn at the back of the bed, where a spike anneal (peak shown as about ${M.ANNEAL.spikeC.toLocaleString("en-US")} °C, illustrative, at the top of the ${M.ANNEAL.rtpC[0]}–${M.ANNEAL.rtpC[1].toLocaleString("en-US")} °C lamp-RTP window) repairs the lattice and switches the dopants on. Layout, sizes, the ${M.RECIPE.extractKeV} keV extraction and the recipe are illustrative; the magnet's upper pole is removed and the end-station chamber is cut away, near-mass paths are drawn ${NEAR_X}× further apart than true, and coupon depths are scaled.`;
+const caption = `An ion implanter, then a lamp anneal. The source turns ${M.SPECIES.B.gas}, ${M.SPECIES.P.gas} or ${M.SPECIES.As.gas} into a plasma; the electrodes pull ions out; the analyzer magnet bends each ion on a radius that grows with the square root of its mass, so only the chosen ion lines up with the slit. The column then raises the energy (real tools span about ${M.MIN_KEV} keV to ${M.TOOLS.maxMeV} MeV across high-current, medium-current and high-energy classes), the scanner sweeps the beam side to side while the platen, tilted ${M.TILT_DEG}° to stop channelling, slides the wafer up and down through it, and a Faraday cup at the edge of the sweep counts the charge that sets the dose (about ${M.sci(M.TOOLS.doseRange[0])} to ${M.sci(M.TOOLS.highCurrentDose[1])} ions per cm² across tool classes). At ${M.RECIPE.finalKeV} keV boron stops about ${M.SPECIES.B.rpNm} nm deep, phosphorus ${M.SPECIES.P.rpNm} nm and arsenic ${M.SPECIES.As.rpNm} nm (SRIM), as the cleaved witness piece at the front right shows: its face carries a depth ruler and all three bands, the chosen dopant lit. The implanted wafer then goes back through the load lock to its FOUP and on to a separate anneal tool, drawn at the back of the bed, where lamps in the underside of the water-cooled head shine down through the quartz window and a spike anneal (peak shown as about ${M.ANNEAL.spikeC.toLocaleString("en-US")} °C, illustrative, at the top of the ${M.ANNEAL.rtpC[0]}–${M.ANNEAL.rtpC[1].toLocaleString("en-US")} °C lamp-RTP window) repairs the lattice and switches the dopants on. Layout, sizes, the ${M.RECIPE.extractKeV} keV extraction and the recipe are illustrative; the magnet's upper pole is removed and the end-station chamber is cut away, near-mass paths are drawn ${NEAR_X}× further apart than true, and coupon depths are scaled.`;
 const scrub = `<span class="ii-scrub"><button type="button" class="ii-play" data-play aria-label="Play the implant"><span class="ii-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="ii-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is idle, 1000 is annealed"><span class="ii-step" data-step>idle</span></span>`;
 const pick = `<span class="ii-species" role="group" aria-label="Dopant">${SPECIES_BUTTONS}</span>`;
 const body = `<figure class="iso-figure ii"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}${pick}<span class="ii-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;

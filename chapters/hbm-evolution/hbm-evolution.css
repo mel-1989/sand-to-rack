@@ -276,9 +276,37 @@
   }
 }
 
-/* between the stacking breakpoint and a wide plate, a selected stack's long readout sits close to the hint: hide the hint then */
-@media (min-width: 801px) and (max-width: 980px) {
+/* from the stacking breakpoint up the plate is a fixed width, and a selected stack's long readout runs into the hint: hide the hint then */
+@media (min-width: 801px) {
   .hb-stage[data-focus] ~ .hb-controls .hb-hint {
     visibility: hidden;
+  }
+}
+
+/* the magnified cross-section: never dimmed by focus, softened while the gauge is parked */
+.hb-slice {
+  pointer-events: none;
+  transition: opacity 240ms var(--anatomy-ease);
+}
+
+.hb-slice[data-idle] {
+  opacity: 0.55;
+}
+
+/* wide: over the figure's free top-right corner (position from the build, as fractions of the plate width) */
+.hb-stage > svg.hb-slice-svg {
+  position: absolute;
+  left: var(--hb-sx);
+  top: var(--hb-sy);
+  width: var(--hb-sw);
+  pointer-events: none;
+}
+
+/* phone: the corner is under the title, so the slice drops below the bench, larger */
+@media (max-width: 640px) {
+  .hb .iso-plate .hb-stage > svg.hb-slice-svg {
+    position: static;
+    width: 58%;
+    margin: -2% auto 0;
   }
 }

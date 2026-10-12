@@ -15,7 +15,6 @@ export const WRITER = {
   maxCurrentUA: 1.05, // µA with all beamlets on (EP3070528 [0004])
   blurNm: 5, // 1-sigma column blur (EP3070528 [0004])
   writeHours: 10, // "less than 10 hours" per mask, MBMW-101 at the 7 nm node (IMS product page)
-  writeHoursHigh: 12, // about 12 h for the maximum die size (IMS CEO Platzgummer to Semiconductor Engineering, 2018, link below)
   dataGbps: 120, // datapath rate after the 2016 upgrade (IMS product page)
 };
 export const BEAMLETS = WRITER.beamsSide * WRITER.beamsSide; // 262,144
@@ -24,7 +23,10 @@ export const APERTURE_UM = (WRITER.beamNm / 1000) * WRITER.reduction; // 4 µm a
 // Single-beam (VSB) writers on dense layers: "like 30 hours or even higher" (IMS's Platzgummer to Semiconductor Engineering, 2018)
 // https://semiengineering.com/multi-beam-mask-writing-finally-comes-of-age
 export const VSB_HOURS = 30;
-export const MASKS_PER_CHIP = [50, 100]; // "50 to 100 masks" for a new chip (same article)
+// Masks in a typical 11-metal logic design: ~52 at 28 nm, 66 at 14 nm, more than 80 at 7 nm with optical (non-EUV) patterning only
+// (B. Kasprowicz, Photronics, "EUV mask technology and economics", 2017 International Workshop on EUV Lithography, citing Gartner 2015)
+// https://www.euvlitho.com/2017/P33.pdf
+export const MASKS = { n28: 52, n14: 66, n7: 80 };
 
 // Later generations. IMS MBMW-201 for the 5 nm node, in the market from Q1 2019 (IMS history page https://www.ims.co.at/en/?p=4311);
 // IMS MBMW-301 for 2 nm-class and High-NA EUV masks, released 2023 (SPIE PC12751, "MBMW-301: paving the way towards the angstrom era")
@@ -93,7 +95,7 @@ export const PIECES = {
 export const STEPS = [
   { id: "tapeout", piece: "data", name: "Tape-out data", say: "GDSII/OASIS layout after OPC/ILT · one file per layer" },
   { id: "fracture", piece: "data", name: "Fracture", say: `polygons cut into pixel data for ${fmt(BEAMLETS)} beamlets` },
-  { id: "write", piece: "stage", name: "E-beam write", say: `${WRITER.beamNm} nm beamlets · about ${WRITER.writeHours}-${WRITER.writeHoursHigh} h a mask` },
+  { id: "write", piece: "stage", name: "E-beam write", say: `${WRITER.beamNm} nm beamlets · under ${WRITER.writeHours} h a mask` },
   { id: "etch", piece: "mask", name: "Develop and etch", say: `resist developed · ${STACK.absorber} etched down to the ${STACK.capMat} cap` },
   { id: "inspect", piece: "inspect", name: "Inspect and repair", say: "pattern checked against the data · defects repaired" },
   { id: "pellicle", piece: "pellicle", name: "Pellicle mount", say: `pellicle ≤${PELLICLE.standoffMm} mm tall · ≥${PELLICLE.transmit} % EUV per pass` },

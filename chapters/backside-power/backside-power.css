@@ -4,7 +4,7 @@
   --bp-si: color-mix(in srgb, var(--anatomy-mid) 16%, var(--anatomy-paper));
   --bp-si2: color-mix(in srgb, var(--anatomy-mid) 10%, var(--anatomy-paper));
   --bp-ox: color-mix(in srgb, var(--anatomy-mid) 30%, var(--anatomy-paper));
-  --bp-cu: color-mix(in srgb, var(--anatomy-hi) 30%, var(--anatomy-paper));
+  --bp-cu: color-mix(in srgb, var(--anatomy-hi) 40%, var(--anatomy-paper));
   --bp-pw: color-mix(in srgb, var(--anatomy-hi) 78%, var(--anatomy-paper));
   --bp-gate: color-mix(in srgb, var(--anatomy-hi) 52%, var(--anatomy-paper));
   --bp-bond: color-mix(in srgb, var(--anatomy-halo) 50%, var(--anatomy-paper));
@@ -15,6 +15,7 @@
 }
 
 [data-theme="light"] .bp {
+  --bp-cu: color-mix(in srgb, var(--anatomy-hi) 30%, var(--anatomy-paper));
   --bp-part-ring: #00000014;
   --bp-part-hover: #0000000a;
   --bp-pw: color-mix(in srgb, var(--anatomy-hi) 70%, var(--anatomy-paper));
@@ -252,6 +253,16 @@
   text-overflow: ellipsis;
 }
 
+/* a long readout wraps upward into the plate's bottom margin instead of running into the hint */
+@media (min-width: 641px) {
+  .bp .iso-plate-corner[data-corner="readout"] {
+    max-width: calc(100% - 300px);
+    white-space: normal;
+    text-align: right;
+    line-height: 1.4;
+  }
+}
+
 @media (max-width: 640px) {
   .bp .iso-plate {
     padding: 48px 8px 84px;
@@ -284,8 +295,8 @@
   }
 
   .bp .bp-stage > svg.bp-svg {
-    width: 116%;
-    margin-left: -8%;
+    width: 106%;
+    margin-left: -3%;
   }
 
   .bp-step {

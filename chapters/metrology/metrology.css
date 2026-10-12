@@ -4,8 +4,18 @@
 }
 
 .mt .iso-plate {
-  padding: 52px 24px 60px;
+  padding: 52px 24px 76px;
   overflow: hidden;
+}
+
+/* the readout sits on its own line above the hint at every width, so a long one wraps instead of printing over it */
+.mt .iso-plate-corner[data-corner="readout"] {
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  text-align: right;
+  line-height: 1.4;
+  white-space: normal;
 }
 
 .mt-stage {
@@ -33,24 +43,29 @@
   pointer-events: visiblePainted;
 }
 
-.it[data-on] {
+.it[data-on],
+.it[data-auto] {
   --anatomy-hi: var(--anatomy-lit);
   --anatomy-mid: var(--anatomy-hi);
 }
 
-.it[data-on] .iso-top {
+.it[data-on] .iso-top,
+.it[data-auto] .iso-top {
   fill: var(--anatomy-lit-top);
 }
 
-.it[data-on] .iso-shade {
+.it[data-on] .iso-shade,
+.it[data-auto] .iso-shade {
   fill: var(--anatomy-lit-shade);
 }
 
-.it[data-on] [data-seamless] > .iso-shade {
+.it[data-on] [data-seamless] > .iso-shade,
+.it[data-auto] [data-seamless] > .iso-shade {
   stroke: var(--anatomy-lit-shade);
 }
 
-.it[data-on] [data-seamless] > .iso-top {
+.it[data-on] [data-seamless] > .iso-top,
+.it[data-auto] [data-seamless] > .iso-top {
   stroke: var(--anatomy-lit-top);
 }
 
@@ -117,19 +132,17 @@
 }
 
 @media (max-width: 640px) {
+  /* a band under the drawing holds two lines of readout above the hint */
   .mt .iso-plate {
-    padding: 48px 8px 84px;
+    padding: 48px 8px 96px;
+  }
+
+  .mt .iso-plate-corners {
+    inset: 18px 14px;
   }
 
   .mt .iso-plate-corner[data-corner="readout"] {
-    bottom: 44px;
-    right: 0;
-    left: 16px;
-    max-width: calc(100% - 32px);
-    text-align: right;
-    line-height: 1.4;
-    white-space: normal;
-    overflow: visible;
+    bottom: 16px;
   }
 
   .mt-controls {
@@ -358,10 +371,6 @@
   font-size: 7.6px;
 }
 
-/* the hint is redundant once a part is picked, and a long part readout would run into it */
-.mt-stage[data-focus] ~ .mt-controls .mt-hint {
-  opacity: 0;
-}
 
 /* a flat, enlarged copy of the monitor: the drawn one is too small to read at any width.
    Wide screens hang it in the empty upper right of the plate, narrow ones under the machine */

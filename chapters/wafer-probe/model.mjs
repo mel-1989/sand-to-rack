@@ -5,7 +5,7 @@
 export const WAFER_MM = 300; // standard leading-edge wafer diameter (SEMI M1); https://www.semi.org/en/products-services/standards
 export const EDGE_EXCLUSION_MM = 3; // assumption for the gross-die count; illustrative, typical of published die-per-wafer calculators
 export const DIE_MM = [26, 33]; // one reticle-limited AI accelerator die, the reticle field: see chapters/advanced-packaging (RETICLE_MM)
-export const D0_PER_CM2 = 0.1; // TSMC N5 defect density, about 0.10-0.11 /cm² in 2020; https://www.anandtech.com/show/16028
+export const D0_PER_CM2 = 0.1; // TSMC N5 defect density, about 0.10-0.11 /cm² in August 2020 (AnandTech; the original /show/16028 URL now redirects, this is its surviving print copy); https://adminnet.anandtech.com/print/16028/better-yield-on-5nm-than-7nm-tsmc-update-on-defect-rates-for-n5
 export const DIE_CM2 = (DIE_MM[0] * DIE_MM[1]) / 100; // 8.58 cm²
 export const POISSON_YIELD = Math.exp(-DIE_CM2 * D0_PER_CM2); // simple Poisson yield model, derived: about 42 %
 
@@ -102,11 +102,11 @@ export const PIECES = {
   loader: { name: "Loader and FOUP", say: `FOUP of ${FOUP_WAFERS} wafers · robot fork` },
   cameras: { name: "Alignment cameras", say: "one finds the wafer, one the probe tips" },
   stage: { name: "Chuck on XYZ-θ stage", say: `${CHUCK_C[0]} to +${CHUCK_C[1]}${NB}°C · ±${STAGE_REPEAT_UM}${NB}µm repeat` },
-  card: { name: "Probe card", say: `MEMS probes · up to ~${PROBES_MAX_K}${NB}k · six figures for the largest cards` },
+  card: { name: "Probe card", say: `MEMS probes · up to ~${PROBES_MAX_K}${NB}k probes · price: six figures` },
   head: { name: "Test head", say: "pin electronics on a pogo tower" },
   tester: { name: "ATE mainframe", say: `Advantest or Teradyne · ~${ATE_SHARE}${NB}% share` },
   map: { name: "Wafer map", say: `${GROSS} dies · ${GOOD} expected good` },
 };
 
-export const IDLE = `${GROSS} dies · ${DIE_MM[0]}${NB}×${NB}${DIE_MM[1]}${NB}mm · ${fmt(POISSON_YIELD * 100)}${NB}% expected yield`;
+export const IDLE = `${GROSS} dies · ${DIE_MM[0]}${NB}×${NB}${DIE_MM[1]}${NB}mm · ~${fmt(POISSON_YIELD * 100)}${NB}% est. yield`;
 export { fmt, NB };

@@ -40,9 +40,9 @@ const STEPS = D.eras.length * D.phases.length;
 // ---- the process as a pure function of the slider position s (0..1) ----
 function phaseLabel(c, ph) {
   const e = D.eras[c];
-  if (ph === 2 && e.faceUp) return "no flip · stays face up";
-  if (ph === 4) return { wire: "bond · die attach", c4: "place on flux", ubump: "thermocompression bond", hybrid: "pre-bond · room temp" }[e.id];
-  if (ph === 5 && e.id === "hybrid") return "index · anneal comes after";
+  if (ph === 2 && e.faceUp) return "no flip";
+  if (ph === 4) return { wire: "bond · die attach", c4: "place on flux", ubump: "thermocompression", hybrid: "pre-bond, room temp" }[e.id];
+  if (ph === 5 && e.id === "hybrid") return "index, anneal later";
   return D.phases[ph].label;
 }
 function stepOf(s) {
@@ -230,7 +230,7 @@ function describe() {
 }
 function showStep() {
   const { step, c, ph } = stepOf(s);
-  const text = `${String(step + 1).padStart(2, "0")} · ${D.eras[c].short} · ${phaseLabel(c, ph)}`;
+  const text = `${D.eras[c].short} · ${phaseLabel(c, ph)}`;
   if (stepText.textContent !== text) stepText.textContent = text;
   scrubInput.value = String(Math.round(s * 1000));
   playText.textContent = playing ? "Pause" : s >= 0.999 ? "Replay" : "Play";

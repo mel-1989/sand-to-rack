@@ -65,9 +65,9 @@ const GY = ROWS * CORE_Y;
 const coreAt = (i, j) => [WAFER.x + ((i + 0.5) * M.sideMm) / GX, WAFER.y + ((j + 0.5) * M.sideMm) / GY];
 
 const PIECES = {
-  cold: { ...M.PIECES.cold, move: [-60, 0, 160] },
-  wafer: { ...M.PIECES.wafer, move: [0, 0, 100] },
-  connector: { ...M.PIECES.connector, move: [0, 0, 76] },
+  cold: { ...M.PIECES.cold, move: [-60, 0, 180] },
+  wafer: { ...M.PIECES.wafer, move: [0, 0, 128] },
+  connector: { ...M.PIECES.connector, move: [0, 0, 66] },
   pcb: { ...M.PIECES.pcb, move: [0, 0, 54] },
   power: { ...M.PIECES.power, move: [0, 0, 12] },
   stand: { ...M.PIECES.stand, move: [0, 0, 0] },
@@ -365,7 +365,8 @@ function cold() {
   }
 
   // the facility block on the flange's far-left wing: the plate's hoses come in on its inner ports,
-  // and the building's supply and return lines plug into the two couplings on its outer edge (IN, OUT)
+  // and the building's supply and return lines plug into the two couplings on its outer edge
+  // (no IN/OUT engraving: the near hose hid it, and the lid already carries the figure's one engraved label)
   const MAN = { x: -168, y: -42, w: 35.5, d: 84, r: 3 };
   const manTop = FLANGE_TOP + 16;
   const portX = MAN.x + MAN.w - 7;
@@ -373,9 +374,7 @@ function cold() {
   const manSvg =
     S(k.slabOf(MAN, FLANGE_TOP, manTop - FLANGE_TOP, P, 3, 0.6), { tone: "mid", inner: L(k.sideSeam(MAN, FLANGE_TOP + 5, P, 3), { tone: "faint" }) }) +
     L(k.planOutline(k.insetPlan(MAN, 3), manTop, P, 3), { tone: "faint" }) +
-    Dots(k.corners(MAN, 4.5).map(([x, y]) => at([x, y, manTop])), { size: 0.45 }) +
-    k.faceTextSvg(k.topMatrix([MAN.x + MAN.w / 2, -31], manTop, P, "x"), "IN", { size: 4, tone: "lo", anchor: "middle" }) +
-    k.faceTextSvg(k.topMatrix([MAN.x + MAN.w / 2, 33], manTop, P, "x"), "OUT", { size: 4, tone: "lo", anchor: "middle" });
+    Dots(k.corners(MAN, 4.5).map(([x, y]) => at([x, y, manTop])), { size: 0.45 });
   put("cold", centreOf(MAN, FLANGE_TOP), manSvg, [slabShape(MAN, FLANGE_TOP, manTop - FLANGE_TOP, 3)], { name: "cold.manifold" });
   const qdTop = RIB_TOP + 18.4;
   FITTINGS.forEach(([x, y], index) => {
@@ -501,7 +500,7 @@ const DATA = {
   closed: M.CLOSED,
   scribe: M.SCRIBE,
   spare: M.SPARE,
-  wavelet: `a wavelet leaves its core · ${M.PE.waveletBits} bits, one per clock`,
+  wavelet: `a wavelet leaves its core · ${M.PE.waveletBits} bits per clock`,
   fabricPbs: M.WSE3.fabricPbs,
   fabric: `${M.fmt(M.WSE3.cores)} cores on one 2D mesh · ${M.PE.waveletBits}-bit wavelets · ${M.WSE3.fabricPbs} Pb/s`,
 };
@@ -510,7 +509,7 @@ const PARTS = ORDER.map((id, index) => `<button type="button" class="ws-part" da
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">WSE-3 · engine block</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="ws-controls"><span class="ws-hint">Hover a layer · Space plays</span><span class="ws-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="ws-stage" tabindex="0" role="slider" aria-label="Cerebras WSE-3 engine block. The layers rest lifted apart. Hover, or use the arrow keys, to pick a layer; Space plays or pauses the assembly and the mesh traffic; Escape resets; the slider below steps through it." aria-valuemin="0" aria-valuemax="${ORDER.length}" aria-valuenow="0" aria-valuetext="Taken apart · ${M.IDLE}">${svg}</div>`;
-const caption = `Cerebras WSE-3: one ${M.sideMm} × ${M.sideMm} mm square cut from a ${M.WSE3.waferMm} mm wafer (${M.fmt(M.WSE3.areaMm2)} mm², the area of about ${Math.round(M.reticles)} full reticle fields), with ${M.WSE3.transistorsT} trillion transistors on ${M.WSE3.node}, ${M.fmt(M.WSE3.cores)} cores and ${M.WSE3.sramGB} GB of SRAM. Its ${M.WSE3.dies} die sites (about ${Math.round(M.dieMm2)} mm² each, each printed in one exposure) are joined by wires laid across the scribe lines, so the cores form one 2D mesh. The engine is a sandwich (Cerebras, Hot Chips 2019): a custom connector between the wafer and the main board absorbs their different thermal expansion, power comes up through the board perpendicular to the wafer, and a water-cooled cold plate presses on its back. The fixture, the number and layout of power modules, the connector tiles, the coolant fittings and the board details are illustrative, and the wafer is drawn with square corners (a ${M.sideMm} mm square's diagonal is ${Math.round(M.diagMm)} mm, so the real WSE's corners are clipped by the ${M.WSE3.waferMm} mm wafer's edge); plan sizes match the ruler (5 mm ticks), heights are exaggerated, and each dot in the field stands for about ${M.fmt(Math.round(M.coresPerDie / (CORE_X * CORE_Y) / 100) * 100)} cores. The near half of the cold plate is cut away to show the wafer, with its coolant channels drawn in section, and water enters and leaves through the IN and OUT couplings on the block at its far edge; the mesh traffic is drawn on the visible face, while the real transistors face the connector.`;
+const caption = `Cerebras WSE-3: one ${M.sideMm} × ${M.sideMm} mm square cut from a ${M.WSE3.waferMm} mm wafer (${M.fmt(M.WSE3.areaMm2)} mm², about ${Math.round(M.reticles)} reticle fields), with ${M.WSE3.transistorsT} trillion transistors on ${M.WSE3.node}, ${M.fmt(M.WSE3.cores)} cores and ${M.WSE3.sramGB} GB of SRAM; its ${M.WSE3.dies} die sites are wired across the scribe lines into one 2D mesh. Illustrative: the fixture, the power modules' number and layout, the connector tiles, the coolant fittings and the board details; the wafer's clipped corners are drawn square, heights are exaggerated (plan sizes match the 5 mm ruler), and each dot stands for about ${M.fmt(Math.round(M.coresPerDie / (CORE_X * CORE_Y) / 100) * 100)} cores. The cold plate's near half is cut away to show the wafer; coolant enters and leaves at its far-left block. Mesh traffic is drawn on the visible face; the real transistors face the connector.`;
 const scrub = `<span class="ws-scrub"><button type="button" class="ws-play" data-play aria-label="Play the assembly and the mesh traffic"><span class="ws-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="ws-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is taken apart, 1000 is the closed engine"><span class="ws-step" data-step>apart</span></span>`;
 const body = `<figure class="iso-figure ws"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="ws-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 

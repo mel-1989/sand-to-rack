@@ -4,7 +4,7 @@ import * as M from "./model.mjs";
 const R = M.REFLEXION;
 
 export const LESSON = {
-  intro: `Every deposit leaves the wafer a little lumpy, and critical layers must be flat to within a few nanometres, or the wires come out at different heights and resistances, and later layers print poorly. Chemical mechanical polishing gets it there: the wafer is pressed face down on a spinning pad soaked in a reactive slurry, which softens the top of the film while fine abrasive wipes it away, highest points first.`,
+  intro: `Every deposit leaves the wafer a little lumpy, and some critical layers must be flat to within a few nanometres across a macro (long-range targets are hundreds of nanometres), or the wires come out at different heights and resistances, and later layers print poorly. Chemical mechanical polishing gets it there: the wafer is pressed face down on a spinning pad soaked in a reactive slurry, which softens the top of the film while fine abrasive wipes it away, highest points first.`,
   steps: [
     `<strong>Load.</strong> A load cup lifts the wafer into the carrier head, which holds it face down inside a retaining ring and carries it to the platen.`,
     `<strong>Slurry on.</strong> The platen spins up and the arm drips slurry onto the pad, about ${M.MIRRA.slurryMlMin} ml a minute in a published copper study: an oxidiser that softens the copper surface plus fine abrasive particles.`,
@@ -21,7 +21,7 @@ export const LESSON = {
     ["Removal rate, bulk copper", `${M.BULK_NM} nm/min`, `${R.bulkWiwnu} % within-wafer non-uniformity, 750-wafer run`],
     ["Removal rate, final clear", `${M.CLEAR_NM} nm/min`, "stopped on an endpoint signal"],
     ["Dishing after polish", `under ${R.dishingAvgA / 10} nm average`, `after all three platens; under ${R.dishingMaxA / 10} nm worst case, 50 µm lines`],
-    ["Flatness needed", `${M.PLANARITY.criticalNm} nm`, "within-die and within-wafer tolerance on critical layers"],
+    ["Flatness needed", `${M.PLANARITY.criticalNm} nm`, `on some critical layers (short-range, within a macro); long-range targets are ${M.PLANARITY.longRangeNm} nm`],
     ["Reflexion LK Prime", `${M.PRIME.pads} pads · ${M.PRIME.heads} heads`, `${M.PRIME.cleanChambers} cleaning and ${M.PRIME.dryChambers} drying chambers`],
   ],
   innovationsTitle: "Why it matters",
@@ -29,7 +29,7 @@ export const LESSON = {
     "Copper cannot be etched cleanly into fine lines, so chips are wired by the damascene method: etch trenches in the insulator, overfill them with copper, then polish the excess away. Without CMP there is no copper wiring.",
     "Each metal layer is polished flat before the next is built on it, and lithography can only print sharply on a surface that is flat to within its narrow depth of focus, so errors would otherwise pile up layer on layer.",
     `Downforce came down from ${M.DOWNFORCE.n130[0]}–${M.DOWNFORCE.n130[1]} psi at the 130 nm node and had to drop below ${M.DOWNFORCE.n65Below} psi for 65 nm (Applied, 2003), because above about ${M.DOWNFORCE.lowKFracturePsi} psi the shear on fragile low-k films with conventional pads and slurries reaches the point where they peel or crack; in-situ endpoint sensing is what lets a tool polish that gently and still stop within nanometres.`,
-    "Planarity is now specified to a few nanometres for critical layers, so pad material, conditioning and slurry chemistry are tuned together as one system.",
+    "Planarity is now specified to a few nanometres on some critical layers, so pad material, conditioning and slurry chemistry are tuned together as one system.",
   ],
   sources: [
     ["Kao, Yu, Shen: Robust operation of copper CMP (Microelectronic Engineering, 2003)", "https://scholars.lib.ntu.edu.tw/bitstream/123456789/67318/1/33.pdf"],

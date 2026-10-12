@@ -434,6 +434,8 @@ function show() {
     if (playing || T > 0) announce(`${label}: ${STEPS[i].say}`);
   }
   scrubInput.value = String(Math.round((T / TOTAL) * 1000));
+  const valueText = `${label}: ${STEPS[i].say}`;
+  if (scrubInput.getAttribute("aria-valuetext") !== valueText) scrubInput.setAttribute("aria-valuetext", valueText);
   playText.textContent = playing ? "Pause" : T >= TOTAL - 0.001 ? "Replay" : "Play";
   playButton.toggleAttribute("data-playing", playing);
   playButton.setAttribute("aria-label", playing ? "Pause" : "Play the process");
@@ -476,6 +478,8 @@ new IntersectionObserver(
 
 // ---- control ----
 function takeOver() {
+  // the tour's own playback stops at the first interaction; Play, Space and the slider set playing themselves after this
+  if (touring) playing = false;
   tookOver = true;
   touring = false;
   clearTimeout(tourTimer);
@@ -574,8 +578,9 @@ document.addEventListener("keydown", (event) => {
   if (target instanceof HTMLButtonElement && (event.key === " " || event.key === "Enter")) return;
   if (event.key === " ") {
     event.preventDefault();
+    const next = !playing;
     takeOver();
-    play(!playing);
+    play(next);
     return;
   }
   if (event.key === "Escape") {
@@ -606,8 +611,9 @@ scrubInput.addEventListener("input", () => {
 });
 
 playButton.addEventListener("click", () => {
+  const next = !playing;
   takeOver();
-  play(!playing);
+  play(next);
 });
 
 // idle tour: the process plays on a loop until the reader first acts

@@ -10,17 +10,17 @@ export const LESSON = {
     `<strong>Dip the seed.</strong> A seed crystal ${M.RUN.seedMm[0]}–${M.RUN.seedMm[1]} mm across, cut along the chosen crystal direction, is lowered on a cable, warmed above the melt, and touched to its surface.`,
     `<strong>Dash neck.</strong> The touch shocks the seed and creates dislocations. Pulling fast makes a thin neck ${M.RUN.neckRangeMm[0]}–${M.RUN.neckRangeMm[1]} mm across, and the dislocations run out of its sides, so what grows below is dislocation-free.`,
     `<strong>Shoulder.</strong> The pull slows down, so the crystal grows outward as well as down. It widens in a rounded crown from the thin neck to the full ${M.RUN.crystalMm} mm.`,
-    `<strong>Body.</strong> Most of the run is spent here. The diameter is held at ${M.RUN.crystalMm} mm by adjusting heater power and pull speed while a camera watches the bright ring where crystal meets melt. Crystal and crucible turn in opposite directions, and the crucible rises so the melt surface stays at the same height. Argon flows down past the crystal and out over the melt, sweeping away the silicon monoxide that evaporates from it.`,
+    `<strong>Body.</strong> Most of the run is spent here. The diameter is held at ${M.RUN.crystalMm} mm by adjusting heater power and pull speed while a camera watches the bright ring where crystal meets melt. Crystal and crucible turn in opposite directions, and the crucible rises so the melt surface stays at the same height. Argon flows down past the crystal and out over the melt, sweeping away the silicon monoxide that evaporates from it, and leaves through exhaust ports in the chamber floor.`,
     `<strong>Tail.</strong> At the end the crystal is pulled faster so it narrows to a cone. Lifting a full-width crystal off the melt would shock it and send dislocations back up the body.`,
     `<strong>Cool and remove.</strong> The crystal is lifted into the pull chamber, the gate valve closes, and it cools before it is taken out and sent to be ground, sliced and polished into wafers.`,
   ],
   numbers: [
     ["Melting point of silicon", `${M.SI.meltC} °C`],
-    ["Charge in a 24-inch hot zone", `${M.RUN.chargeKg} kg`, `${M.RUN.hotZoneIn}-inch crucible; by ${M.RUN.hotZoneMainYear} most 300 mm crystals came from ${M.RUN.hotZoneMainIn}-inch hot zones (larger ones are now common)`],
+    ["Charge in a 24-inch hot zone", `${M.RUN.chargeKg} kg`, `${M.RUN.hotZoneIn}-inch crucible, the run drawn here; by ${M.RUN.hotZoneMainYear} most 300 mm crystals already came from ${M.RUN.hotZoneMainIn}-inch hot zones`],
     ["Neck diameter", `${M.RUN.neckRangeMm[0]}–${M.RUN.neckRangeMm[1]} mm`, `Dash necking; the seed itself is ${M.RUN.seedMm[0]}–${M.RUN.seedMm[1]} mm`],
     ["Rotation", `crystal ${M.RUN.crystalRpm[0]}–${M.RUN.crystalRpm[1]} rpm · crucible ${M.RUN.crucibleRpm[0]}–${M.RUN.crucibleRpm[1]} rpm`, "in opposite directions"],
     ["One metre of 300 mm body", `≈ ${kg(M.bodyKgPerM)} kg`, `derived from silicon's density, ${M.SI.solidDensity} g/cm³`],
-    ["A run", `${M.RUN.days[0]}–${M.RUN.days[1]} days`, "for a crystal of several hundred kilograms"],
+    ["A run", `${M.RUN.days[0]}–${M.RUN.days[1]} days`, `per pulling run at Siltronic Freiberg, for 300 mm crystals larger than the ${M.RUN.chargeKg} kg Tu et al. run drawn here`],
   ],
   innovationsTitle: "Why it matters",
   innovations: [
@@ -32,10 +32,11 @@ export const LESSON = {
   sources: [
     ["Tu et al., Growth of 300 mm silicon single crystals in a 24-inch hot zone (ECS)", M.SRC.tu],
     ["PVA TePla EKZ 3500 Czochralski puller, technical data", M.SRC.ekz],
-    ["Siltronic: crystal pulling at Freiberg (300 mm, five to seven days)", M.SRC.siltronic],
+    ["Siltronic: crystal pulling at Freiberg (300 mm ingots of several hundred kilograms, five to seven days)", M.SRC.siltronic],
     ["US 6670036: seed crystal and Dash necking", M.SRC.dashPatent],
     ["Royal Society of Chemistry: silicon (melting point, density)", M.SRC.rsc],
     ["US 8460462: horizontal-field MCZ and low-oxygen silicon", M.SRC.hmcz],
+    ["US 5968264: horizontal magnetic field of at least 2000 G across the melt", M.SRC.field],
     ["US 8187383: purge gas carries the SiO evaporated from the melt out of the chamber", M.SRC.purge],
   ],
 };

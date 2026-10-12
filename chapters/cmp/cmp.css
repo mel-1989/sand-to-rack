@@ -9,8 +9,32 @@
 }
 
 .cmp .iso-plate {
-  padding: 52px 24px 60px;
+  padding: 52px 24px 76px;
   overflow: hidden;
+}
+
+/* the readout sits on its own line above the hint at every width, so a long one wraps instead of printing over it */
+.cmp .iso-plate-corner[data-corner="readout"] {
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  text-align: right;
+  line-height: 1.4;
+  white-space: normal;
+}
+
+/* endpoint: the stack light's top lamp lights while the window reports the barrier */
+.cmp-stage[data-endpoint] [data-beacon] {
+  --anatomy-hi: var(--anatomy-lit);
+  --anatomy-mid: var(--anatomy-lit);
+}
+
+.cmp-stage[data-endpoint] [data-beacon] .iso-top {
+  fill: var(--anatomy-lit);
+}
+
+.cmp-stage[data-endpoint] [data-beacon] .iso-shade {
+  fill: color-mix(in srgb, var(--anatomy-lit) 78%, var(--anatomy-paper));
 }
 
 .cmp-stage {
@@ -130,19 +154,17 @@
 }
 
 @media (max-width: 640px) {
+  /* a band under the drawing holds two lines of readout above the hint */
   .cmp .iso-plate {
-    padding: 48px 8px 84px;
+    padding: 48px 8px 96px;
+  }
+
+  .cmp .iso-plate-corners {
+    inset: 18px 14px;
   }
 
   .cmp .iso-plate-corner[data-corner="readout"] {
-    bottom: 44px;
-    right: 0;
-    left: 16px;
-    max-width: calc(100% - 32px);
-    text-align: right;
-    line-height: 1.4;
-    white-space: normal;
-    overflow: visible;
+    bottom: 16px;
   }
 
   .cmp-controls {
@@ -420,9 +442,7 @@
   max-height: 120px;
 }
 
-@media (max-width: 640px) {
-  .cmp-stage > svg {
-    width: 110%;
-    margin: -2% -5% 0;
-  }
+/* the drawing never runs past the stage, so the base plate's corners stay inside the card */
+.cmp-stage > svg {
+  max-width: 100%;
 }

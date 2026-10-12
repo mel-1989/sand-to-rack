@@ -8,12 +8,19 @@ export const LESSON = {
     `<strong>Interposer.</strong> ${M.GPU.packaging} embeds small local silicon bridges in a redistribution layer, so only the short, dense die-to-memory and die-to-die wires run in silicon: ${(M.HBM.stacks * M.HBM.busBits).toLocaleString("en-US")} memory data lines in all.`,
     `<strong>HBM4.</strong> Each stack is a base logic die plus ${M.HBM.high} DRAM dies joined by through-silicon vias: ${M.HBM.gbPerStack} GB and a ${M.HBM.busBits.toLocaleString("en-US")}-bit interface per stack.`,
     `<strong>Compute dies.</strong> Two dies at the reticle limit, about the largest area one lithography exposure can print, joined by ${M.GPU.link} so software sees one GPU.`,
-    `<strong>Cold plate.</strong> The stacks are ${M.HBM.heightUm} µm tall, the compute dies are thinned to match, and one liquid cold plate presses on all ten.`,
+    `<strong>Cold plate.</strong> JEDEC caps an HBM4 stack at ${M.HBM.heightUm} µm. The compute dies are set level with the stacks so one liquid cold plate can press on all ten.`,
   ],
+  more: `<section><h2>How it is assembled</h2><ol>
+<li><strong>Interposer.</strong> Redistribution layers are built on a carrier wafer, with small local silicon interconnect (LSI) bridges embedded where the dies meet the memory.</li>
+<li><strong>Chip on wafer.</strong> The compute dies and HBM stacks are placed face-down onto the interposer wafer and joined with copper micro-bumps (not hybrid bonds), then underfilled.</li>
+<li><strong>Mold and grind.</strong> The assembly is molded and ground flat, the carrier is removed, and C4 bumps are formed on the underside.</li>
+<li><strong>Chip on substrate.</strong> The interposer module is cut out and flip-chip mounted on the organic ABF build-up substrate, underfilled again, and a stiffener ring is fitted.</li>
+<li><strong>Test.</strong> The finished package is tested before it goes to the board and the cold plate.</li>
+</ol><p>Source: <a href="https://3dfabric.tsmc.com/english/dedicatedFoundry/technology/cowos.htm" rel="noopener" target="_blank">TSMC CoWoS overview</a>. The exact Rubin flow is not public; this is the general CoWoS-L sequence.</p></section>`,
   numbers: [
     ["Transistors", `${M.GPU.transistorsB} billion`, `${M.GPU.node}`],
     ["HBM4 capacity", `${M.total} GB`, `${M.HBM.stacks} × ${M.HBM.high}-high × ${M.HBM.gbPerStack} GB`],
-    ["Memory bandwidth", `${M.HBM.totalTBs} TB/s`, `≈${M.pinGbps.toFixed(1)} Gb/s per pin, derived`],
+    ["Memory bandwidth", `${M.HBM.totalTBs} TB/s`, `≈${M.pinGbps.toFixed(1)} Gb/s per pin (derived), above the JEDEC HBM4 baseline of 8 Gb/s; NVIDIA asked suppliers for more than 10 Gb/s`],
     ["NVLink 6", `${M.GPU.nvlinkTBs} TB/s`, "per GPU"],
     ["NVFP4", `${M.GPU.nvfp4Inference} PF inference · ${M.GPU.nvfp4Dense} PF dense`, "inference figure uses the Transformer Engine; NVIDIA labels the 35 PF dense"],
   ],

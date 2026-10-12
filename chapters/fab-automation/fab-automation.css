@@ -9,7 +9,7 @@
 }
 
 .fa .iso-plate {
-  padding: 52px 24px 76px;
+  padding: 48px 24px 68px;
   overflow: hidden;
 }
 
@@ -142,7 +142,7 @@
 @media (max-width: 640px) {
   /* a band under the drawing holds two lines of readout above the hint */
   .fa .iso-plate {
-    padding: 48px 8px 96px;
+    padding: 44px 6px 86px;
   }
 
   .fa .iso-plate-corners {
@@ -259,19 +259,28 @@
 .fa-svg .fa-throat { fill: var(--fa-cavity); stroke: none; }
 .fa-svg .fa-screen { fill: var(--fa-screen); stroke: none; }
 
-/* the signal tower's top lamp lights while the tool runs */
-.fa-lamp[data-on] {
-  --anatomy-hi: var(--anatomy-lit);
-  --anatomy-mid: var(--anatomy-hi);
+/* while the tool runs, the signal tower's top lamp shows green and the chamber lids take a green tint, in both themes */
+.fa {
+  --fa-run: var(--anatomy-green);
+  --fa-run-top: color-mix(in srgb, var(--anatomy-green) 78%, #ffffff);
+  --fa-run-shade: color-mix(in srgb, var(--anatomy-green) 70%, #000000);
+  --fa-run-lid-top: color-mix(in srgb, var(--anatomy-green) 34%, var(--anatomy-top));
+  --fa-run-lid-shade: color-mix(in srgb, var(--anatomy-green) 34%, var(--anatomy-shade-1, var(--anatomy-mid)));
 }
 
-.fa-lamp[data-on] .iso-top {
-  fill: var(--anatomy-lit-top);
+.fa-lamp .iso-fill,
+.fa-lamp .iso-top,
+.fa-lamp .iso-shade {
+  transition: fill 240ms var(--anatomy-ease), stroke 240ms var(--anatomy-ease);
 }
 
-.fa-lamp[data-on] .iso-shade {
-  fill: var(--anatomy-lit-shade);
-}
+.fa-lamp[data-on] .iso-fill { fill: var(--fa-run-shade); }
+.fa-lamp[data-on] .iso-top { fill: var(--fa-run-top); stroke: var(--fa-run-top); }
+.fa-lamp[data-on] .iso-shade { fill: var(--fa-run); stroke: var(--fa-run); }
+
+.fa-lamp-lid[data-on] .iso-fill { fill: var(--fa-run-lid-shade); }
+.fa-lamp-lid[data-on] .iso-top { fill: var(--fa-run-lid-top); stroke: var(--fa-run-lid-top); }
+.fa-lamp-lid[data-on] .iso-shade { fill: var(--fa-run-lid-shade); stroke: var(--fa-run-lid-shade); }
 
 .fa-belt {
   fill: none;

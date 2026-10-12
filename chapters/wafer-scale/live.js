@@ -33,24 +33,41 @@ for (const node of nodes) {
 }
 const slim = matchMedia("(max-width: 520px)");
 let cameraShown = "";
-function camera(shift) {
+function boxOf(shift, only) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const node of nodes) {
-    if (!node.box) continue;
+    if (!node.box || (only && !only.includes(node.piece))) continue;
     const [tx, ty] = shift(node);
     x0 = Math.min(x0, node.box[0] + tx);
     y0 = Math.min(y0, node.box[1] + ty);
     x1 = Math.max(x1, node.box[2] + tx);
     y1 = Math.max(y1, node.box[3] + ty);
   }
-  if (!(x1 > x0 && y1 > y0)) return "";
+  return x1 > x0 && y1 > y0 ? [x0, y0, x1, y1] : null;
+}
+function fit([x0, y0, x1, y1], padX, padY, cap) {
+  const z = Math.min(cap, (D.W - 2 * padX) / (x1 - x0), (D.H - 2 * padY) / (y1 - y0));
+  return [z, D.W / 2 - ((x0 + x1) / 2) * z, D.H / 2 - ((y0 + y1) / 2) * z];
+}
+// near: 0..1, how far a slim screen has moved in on the wafer (the closed engine is wide and flat, so on a
+// phone it would fill under half the plate's height and the mesh traffic would be tiny; the fixture's sides crop)
+function camera(shift, near = 0) {
+  const all = boxOf(shift);
+  if (!all) return "";
   // at narrow widths the svg is drawn wider than the card, so keep more room at the sides
   const padX = slim.matches ? D.W * 0.115 : D.W * 0.05;
   const padY = D.H * 0.05;
-  const zoom = Math.min(D.ZOOM, (D.W - 2 * padX) / (x1 - x0), (D.H - 2 * padY) / (y1 - y0));
-  const z = slim.matches ? zoom : Math.max(1, zoom);
-  const tx = D.W / 2 - ((x0 + x1) / 2) * z;
-  const ty = D.H / 2 - ((y0 + y1) / 2) * z;
+  let [z, tx, ty] = fit(all, padX, padY, D.ZOOM);
+  if (!slim.matches) z = Math.max(1, z), tx = D.W / 2 - ((all[0] + all[2]) / 2) * z, ty = D.H / 2 - ((all[1] + all[3]) / 2) * z;
+  const wafer = near > 0 && slim.matches ? boxOf(shift, ["wafer"]) : null;
+  if (wafer) {
+    const [wz, wx0, wy] = fit(wafer, D.W * 0.13, padY, 3);
+    // bias the crop right so the cold plate's far-left coolant block (where the supply and return plug in) stays in frame
+    const wx = wx0 + D.W * 0.07;
+    z += (wz - z) * near;
+    tx += (wx - tx) * near;
+    ty += (wy - ty) * near;
+  }
   return `translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${z.toFixed(4)})`;
 }
 
@@ -173,6 +190,8 @@ let s = 0;
 let target = 0;
 let playing = false;
 let selected = null;
+// a legend click pins its part: hover only previews, and leaving returns to the pin until another pick, Escape or a stage interaction
+let pinned = null;
 let touring = !still.matches;
 let tourClock = 0;
 let tookOver = false;
@@ -247,7 +266,7 @@ function place() {
   const view = camera((node) => {
     const x = share[node.piece];
     return [(D.EX[0] * node.m[0] + D.EY[0] * node.m[1] + D.EZ[0] * node.m[2]) * x, (D.EX[1] * node.m[0] + D.EY[1] * node.m[1] + D.EZ[1] * node.m[2]) * x];
-  });
+  }, ease(clamp((s - A_END) / (ON - A_END))));
   if (view !== cameraShown) {
     cameraShown = view;
     if (view) layers.setAttribute("transform", view);
@@ -265,6 +284,8 @@ function place() {
 
 function show() {
   scrubInput.value = String(Math.round(s * 1000));
+  const scrubText = phaseText();
+  if (scrubInput.getAttribute("aria-valuetext") !== scrubText) scrubInput.setAttribute("aria-valuetext", scrubText);
   playText.textContent = playing ? "Pause" : s >= 0.999 ? "Replay" : "Play";
   playButton.toggleAttribute("data-playing", playing);
   playButton.setAttribute("aria-label", playing ? "Pause" : s >= 0.999 ? "Replay the assembly and the mesh traffic" : "Play the assembly and the mesh traffic");
@@ -329,6 +350,7 @@ new IntersectionObserver(
 
 function togglePlay() {
   takeOver();
+  pinned = null;
   if (playing) {
     playing = false;
     target = s;
@@ -349,6 +371,7 @@ function togglePlay() {
 
 function reset() {
   takeOver();
+  pinned = null;
   playing = false;
   select(null);
   target = 0;
@@ -377,12 +400,13 @@ stage.addEventListener("pointerleave", (event) => {
   if (event.pointerType === "touch") return;
   clearTimeout(leaveTimer);
   leaveTimer = setTimeout(() => {
-    select(null);
+    select(pinned);
     show();
   }, 260);
 });
 
 stage.addEventListener("pointerdown", (event) => {
+  pinned = null;
   if (event.pointerType !== "touch") {
     stage.focus({ preventScroll: true });
     return;
@@ -396,6 +420,11 @@ stage.addEventListener("pointerdown", (event) => {
   show();
 });
 
+let lastX = NaN, lastY = NaN;
+document.addEventListener("pointermove", (event) => {
+  lastX = event.clientX;
+  lastY = event.clientY;
+});
 partButtons.forEach((button) => {
   const preview = () => {
     clearTimeout(leaveTimer);
@@ -406,11 +435,15 @@ partButtons.forEach((button) => {
     clearTimeout(leaveTimer);
     leaveTimer = setTimeout(() => {
       if (partButtons.some((other) => other.matches(":hover, :focus-visible"))) return;
-      select(null);
+      select(pinned);
       show();
     }, 260);
   };
-  button.addEventListener("pointerenter", preview);
+  // preview only on real movement: a resting cursor gets synthetic pointer events when the layout shifts under it
+  button.addEventListener("pointermove", (event) => {
+    if (event.clientX === lastX && event.clientY === lastY) return;
+    if (selected !== button.dataset.part) preview();
+  });
   button.addEventListener("focus", preview);
   button.addEventListener("pointerleave", hide);
   button.addEventListener("blur", hide);
@@ -418,7 +451,8 @@ partButtons.forEach((button) => {
     // a click also takes the stack apart so the picked layer can be seen
     takeOver();
     playing = false;
-    select(button.dataset.part);
+    pinned = button.dataset.part;
+    select(pinned);
     target = 0;
     if (still.matches) s = 0;
     show();
@@ -456,12 +490,14 @@ document.addEventListener("keydown", (event) => {
   if (next === null) return;
   event.preventDefault();
   takeOver();
+  pinned = null;
   select(D.order[next]);
   show();
 });
 
 scrubInput.addEventListener("input", () => {
   takeOver();
+  pinned = null;
   playing = false;
   select(null);
   s = target = Number(scrubInput.value) / 1000;

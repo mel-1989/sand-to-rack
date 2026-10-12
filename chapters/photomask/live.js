@@ -16,6 +16,7 @@ const dieGroup = root.querySelector(".pm-dies");
 const holes = [...root.querySelectorAll(".pm-ap")].sort((a, b) => Number(a.dataset.n) - Number(b.dataset.n));
 const beamlets = [...root.querySelectorAll(".pm-beamlet")];
 const blankItem = dieGroup.closest(".it");
+const cradles = [...root.querySelectorAll(".pm-cradle")];
 const ilt = root.querySelector(".pm-ilt");
 const design = root.querySelector(".pm-design");
 const packets = [...root.querySelectorAll(".pm-packet")];
@@ -48,6 +49,7 @@ const nodes = [...layers.querySelectorAll(".it")].map((el) => ({
 }));
 for (const node of nodes) node.lift = node.m[0] * D.V[0] + node.m[1] * D.V[1] + node.m[2] * D.V[2];
 let order = nodes.map((_, index) => index);
+const maskNodes = nodes.filter((node) => node.piece === "mask");
 
 const N = D.steps.length;
 const STEP = 1 / N;
@@ -147,6 +149,16 @@ function render() {
   const away = rampOf(D.ramps.stage[2], D.ramps.stage[3], s);
   blankItem.style.opacity = away > 0 ? (1 - away).toFixed(3) : "";
   blankItem.style.pointerEvents = away > 0.5 ? "none" : "";
+  // ...and the same mask turns up on the bench as it fades from the stage (shown at once if the reader picks it)
+  const onBench = selected === "mask" ? 1 : away;
+  for (const node of maskNodes) {
+    node.el.style.opacity = onBench >= 1 ? "" : onBench.toFixed(3);
+    node.el.style.pointerEvents = onBench < 0.5 ? "none" : "";
+  }
+  // the pellicle mounter's posts fade out as the frame lifts off them and slides onto the mask
+  const pr = D.ramps.pellicle;
+  const lifted = rampOf(pr[0], pr[0] + (pr[1] - pr[0]) * 0.4, s);
+  cradles.forEach((post) => (post.style.opacity = lifted > 0 ? (1 - lifted).toFixed(3) : ""));
 
   // tape-out: the layout shape on the rack display turns into its OPC/ILT version
   const corrected = rampOf(0.2 * STEP, 0.75 * STEP, s);

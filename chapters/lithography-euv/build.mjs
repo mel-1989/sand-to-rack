@@ -623,7 +623,7 @@ function mirror(piece, name, { faceted = false, backY = POB.yf } = {}) {
     }
   }
   const seam = L(G.arcOf(F, -T + 1.2, r, P), { tone: "faint" });
-  put(piece, `${piece}.mirror.${name}`, G.add3(p, G.mul3(n, -T / 2)), S(G.disc(-T, 0, r, F, P, { bevel: 0.4 }), { tone: "hi", crease: "lo", inner: seam }) + extra, [A.disc(F, -T, 0, r)]);
+  put(piece, `${piece}.mirror.${name}`, G.add3(p, G.mul3(n, -T / 2)), S(G.disc(-T, 0, r, F, P, { bevel: 0.4 }), { tone: "hi", crease: "lo", inner: seam, lit: true }) + extra, [A.disc(F, -T, 0, r)]);
   // mount: a pad bolted to the housing face behind it, and a short arm from the pad to the mirror's rim, along +y
   const c = G.add3(p, G.mul3(n, -T / 2));
   const t = G.cross3(n, [0, 1, 0]);

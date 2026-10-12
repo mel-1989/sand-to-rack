@@ -15,8 +15,8 @@ export const RIG = {
   Z_BLADE: [50, 51.2],
   PED_X: 181,
   PED_TOP: 46,
-  PIN_R: 20, // pin circle radius
-  PIN_UP: 8, // how far the lift pins rise above the pedestal
+  PIN_R: 26, // pin circle radius, near the wafer rim so the pins show under its edge
+  PIN_UP: 15, // how far the lift pins rise above the pedestal (high enough that the front pin shows under the wafer edge)
   WAFER_R: 30,
   WAFER_T: 1, // drawn thickness (exaggerated)
   FILM_PER: 0.75, // drawn film per ALD cycle (hugely exaggerated)

@@ -22,9 +22,22 @@
   -webkit-user-select: none;
 }
 
+/* the focus ring is drawn by a pseudo-element that stops above the section cards, which are pulled up over the stage's bottom */
 .gs-stage:focus-visible {
-  outline: 1px solid var(--anatomy-muted);
-  outline-offset: 6px;
+  outline: none;
+}
+.gs-stage:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: -6px -6px 42px;
+  border: 1px solid var(--anatomy-muted);
+  border-radius: 12px;
+  pointer-events: none;
+}
+@media (max-width: 640px) {
+  .gs-stage:focus-visible::after {
+    inset: -4px -4px 0;
+  }
 }
 
 .gs-stage > svg {

@@ -4,8 +4,8 @@
 export const FOUP = {
   wafers: 25, // slots per FOUP; SEMI E47.1, https://en.wikipedia.org/wiki/FOUP
   waferMm: 300, // wafer diameter; SEMI E47.1 (title: "FOUPs used to transport and store 300 mm wafers"), https://store-us.semi.org/products/e04701-semi-e47-1-mechanical-specification-for-foups-used-to-transport-and-store-300-mm-wafers
-  pitchMm: 10, // slot pitch for 25-slot 300 mm FOUPs; https://en.wikipedia.org/wiki/FOUP
-  massKg: [7, 9], // fully loaded; https://en.wikipedia.org/wiki/FOUP
+  pitchMm: 10, // slot pitch for 25-slot 300 mm FOUPs; https://en.wikipedia.org/wiki/FOUP; Entegris Spectra FOUP datasheet: "Wafer spacing 10 mm", https://www.entegris.com/content/dam/product-assets/spectrafoups/datasheet-spectrafoups.pdf
+  massKg: [7, 9], // fully loaded; https://en.wikipedia.org/wiki/FOUP; Entegris Spectra FOUP datasheet: 4.2 kg empty, "With wafers 7.3 kg" (same PDF)
   lot: 25, // a lot is typically 25 wafers; https://semiengineering.com/battling-fab-cycle-times
 };
 
@@ -40,8 +40,8 @@ export const FLOW = {
 
 // Cleanliness: the bay versus the minienvironment around the wafer.
 export const CLEAN = {
-  bayIso: 5, // tools stand in ISO 5 rooms; https://chemanager-online.com/de/themen/minienvironments-fuer-die-halbleiterproduktion-und-nano-technologie
-  miniIso: [3, 1], // the tool's minienvironment holds ISO 3, or even down to ISO 1; same article
+  bayIso: 5, // "typischerweise ... in turbulent belüfteten Reinräumen der Klasse ISO 5" (CHEManager, 2011); https://chemanager-online.com/de/themen/minienvironments-fuer-die-halbleiterproduktion-und-nano-technologie
+  miniIso: [3, 1], // the tool's minienvironment holds ISO 3, or even down to ISO 1; same article. Vendor EFEMs agree: Milara EFEM "ISO 3 (ISO14644) ... compliant", https://semicon-west.german-pavilion.com/en/sites/products-services/230280; Averna EFEM "Mini-Environment for up to ISO Class 1 Operation", https://www.averna.com/en/products/platforms/efem-platform
   miniText: "ISO 3, down to ISO 1", // reads the pair above in plain words
   // ISO 14644-1 class limits for particles >= 0.1 um per cubic metre: C = 10^N (0.1/D)^2.08, https://en.wikipedia.org/wiki/Cleanroom
   perM3: (iso) => Math.round(10 ** iso),
@@ -78,19 +78,19 @@ export const STEPS = [
   { id: "release", name: "Gripper lets go", say: `FOUP on the kinematic pins · datum ${fmt(LOAD_PORT.datumMm)} mm above the floor`, sec: 1.8 },
   { id: "door", name: "Door opens", say: "port docks the FOUP, unlatches its door, lowers it into the EFEM", sec: 3.4 },
   { id: "pick", name: "Robot takes a wafer", say: `robot reaches slot ${PICK_SLOT} of ${FOUP.wafers} · ${FOUP.pitchMm} mm slot pitch`, sec: 4.2 },
-  { id: "into", name: "Into the tool", say: "through the slit valve into the tool's load lock", sec: 3.4 },
+  { id: "into", name: "Into the tool", say: "fork carries the wafer through the slit valve into the tool", sec: 3.4 },
   { id: "process", name: "Tool processes it", say: `slit valve shut · one of ${FLOW.stepsLogic[0]}–${fmt(FLOW.stepsLogic[1])}+ steps for this wafer`, sec: 2.8 },
   { id: "back", name: "Back to the FOUP", say: `wafer back in slot ${PICK_SLOT} · the FOUP never opens to room air`, sec: 5.2 },
   { id: "leave", name: "FOUP leaves", say: "FOUP lifted to the next tool · this was one visit of hundreds", sec: 5.2 },
 ];
 
 export const PARTS = {
-  stocker: { name: "Stocker", say: "shelves of FOUPs that buffer lots between tools until an OHT collects them" },
+  stocker: { name: "Stocker", say: "shelves of FOUPs, seen through its window, buffer lots until an OHT collects them" },
   oht: { name: "OHT vehicle", say: `rides the ceiling rail · Daifuku, ${AMHS.asOf}: up to ${AMHS.railKm} km of rail, ${AMHS.vehicles} vehicles` },
   foup: { name: "FOUP", say: `${FOUP.wafers} × ${FOUP.waferMm} mm wafers · ${FOUP.pitchMm} mm pitch · ${FOUP.massKg[0]}–${FOUP.massKg[1]} kg loaded` },
   port: { name: "Load port", say: `SEMI E15.1 · datum ${fmt(LOAD_PORT.datumMm)} mm · ${LOAD_PORT.widthMm} mm port pitch (E15.1 minimum)` },
-  robot: { name: "EFEM robot", say: `${CLEAN.miniText} minienvironment under its own filter unit` },
-  tool: { name: "Process tool", say: `visited hundreds of times · ${FLOW.stepsLogic[0]}–${fmt(FLOW.stepsLogic[1])}+ steps per wafer` },
+  robot: { name: "EFEM robot", say: `SCARA arm · thin fork lifts one wafer at a time · ${CLEAN.miniText} air` },
+  tool: { name: "Process tool", say: `one of hundreds of tool visits · ${FLOW.stepsLogic[0]}–${fmt(FLOW.stepsLogic[1])}+ steps per wafer` },
   bay: { name: "Cleanroom bay", say: `ISO ${CLEAN.bayIso} air · ≤${fmt(iso5PerM3)} particles ≥0.1 µm/m³ · out through the floor` },
 };
 

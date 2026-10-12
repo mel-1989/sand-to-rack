@@ -129,18 +129,24 @@ function moving() {
   return rate > 0 && Math.abs(goal - T) > 1e-4;
 }
 
+// the gantry is between two stops for the first MOVE of every step after the first: the package it is heading to
+// is lit, named and read out only once the head arrives over it
+const inTransit = (t) => {
+  const i = stepOf(t);
+  return i > 0 && t < N && t - i < MOVE;
+};
+
 function readoutText() {
   if (selected) return GENS[IDS.indexOf(selected)].say;
   const i = stepOf(T);
   if (i < 0) return moving() ? "gantry returning" : D.idle;
-  const p = T - i;
-  if (p < MOVE && i > 0 && T < N && moving()) return `gantry moving to ${GENS[i].name}`;
+  if (inTransit(T)) return moving() ? `gantry moving to ${GENS[i].name}` : `gantry between ${GENS[i - 1].name} and ${GENS[i].name}`;
   return GENS[i].say;
 }
 
 function describe() {
   const i = stepOf(T);
-  const text = selected ? `${GENS[IDS.indexOf(selected)].name}: ${GENS[IDS.indexOf(selected)].say}` : i < 0 ? D.idle : `${GENS[i].name}: ${GENS[i].say}`;
+  const text = selected ? `${GENS[IDS.indexOf(selected)].name}: ${GENS[IDS.indexOf(selected)].say}` : i < 0 ? D.idle : inTransit(T) ? readoutText() : `${GENS[i].name}: ${GENS[i].say}`;
   if (stage.getAttribute("aria-valuetext") !== text) stage.setAttribute("aria-valuetext", text);
   const now = String(selected ? IDS.indexOf(selected) + 1 : i + 1);
   if (stage.getAttribute("aria-valuenow") !== now) stage.setAttribute("aria-valuenow", now);
@@ -179,6 +185,9 @@ function camera(share) {
   shownView = text;
   svgEl.setAttribute("viewBox", text);
   stage.toggleAttribute("data-zoomed", w > 0);
+  // fade whichever side of the bench the crop cuts, so the crop reads as a pan rather than a clipped picture
+  stage.toggleAttribute("data-cut-left", w > 0 && x > 0.5);
+  stage.toggleAttribute("data-cut-right", w > 0 && x + vw < W - 0.5);
 }
 
 function render() {
@@ -186,7 +195,8 @@ function render() {
   place(share);
   camera(share);
   const i = stepOf(T);
-  light(selected ?? (i < 0 ? null : GENS[i].id));
+  const transit = inTransit(T);
+  light(selected ?? (i < 0 ? null : GENS[transit ? i - 1 : i].id));
   if (selected) screen(IDS.indexOf(selected), IDS.indexOf(selected), 1);
   else if (i < 0) screen(-1, -1, 0);
   else screen(i, i - 1, T >= N ? 1 : ease(clamp((T - i) / MOVE)));
@@ -196,7 +206,7 @@ function render() {
   playText.textContent = playing ? "Pause" : T >= N - 1e-4 ? "Replay" : "Play";
   playButton.toggleAttribute("data-playing", playing);
   playButton.setAttribute("aria-label", playing ? "Pause" : "Play the inspection run");
-  const label = i < 0 ? "ready" : `${pad(i + 1)} · ${GENS[i].step}`;
+  const label = i < 0 ? "ready" : transit ? `${pad(i + 1)} · moving to ${GENS[i].name}` : `${pad(i + 1)} · ${GENS[i].step}`;
   if (stepText.textContent !== label) stepText.textContent = label;
   const value = String(Math.round((T / N) * 1000));
   if (scrubInput.value !== value && !dragging) scrubInput.value = value;
