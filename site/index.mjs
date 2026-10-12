@@ -2,44 +2,43 @@
 // node site/index.mjs
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { k } from "./kit.mjs";
 import { CHAPTERS, PARTS } from "./chapters.mjs";
-import { DOCS, SHELL_CSS } from "./shell.mjs";
+import { DOCS, SHELL_CSS, SITE, THEME_BOOT, pageShell, homeHtml, toggleHtml, footHtml } from "./shell.mjs";
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const pad = (n) => String(n).padStart(2, "0");
 
 const CSS = `
-.ix-hero{margin:0 0 56px;max-width:60ch}
-.ix-hero .cp-kicker{font:11px/1.3 var(--anatomy-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--anatomy-muted);margin:0 0 12px}
-.ix-hero h1{margin:0;font:600 40px/1.08 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:-.02em;color:var(--anatomy-strong);text-wrap:balance}
-.ix-hero p{margin:16px 0 0;font-size:16px;line-height:1.6}
-.ix-flow{display:flex;flex-wrap:wrap;gap:6px 10px;margin:22px 0 0;padding:0;list-style:none;font:11px/1.3 var(--anatomy-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--anatomy-muted)}
-.ix-flow a{color:inherit;text-decoration:none}
-.ix-flow a:hover{color:var(--anatomy-strong)}
-.ix-flow li+li::before{content:"→";margin-right:10px;color:var(--anatomy-lo)}
-.ix-part{display:grid;grid-template-columns:200px 1fr;gap:24px;padding:30px 0;border-top:1px solid var(--anatomy-faint)}
-.ix-part header{position:sticky;top:20px;align-self:start}
-.ix-part .ix-n{font:11px/1.3 var(--anatomy-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--anatomy-muted)}
-.ix-part h2{margin:6px 0 8px;font:600 19px/1.25 ui-sans-serif,system-ui,sans-serif;color:var(--anatomy-strong);text-wrap:balance}
-.ix-part p{margin:0;font-size:13.5px;line-height:1.55}
-.ix-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.ix-card{display:flex;flex-direction:column;border-radius:12px;overflow:hidden;text-decoration:none;color:var(--anatomy-text);background:var(--anatomy-card);box-shadow:var(--anatomy-lift);transition:transform .2s var(--anatomy-ease)}
-a.ix-card:hover,a.ix-card:focus-visible{transform:translateY(-2px);color:var(--anatomy-strong);outline:none}
+.ix-hero{margin:24px 0 72px;max-width:62ch;font-family:var(--cp-sans)}
+.ix-hero .cp-kicker{font:500 11px/1.3 var(--cp-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--cp-muted);margin:0 0 14px}
+.ix-hero h1{margin:0;font:600 44px/1.06 var(--cp-sans);letter-spacing:-.025em;color:var(--anatomy-strong);text-wrap:balance}
+.ix-hero p{margin:18px 0 0;font-size:17px;line-height:1.65;text-wrap:pretty}
+.ix-flow{display:flex;flex-wrap:wrap;gap:4px 8px;margin:26px 0 0;padding:0;list-style:none;font:500 11px/1.3 var(--cp-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--cp-muted)}
+.ix-flow a{display:inline-flex;align-items:center;min-height:32px;padding:0 10px;border-radius:999px;border:1px solid var(--anatomy-faint);color:inherit;text-decoration:none;transition:color .2s ease,border-color .2s ease}
+.ix-flow a:hover{color:var(--anatomy-strong);border-color:var(--anatomy-lo)}
+.ix-part{display:grid;grid-template-columns:210px 1fr;gap:28px;padding:36px 0;border-top:1px solid var(--anatomy-faint);font-family:var(--cp-sans)}
+.ix-part header{position:sticky;top:84px;align-self:start}
+.ix-part .ix-n{font:500 11px/1.3 var(--cp-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--cp-muted)}
+.ix-part h2{margin:8px 0 8px;font:600 20px/1.25 var(--cp-sans);letter-spacing:-.01em;color:var(--anatomy-strong);text-wrap:balance}
+.ix-part p{margin:0;font-size:14px;line-height:1.6;text-wrap:pretty}
+.ix-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.ix-card{display:flex;flex-direction:column;border-radius:14px;overflow:hidden;text-decoration:none;color:var(--anatomy-text);background:var(--anatomy-card);box-shadow:var(--anatomy-lift);transition:background-color .25s ease,color .25s ease}
+a.ix-card:hover{color:var(--anatomy-strong);background:var(--anatomy-face)}
 .ix-thumb{aspect-ratio:5/4;max-width:100%;background:var(--anatomy-paper);display:grid;place-items:center;overflow:hidden}
-.ix-thumb img{width:100%;height:100%;object-fit:cover;object-position:50% 45%}
+.ix-thumb img{width:100%;height:100%;object-fit:cover;object-position:50% 45%;transition:transform .6s var(--cp-ease)}
+a.ix-card:hover .ix-thumb img{transform:scale(1.035)}
 .ix-thumb img[data-theme-img="light"]{display:none}
 body[data-theme="light"] .ix-thumb img[data-theme-img="light"]{display:block}
 body[data-theme="light"] .ix-thumb img[data-theme-img="dark"]{display:none}
-.ix-thumb span{font:10.5px/1 var(--anatomy-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--anatomy-lo)}
-.ix-meta{padding:12px 14px 14px}
-.ix-meta small{display:block;font:10.5px/1.3 var(--anatomy-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--anatomy-muted);margin-bottom:5px}
-.ix-meta b{display:block;font-weight:600;font-size:14px;line-height:1.35;color:var(--anatomy-strong)}
-.ix-meta em{display:block;font-style:normal;font-size:12.5px;margin-top:3px}
+.ix-thumb span{font:500 10.5px/1 var(--cp-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--cp-muted)}
+.ix-meta{padding:13px 15px 15px}
+.ix-meta small{display:block;font:500 10.5px/1.3 var(--cp-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--cp-muted);margin-bottom:6px}
+.ix-meta b{display:block;font-weight:600;font-size:15px;line-height:1.35;color:var(--anatomy-strong)}
+.ix-meta em{display:block;font-style:normal;font-size:13px;line-height:1.45;margin-top:4px}
 .ix-soon{opacity:.55}
-.ix-foot{margin:56px 0 0;padding-top:20px;border-top:1px solid var(--anatomy-faint);font-size:12.5px;color:var(--anatomy-muted)}
-.ix-foot a{color:var(--anatomy-text)}
-@media (max-width:720px){.ix-hero h1{font-size:30px}.ix-part{grid-template-columns:1fr;gap:16px}.ix-part header{position:static}}
+.ix-note{margin:48px 0 0;max-width:66ch;font:13px/1.6 var(--cp-sans);color:var(--cp-muted)}
+@media (max-width:720px){.ix-hero h1{font-size:32px}.ix-hero p{font-size:16px}.ix-part{grid-template-columns:1fr;gap:18px}.ix-part header{position:static}}
+@media (prefers-reduced-motion:reduce){.ix-thumb img{transition:none}a.ix-card:hover .ix-thumb img{transform:none}}
 `;
 
 function card(c) {
@@ -52,24 +51,12 @@ function card(c) {
 }
 
 const flow = `<ol class="ix-flow">${PARTS.map((p) => `<li><a href="#${p.id}">${p.n} ${esc(p.title.split(":")[0])}</a></li>`).join("")}</ol>`;
-const hero = `<header class="ix-hero"><p class="cp-kicker">An interactive course in ${CHAPTERS.length} machines</p><h1>How an AI chip is made, from sand to rack</h1><p>Every chapter is a working drawing of the machine that does one stage of the job. Take it apart, pick a part to read its numbers, and drag the slider to watch the stage happen. The last two parts follow the chip through its generations and out to the frontier.</p>${flow}</header>`;
-const parts = PARTS.map((p) => `<section class="ix-part" id="${p.id}"><header><div class="ix-n">Part ${p.n}</div><h2>${esc(p.title)}</h2><p>${esc(p.blurb)}</p></header><div class="ix-cards">${CHAPTERS.filter((c) => c.part === p.id).map(card).join("")}</div></section>`).join("");
-const bar = `<nav class="cp-bar" aria-label="Course"><span class="cp-home">Chip pipeline</span><span class="cp-where">${CHAPTERS.length} chapters · ${PARTS.length} parts</span><button type="button" data-theme-toggle aria-label="Switch theme">Light</button></nav>`;
-const foot = `<footer class="ix-foot">Figures drawn with the <a href="https://github.com/wheresryan22/anatomy" rel="noopener" target="_blank">Anatomy</a> kit (MIT). Heights and some layouts are exaggerated or illustrative so thin layers stay visible; each chapter says which. Numbers carry their sources at the foot of each chapter.</footer>`;
+const hero = `<header class="ix-hero" id="top"><p class="cp-kicker">An interactive course in ${CHAPTERS.length} machines</p><h1>How an AI chip is made, from sand to rack</h1><p>Every chapter is a working drawing of the machine that does one stage of the job. Take it apart, pick a part to read its numbers, and drag the slider to watch the stage happen. The last two parts follow the chip through its generations and out to the frontier.</p>${flow}</header>`;
+const parts = PARTS.map((p) => `<section class="ix-part cp-rv" id="${p.id}"><header><div class="ix-n">Part ${p.n}</div><h2>${esc(p.title)}</h2><p>${esc(p.blurb)}</p></header><div class="ix-cards">${CHAPTERS.filter((c) => c.part === p.id).map(card).join("")}</div></section>`).join("");
+const bar = `<nav class="cp-bar" aria-label="Course">${homeHtml()}<span class="cp-where">${CHAPTERS.length} chapters · ${PARTS.length} parts</span>${toggleHtml}</nav>`;
+const note = `<p class="ix-note cp-rv">Heights and some layouts are exaggerated or illustrative so thin layers stay visible; each chapter says which. Numbers carry their sources at the foot of each chapter.</p>`;
 
-const BOOT = `<script>(function(){var t;try{t=localStorage.getItem("cp-theme")}catch(e){}if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.body.setAttribute("data-theme",t)})()</script>`;
-const SCRIPT = `
-const button = document.querySelector("[data-theme-toggle]");
-const label = () => (button.textContent = document.body.dataset.theme === "light" ? "Dark" : "Light");
-label();
-button.addEventListener("click", () => {
-  const next = document.body.dataset.theme === "light" ? "dark" : "light";
-  document.body.setAttribute("data-theme", next);
-  try { localStorage.setItem("cp-theme", next); } catch (e) {}
-  label();
-});
-`;
-
-const html = k.pageHtml({ title: "Chip pipeline", theme: "dark", body: `${BOOT}<style>${SHELL_CSS}${CSS}</style>${bar}${hero}${parts}${foot}`, script: SCRIPT, width: 1080 });
+const description = `An interactive course in ${CHAPTERS.length} machines: how an AI chip is made, from sand to rack, through its generations and out to the frontier.`;
+const html = pageShell({ title: `${SITE}: how an AI chip is made`, description, body: `${THEME_BOOT}<style>${SHELL_CSS}${CSS}</style>${bar}${hero}${parts}${note}${footHtml}`, width: 1080 });
 writeFileSync(join(DOCS, "index.html"), html);
 console.log("wrote docs/index.html", `${CHAPTERS.filter((c) => existsSync(join(DOCS, `${c.slug}.html`))).length}/${CHAPTERS.length} chapters built`);

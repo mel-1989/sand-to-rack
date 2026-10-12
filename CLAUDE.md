@@ -2,9 +2,9 @@
 tags: [type/charter, for/agent, status/live]
 ---
 
-# Chip pipeline course: chapter contract
+# Sand to Rack: chapter contract
 
-This repo is a static site (`docs/`, served by GitHub Pages) that teaches every stage of making an AI accelerator chip, one interactive isometric figure per chapter. Figures are drawn with the Anatomy skill's kit, vendored in `vendor/anatomy/` (MIT, by Ryan; the full skill with its examples and references is at `~/.claude/skills/anatomy`). The chapter list, order and titles live in `site/chapters.mjs`; the page shell (top bar, theme toggle, lesson, prev/next) lives in `site/shell.mjs`. The reference chapter is `chapters/advanced-packaging/` (the Rubin package): copy its structure.
+This repo is Sand to Rack, a static site (`docs/`, served by GitHub Pages at https://mel-1989.github.io/sand-to-rack/) that teaches every stage of making an AI accelerator chip, one interactive isometric figure per chapter. Figures are drawn with the Anatomy skill's kit, vendored in `vendor/anatomy/` (MIT, by Ryan; the full skill with its examples and references is at `~/.claude/skills/anatomy`). The chapter list, order and titles live in `site/chapters.mjs`; the page shell (top bar, theme toggle, lesson, prev/next) lives in `site/shell.mjs`. The reference chapter is `chapters/advanced-packaging/` (the Rubin package): copy its structure.
 
 ## Files of a chapter
 

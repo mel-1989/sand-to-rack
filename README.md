@@ -2,15 +2,15 @@
 tags: [type/index, for/human, status/live]
 ---
 
-# How an AI chip is made, from sand to rack
+# Sand to Rack: how an AI chip is made
 
 An interactive course through every stage of making an AI accelerator, one working isometric drawing of the real machine per chapter: the Siemens reactor and the crystal puller, the wire saw, the mask writer, the fab's overhead transport, deposition, the EUV scanner, etch, implant, CMP, copper interconnect, metrology, probe test, thinning and dicing, hybrid bonding, the Rubin package and the rack it ends up in. Part V follows the transistor, HBM and the accelerator package through their generations and key innovations; Part VI looks at the frontier: High-NA EUV, co-packaged optics, glass substrates and wafer-scale compute.
 
-Open `docs/index.html` in a browser, or serve `docs/` with any static server. Each chapter page lets you pick a part (hover, arrow keys or the numbered buttons) to read its numbers, play or scrub the slider to watch the stage happen, and switch between dark and light. Every number carries its source at the foot of the chapter, and each chapter says which geometry is exaggerated or illustrative.
+Read it at [mel-1989.github.io/sand-to-rack](https://mel-1989.github.io/sand-to-rack/), open `docs/index.html` in a browser, or serve `docs/` with any static server. Each chapter page lets you pick a part (hover, arrow keys or the numbered buttons) to read its numbers, play or scrub the slider to watch the stage happen, and switch between dark and light. Every number carries its source at the foot of the chapter, and each chapter says which geometry is exaggerated or illustrative.
 
 ## Hosting
 
-The built site is plain static files in `docs/`, so any static host serves it as is. A private preview is published as a Claude artifact: [Chip pipeline](https://claude.ai/artifact/PtSNMZqhkwakir4hdHzCcQ). GitHub Pages needs the repo to be public or a plan with Pages for private repos; Cloudflare Pages (`npx wrangler pages deploy docs`) works with the repo kept private.
+The site is served by GitHub Pages from `docs/` on `main`: **https://mel-1989.github.io/sand-to-rack/**. It is plain static files, so any static host serves it as is.
 
 ## Build
 
@@ -31,7 +31,7 @@ Inside a chapter folder, `node build.mjs --audit` runs the geometry audit (it mu
 | Path | Holds |
 |---|---|
 | `site/chapters.mjs` | The chapter list, order and parts |
-| `site/shell.mjs` | The chapter page shell: top bar, theme toggle, lesson, prev/next |
+| `site/shell.mjs` | The page shell for every page: head tags, fonts, sticky top bar, theme toggle, lesson, prev/next, footer, page transitions |
 | `site/index.mjs`, `site/thumbs.mjs` | The course map and its card thumbnails |
 | `chapters/<slug>/` | One chapter: `model.mjs` (sourced numbers), `build.mjs` (geometry), `lesson.mjs`, `live.js`, styles |
 | `vendor/anatomy/` | The [Anatomy](https://github.com/wheresryan22/anatomy) drawing kit and its headless check scripts (MIT, by Ryan) |

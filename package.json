@@ -1,5 +1,5 @@
 {
-  "name": "aiaccelerator-pipeline-suite",
+  "name": "sand-to-rack",
   "private": true,
   "description": "An interactive, isometric course through every stage of making an AI accelerator chip.",
   "license": "MIT",
