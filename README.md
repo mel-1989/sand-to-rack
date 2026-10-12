@@ -8,6 +8,10 @@ An interactive course through every stage of making an AI accelerator, one worki
 
 Open `docs/index.html` in a browser, or serve `docs/` with any static server. Each chapter page lets you pick a part (hover, arrow keys or the numbered buttons) to read its numbers, play or scrub the slider to watch the stage happen, and switch between dark and light. Every number carries its source at the foot of the chapter, and each chapter says which geometry is exaggerated or illustrative.
 
+## Hosting
+
+The built site is plain static files in `docs/`, so any static host serves it as is. A private preview is published as a Claude artifact: [Chip pipeline](https://claude.ai/artifact/PtSNMZqhkwakir4hdHzCcQ). GitHub Pages needs the repo to be public or a plan with Pages for private repos; Cloudflare Pages (`npx wrangler pages deploy docs`) works with the repo kept private.
+
 ## Build
 
 Requires Node 20.10+ and Google Chrome (for the headless checks and thumbnails). There are no npm dependencies.
