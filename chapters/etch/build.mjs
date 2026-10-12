@@ -19,7 +19,7 @@ const EL = 32;
 const SPLIT = ((AZ - 90) * Math.PI) / 180; // where a bore's inner face turns from facing the viewer to facing away
 
 // ---- plan ----
-const PLATE = { x: -350, y: -300, w: 700, d: 470, r: 14 };
+const PLATE = { x: -350, y: -300, w: 700, d: 400, r: 14 };
 const PLATE_H = 14;
 const FOOT_H = 8;
 
@@ -53,6 +53,7 @@ const GLOW_R = 182;
 const Z_GLOW = [382, 468];
 
 const PUMP = [0, -120];
+const FORE = { z: 36, at: [0, 46] }; // foreline: exhaust height on the turbo, and where it drops through the plate
 const POSTS = [[-195, -195], [195, -195]];
 const MATCH = { x: -80, y: -222, w: 160, d: 92, r: 4 };
 const Z_MATCH = [600, 662];
@@ -366,6 +367,15 @@ function pump() {
   box("pump", "pump.valve", valve, 196, 36, { tone: "mid" }, { inner: L(k.sideSeam(valve, 214, P, 6), { tone: "faint" }), steps: 6, bevel: 0.8 });
   cyl("pump", "pump.actuator", px + 118, py - 30, 14, 200, 30, { tone: "mid" }, { steps: 28, extra: L(k.ring(px + 118, py - 30, 7, 230, P, 16), { tone: "lo" }) });
   cyl("pump", "pump.adapter", px, py, 98, 232, Z_FLOOR - 232, { tone: "mid" }, { steps: 72, inner: L(k.sideArc(px, py, 98, 241, P, 48), { tone: "faint" }) });
+  // exhaust: a flanged port on the turbo's housing, a foreline elbow, and a feedthrough down through the plate to the subfab dry pump
+  const EXZ = FORE.z;
+  const EF = G.frameAlong([px, py + 62, EXZ], [0, 1, 0]);
+  put("pump", [px, py + 66, EXZ], S(G.disc(0, 8, 15, EF, P, { bevel: 0.3 }), { tone: "mid" }) + Dots(G.dotsOf(EF, 8, 11.5, 4, P, { all: true, phase: 0.5 }), { size: 0.4 }), [A.disc(EF, 0, 8, 15)], { name: "pump.exhaust" });
+  const [fx, fy] = FORE.at;
+  const collar = { x: fx - 26, y: fy - 26, w: 52, d: 52, r: 4 };
+  box("pump", "pump.feedthrough", collar, 0, 6, { tone: "mid" }, { extra: screwsOnTop(k.corners(collar, 7), 6, 0.42) });
+  cyl("pump", "pump.forestub", fx, fy, 15, 6, 8, { tone: "mid" }, { steps: 28 });
+  line("pump", "pump.foreline", [[px, py + 70, EXZ], [fx, fy, EXZ], [fx, fy, 14]], 9, { tone: "mid", bend: 26, fit: 13, fitLen: 6 });
 }
 
 // =====================================================================
@@ -467,7 +477,8 @@ const DATA = {
   order: Object.keys(M.PARTS),
   idle: M.IDLE,
   setpoint: M.ICP.setpointMTorr,
-  atm: M.ATM_TORR,
+  transfer: M.TRANSFER_MTORR,
+  base: M.BASE_MTORR,
   nm: M.ENDPOINT.nm,
 };
 
@@ -486,13 +497,18 @@ const inset = `<div class="et-inset" aria-hidden="true"><span class="et-inset-la
 <path class="et-in-trace" data-trace d="M18 186"/>
 <circle class="et-in-head" data-head cx="18" cy="186" r="2"/>
 <text class="et-in-text" x="24" y="156">${M.ENDPOINT.species} ${M.ENDPOINT.nm} nm</text>
-<text class="et-in-text et-in-ar" data-ar x="204" y="20" text-anchor="end"></text>
+<text class="et-in-text et-in-ar" data-ar x="204" y="16" text-anchor="end"></text>
+<text class="et-in-text et-in-note" x="204" y="26" text-anchor="end">3D NAND holes: &gt;${M.HAR.ratio}:1</text>
+<path class="et-in-lead" d="M24 40V47"/><text class="et-in-tag" x="18" y="37">resist</text>
+<text class="et-in-tag" x="84" y="100" text-anchor="middle">film</text>
+<text class="et-in-tag" x="18" y="125">stop layer</text>
+<g data-pass-label opacity="0"><path class="et-in-lead" d="M163 41L169.4 74"/><text class="et-in-tag" x="204" y="38" text-anchor="end">sidewall polymer</text></g>
 </svg></div>`;
 
 const controls = `<div class="et-controls"><span class="et-hint">Hover a part · Space plays the etch</span><span class="et-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="et-stage" tabindex="0" role="group" aria-label="ICP etch chamber, cut in half. Hover, or use the arrow keys, to pick a part; Space plays or pauses the etch; Escape resets it; the slider below steps through the process.">${svg}</div>`;
-const caption = `An ICP etch chamber of the class of Lam's ${M.KIYO.name} (its ${M.KIYO.kind} line), cut in half. RF at ${M.ICP.rfMHz} MHz in the flat coil drives current through the ceramic window and sustains a dense plasma (about ${M.densityText} at a few mTorr); a second RF supply on the chuck sets how hard ions hit the ${M.WAFER.diameterMm} mm wafer. The turbo pump and throttle valve hold the pressure in the ${M.ICP.pressureMTorr[0]}–${M.ICP.pressureMTorr[1]} mTorr window while gas flows; the spectrometer watches the plasma's light through the viewport and calls the endpoint when a product line, here CO at ${M.ENDPOINT.nm} nm for an oxide etch, fades. Chamber, chuck and pump dimensions, the pressures shown during pump-down, the ${M.ICP.setpointMTorr} mTorr setpoint and the trench detail are illustrative.`;
-const scrub = `<span class="et-scrub"><button type="button" class="et-play" data-play aria-label="Play the etch"><span class="et-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="et-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is the start of pump-down, 1000 is the resist stripped"><span class="et-step" data-step>01 · Pump down</span></span>`;
+const caption = `An ICP etch chamber of the class of Lam's ${M.KIYO.name} (its ${M.KIYO.kind} line), cut in half. RF at ${M.ICP.rfMHz} MHz in the flat coil drives current through the ceramic window and sustains a dense plasma (about ${M.densityText} at a few mTorr); a second RF supply on the chuck sets how hard ions hit the ${M.WAFER.diameterMm} mm wafer. The turbo pump and throttle valve hold the pressure in the ${M.ICP.pressureMTorr[0]}–${M.ICP.pressureMTorr[1]} mTorr window while gas flows; the spectrometer watches the plasma's light through the viewport and calls the endpoint when a product line, here the ${M.ENDPOINT.species} line at ${M.ENDPOINT.nm} nm in a ${M.ENDPOINT.film} etch, fades. Wafers arrive from a vacuum transfer module, so the chamber only pumps from transfer pressure to base; the turbo exhausts through a foreline to a dry backing pump in the subfab. Chamber, chuck and pump dimensions, the pressures shown while pumping to base, the ${M.ICP.setpointMTorr} mTorr setpoint and the trench detail are illustrative.`;
+const scrub = `<span class="et-scrub"><button type="button" class="et-play" data-play aria-label="Play the etch"><span class="et-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="et-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is the start of pumping to base, 1000 is the resist stripped"><span class="et-step" data-step>01 · Pump to base</span></span>`;
 const figure = `<figure class="iso-figure et"><div class="iso-plate">${corners}${inset}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="et-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 
 const CSS = readFileSync(join(HERE, "etch.css"), "utf8");

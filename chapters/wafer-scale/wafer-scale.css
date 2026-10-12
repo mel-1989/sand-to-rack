@@ -1,0 +1,321 @@
+.ws {
+  --ws-part-ring: #ffffff10;
+  --ws-part-hover: #ffffff0a;
+}
+
+[data-theme="light"] .ws {
+  --ws-part-ring: #00000014;
+  --ws-part-hover: #0000000a;
+}
+
+.ws .iso-plate {
+  padding: 52px 24px 60px;
+  overflow: hidden;
+}
+
+.ws-stage {
+  position: relative;
+  border-radius: 10px;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ws-stage:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 6px;
+}
+
+.ws-stage > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.ws-svg .it {
+  pointer-events: visiblePainted;
+}
+
+.ws-stage[data-focus] .it:not([data-on]):not([data-piece="stand"]) {
+  --anatomy-hi: var(--anatomy-mid);
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.ws-stage[data-focus] .it[data-piece="stand"] {
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.it[data-on],
+.ws-stage[data-water]:not([data-focus]) .it[data-flow] {
+  --anatomy-hi: var(--anatomy-lit);
+  --anatomy-mid: var(--anatomy-hi);
+}
+
+.it[data-on] .iso-top,
+.ws-stage[data-water]:not([data-focus]) .it[data-flow] .iso-top {
+  fill: var(--anatomy-lit-top);
+}
+
+.it[data-on] .iso-shade,
+.ws-stage[data-water]:not([data-focus]) .it[data-flow] .iso-shade {
+  fill: var(--anatomy-lit-shade);
+}
+
+.it[data-on] [data-seamless] > .iso-shade,
+.ws-stage[data-water]:not([data-focus]) .it[data-flow] [data-seamless] > .iso-shade {
+  stroke: var(--anatomy-lit-shade);
+}
+
+.it[data-on] [data-seamless] > .iso-top,
+.ws-stage[data-water]:not([data-focus]) .it[data-flow] [data-seamless] > .iso-top {
+  stroke: var(--anatomy-lit-top);
+}
+
+.ws-controls {
+  position: absolute;
+  left: 24px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* the readout never reaches the hint: it wraps above it, and the hint steps aside while a layer is picked */
+.ws .iso-plate-corner[data-corner="readout"] {
+  max-width: calc(100% - 250px);
+  white-space: normal;
+  text-align: right;
+  line-height: 1.35;
+}
+
+.ws-stage[data-focus] ~ .ws-controls .ws-hint {
+  visibility: hidden;
+}
+
+.ws-hint {
+  font: 10.5px/1 var(--anatomy-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+}
+
+.ws-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.ws-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.ws-part {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--anatomy-muted);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--ws-part-ring);
+  transition: color 160ms var(--anatomy-ease), background 160ms var(--anatomy-ease);
+}
+
+.ws-part:hover,
+.ws-part:focus-visible,
+.ws-part[data-on] {
+  color: var(--anatomy-strong);
+  background: var(--ws-part-hover);
+  outline: none;
+}
+
+.ws-num {
+  font-family: var(--anatomy-mono);
+  font-size: 10px;
+  color: var(--anatomy-muted);
+}
+
+@media (max-width: 640px) {
+  .ws .iso-plate {
+    padding: 48px 8px 84px;
+  }
+
+  .ws .iso-plate-corner[data-corner="readout"] {
+    bottom: 44px;
+    right: 0;
+    left: 16px;
+    max-width: calc(100% - 32px);
+    text-align: right;
+    line-height: 1.4;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  .ws-controls {
+    left: 14px;
+    bottom: 14px;
+  }
+
+  .ws-hint {
+    font-size: 9.5px;
+  }
+}
+
+.ws-scrub {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ws-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-width: 112px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ws-part-hover);
+  color: var(--anatomy-strong);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--ws-part-ring);
+}
+
+.ws-play:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 2px;
+}
+
+.ws-play-icon {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent currentColor;
+}
+
+.ws-play[data-playing] .ws-play-icon {
+  width: 8px;
+  height: 10px;
+  border: 0;
+  border-left: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+}
+
+.ws-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--anatomy-lit);
+  cursor: pointer;
+}
+
+.ws-step {
+  flex: none;
+  width: 250px;
+  max-width: 38%;
+  font: 10.5px/1.2 var(--anatomy-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 480px) {
+  .ws-scrub {
+    flex-wrap: wrap;
+  }
+
+  .ws-step {
+    width: auto;
+    max-width: none;
+    order: 3;
+    flex-basis: 100%;
+    white-space: normal;
+    overflow: visible;
+    line-height: 1.4;
+  }
+}
+
+/* mesh traffic on the wafer: the one lit accent while it runs */
+.ws-trail {
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+
+.ws-head {
+  fill: var(--anatomy-lit);
+  stroke: var(--anatomy-paper);
+  stroke-width: 0.5;
+}
+
+.ws-head[data-src] {
+  fill: none;
+  stroke: var(--anatomy-lit);
+  stroke-width: 0.7;
+}
+
+.ws-stage[data-focus] .it:not([data-on]) .ws-fabric {
+  opacity: 0.35;
+}
+
+/* the die edge a wavelet just crossed, and the switched-off spare core */
+.ws-scribe {
+  fill: none;
+  stroke: var(--anatomy-lit);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.ws-spare path {
+  fill: none;
+  stroke: var(--anatomy-lit);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+  opacity: 0;
+  transition: opacity 220ms var(--anatomy-ease);
+}
+
+.ws-stage[data-spare] .ws-spare path {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-spare path {
+    transition: none;
+  }
+}
+
+@media (max-width: 520px) {
+  /* the stage overlaps the plate's text rows here, so the focus ring goes round the whole plate */
+  .ws-stage:focus-visible {
+    outline: none;
+  }
+
+  .ws .iso-plate:has(.ws-stage:focus-visible) {
+    outline: 1px solid var(--anatomy-muted);
+    outline-offset: -3px;
+  }
+
+  /* wider than the plate and centred on it; the selector outranks the kit's .iso-plate .iso-svg margin */
+  .ws .iso-plate .ws-stage > svg {
+    width: 114%;
+    margin: -4% -7% -2%;
+  }
+}

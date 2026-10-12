@@ -25,7 +25,9 @@ const FLOOR_T = 4;
 const PLENUM = 30;
 const SUB_T = 6;
 
-const XF = -59.5; // FOUP, rail and hoist centre line
+const XF = -59.5; // FOUP centre line when docked against the port plate
+const UNDOCK = 2.5; // illustrative: the hoist sets the FOUP down 25 mm short of the plate, and the port docks it forward
+const XR = XF - UNDOCK; // rail and hoist centre line, over the undocked FOUP
 const DROP = M.HOIST_DROP;
 const DATUM = M.DATUM; // 90
 const FOUP = { x: -77, y: -20, w: 34.8, d: 40, r: 3 }; // shell, front face at x = -42.2 (illustrative size)
@@ -61,17 +63,19 @@ const STOCKER_H = 196;
 const SPORT_Y = 80;
 
 const CEIL = 290;
-const RAIL = { x: XF - 7.5, y: -156, w: 15, d: 266, r: 0.6 };
+const RAIL = { x: XR - 7.5, y: -156, w: 15, d: 266, r: 0.6 };
 const RAIL_Z = 260;
 const RAIL_TOP = 274;
-const HOUSE = { x: XF - 14.5, y: -26, w: 29, d: 52, r: 2 };
+const HOUSE = { x: XR - 14.5, y: -26, w: 29, d: 52, r: 2 };
 const HOUSE_Z = 243;
 const COVER_Z = 192;
-const GRIP = { x: XF - 8.5, y: -11, w: 17, d: 22, r: 1.2 };
+const GRIP = { x: XR - 8.5, y: -11, w: 17, d: 22, r: 1.2 };
 const GRIP_Z = 129;
 const GRIP_TOP = 133;
+const GRIP_LIFT = DROP; // the gripper is recorded hoisted up against the housing, its rest in every pose but the pick and set-down
+if (GRIP_TOP + DROP !== HOUSE_Z) throw new Error("hoisted gripper must meet the housing");
 
-const T = { steps: M.STEPS.map(({ id, sec }) => ({ id, sec })), drop: DROP, foupReach: FOUP_REACH, toolReach: TOOL_REACH };
+const T = { steps: M.STEPS.map(({ id, sec }) => ({ id, sec })), drop: DROP, undock: UNDOCK, lift: GRIP_LIFT, foupReach: FOUP_REACH, toolReach: TOOL_REACH };
 
 const P = k.fitProjection(
   [
@@ -191,18 +195,18 @@ function ceiling() {
   }
   // the rail and its hangers
   for (const hy of [-140, -66, 8, 96]) {
-    const beam = plan(-126, XF + 10, hy - 2.5, hy + 2.5, 0.4);
+    const beam = plan(-126, XR + 10, hy - 2.5, hy + 2.5, 0.4);
     let svg = box(beam, CEIL, 4, { tone: "mid" }, 2, 0.3);
     const shapes = [A.slab(beam, CEIL, 4, {}, 2)];
-    for (const rx of [XF - 4.5, XF + 4.5]) {
+    for (const rx of [XR - 4.5, XR + 4.5]) {
       svg += S(k.cylinder(rx, hy, 0.9, RAIL_TOP + 2, CEIL - RAIL_TOP - 2, P, 10), { tone: "mid", crease: "none" });
       svg += S(k.cylinder(rx, hy, 1.7, CEIL - 3, 1.2, P, 6), { tone: "mid" });
       shapes.push(A.cylinder(rx, hy, 0.9, RAIL_TOP + 2, CEIL - RAIL_TOP - 2, {}));
     }
-    const clamp = plan(XF - 8.5, XF + 8.5, hy - 3, hy + 3, 0.4);
+    const clamp = plan(XR - 8.5, XR + 8.5, hy - 3, hy + 3, 0.4);
     svg = box(clamp, RAIL_TOP, 2, { tone: "mid" }, 2, 0.3) + svg;
     shapes.push(A.slab(clamp, RAIL_TOP, 2, {}, 2));
-    put("oht", [XF, hy, RAIL_TOP + 8], svg, shapes, { name: R.nameFor("stand.hanger") });
+    put("oht", [XR, hy, RAIL_TOP + 8], svg, shapes, { name: R.nameFor("stand.hanger") });
   }
   // rail: a closed box track with joints every 60 cm and the non-contact power feeder along its side
   const joints = [];
@@ -222,14 +226,14 @@ function stocker() {
   const panels = [];
   for (const z of [60, 120, 180]) panels.push(seam(s, z, 3));
   let svg = box(s, 0, STOCKER_H, { tone: "mid", inner: L(panels.join(""), { tone: "faint" }) }, 3, 0.8);
-  // window on the +x face showing shelves of FOUPs, and vents on +y
+  // window on the +x face showing shelves of FOUPs, and a row of vents below it on the same face
   const wx = s.x + s.w;
   svg += L(slotX(wx, s.y + 12, s.y + s.d - 12, 130, 172), { tone: "lo" });
   const shelf = [];
   for (const z of [144, 158]) shelf.push(k.segment([wx, s.y + 12, z], [wx, s.y + s.d - 12, z], P));
   svg += L(shelf.join(""), { tone: "faint" });
   const vents = [];
-  for (let i = 0; i < 6; i++) vents.push(slotY(s.y + s.d, s.x + 10, s.x + s.w - 10, 196 + i * 4, 197.6 + i * 4));
+  for (let i = 0; i < 6; i++) vents.push(slotX(wx, s.y + 16, s.y + s.d - 16, 96 + i * 4, 97.6 + i * 4));
   svg += L(vents.join(""), { tone: "lo" });
   svg += box(k.insetPlan(s, 4), STOCKER_H, 3, { tone: "mid" }, 3, 0.4);
   svg += screws(k.corners(s, 2.5), STOCKER_H, 0.45);
@@ -273,7 +277,8 @@ function tool() {
   const lids = [[14, -112, 18], [56, -110, 18], [62, -70, 13]];
   for (const [x, y, r] of lids) {
     let l = S(k.cylinder(x, y, r, TOOL_H, 4, P, 56, 0.5), { tone: "mid", inner: L(k.sideArc(x, y, r, TOOL_H + 1.6, P, 40), { tone: "faint" }) });
-    l += S(k.cylinder(x, y, r - 5, TOOL_H + 4, 3, P, 48, 0.4), { tone: "mid" });
+    // the raised centre of each lid lights, with the signal tower, while the slit valve is shut and the tool runs
+    l += `<g class="fa-lamp" data-lamp>${S(k.cylinder(x, y, r - 5, TOOL_H + 4, 3, P, 48, 0.4), { tone: "mid" })}</g>`;
     l += L(k.ring(x, y, r - 8, TOOL_H + 7, P, 40), { tone: "lo" });
     const bolts = [];
     for (let i = 0; i < 12; i++) bolts.push([x + (r - 2.2) * Math.cos((i / 12) * 2 * Math.PI), y + (r - 2.2) * Math.sin((i / 12) * 2 * Math.PI)]);
@@ -413,9 +418,9 @@ function loadPort() {
     if (id === "above") svg += screws([[x0 + 1.5, -PW + 3], [x0 + 1.5, PW - 3]], M.PORT_H, 0.42);
     put("port", centreOf(p, z0), svg, [A.slab(p, z0, z1 - z0, {}, 2)], { name: `stand.plate-${id}` });
   }
-  // E84 optical hand-off sensor on top of the plate, facing the OHT
-  const e84 = plan(x0 - 4, x1, 12, 20, 0.6);
-  put("port", centreOf(e84, M.PORT_H), box(e84, M.PORT_H, 4, { tone: "mid" }, 2, 0.3) + L(k.ring(x0 - 2, 16, 1.4, M.PORT_H + 4, P, 12), { tone: "lo" }), [A.slab(e84, M.PORT_H, 4, {}, 2)], { name: "port.e84" });
+  // E84 optical hand-off sensor on top of the plate, set back on the EFEM side so the FOUP's drop path stays clear
+  const e84 = plan(x0, x1 + 4, 12, 20, 0.6);
+  put("port", centreOf(e84, M.PORT_H), box(e84, M.PORT_H, 4, { tone: "mid" }, 2, 0.3) + L(k.ring(x1 + 1.2, 16, 1.4, M.PORT_H + 4, P, 12), { tone: "lo" }), [A.slab(e84, M.PORT_H, 4, {}, 2)], { name: "port.e84" });
   // door opener rail inside the EFEM, below the opening
   const rail = plan(x1, x1 + 2, -4, 4, 0.3);
   put("port", centreOf(rail, 50), box(rail, 50, HOLE.z0 - 50, { tone: "mid" }, 2, 0.2) + screws([[x1 + 1, 0]], HOLE.z0, 0.4), [A.slab(rail, 50, HOLE.z0 - 50, {}, 2)], { name: "port.opener-rail" });
@@ -486,7 +491,7 @@ function foup() {
 // OHT vehicle: hoist housing, end covers, sensors; the gripper on its belts
 function vehicle() {
   const h = HOUSE;
-  const neck = plan(XF - 3, XF + 3, -16, 16, 0.6);
+  const neck = plan(XR - 3, XR + 3, -16, 16, 0.6);
   let svg = box(neck, HOUSE_Z + 15, RAIL_Z - HOUSE_Z - 15, { tone: "mid" }, 2, 0.2);
   svg += box(h, HOUSE_Z, 15, { tone: "mid", inner: L(seam(h, HOUSE_Z + 5, 3), { tone: "faint" }) }, 3, 0.6);
   svg += L(slotX(h.x + h.w, -18, -6, HOUSE_Z + 8, HOUSE_Z + 12), { tone: "lo" }) + L(slotX(h.x + h.w, 6, 18, HOUSE_Z + 8, HOUSE_Z + 12), { tone: "lo" });
@@ -497,19 +502,22 @@ function vehicle() {
     let cs = box(c, COVER_Z, HOUSE_Z - COVER_Z, { tone: "mid", inner: L(seam(c, COVER_Z + 6, 2), { tone: "faint" }) }, 2, 0.4);
     if (side > 0) {
       const fy = c.y + c.d;
-      cs += L(slotY(fy, XF - 9, XF + 9, COVER_Z + 30, COVER_Z + 40), { tone: "lo" }) + L([COVER_Z + 33, COVER_Z + 36.5].map((z, i) => k.segment([XF - 7, fy, z], [XF + 3 - i * 5, fy, z], P)).join(""), { tone: "lo", free: true });
-      cs += L(k.sideRing([XF + 6, fy, COVER_Z + 18], 2.2, "y", P, 16), { tone: "lo" }) + L(k.sideRing([XF - 6, fy, COVER_Z + 18], 2.2, "y", P, 16), { tone: "lo" });
-      cs += Dots([at([XF, fy, COVER_Z + 46])], { size: 0.8, tone: "mid" });
+      cs += L(slotY(fy, XR - 9, XR + 9, COVER_Z + 30, COVER_Z + 40), { tone: "lo" }) + L([COVER_Z + 33, COVER_Z + 36.5].map((z, i) => k.segment([XR - 7, fy, z], [XR + 3 - i * 5, fy, z], P)).join(""), { tone: "lo", free: true });
+      cs += L(k.sideRing([XR + 6, fy, COVER_Z + 18], 2.2, "y", P, 16), { tone: "lo" }) + L(k.sideRing([XR - 6, fy, COVER_Z + 18], 2.2, "y", P, 16), { tone: "lo" });
+      cs += Dots([at([XR, fy, COVER_Z + 46])], { size: 0.8, tone: "mid" });
     }
     put("oht", centreOf(c, COVER_Z), cs, [A.slab(c, COVER_Z, HOUSE_Z - COVER_Z, {}, 2)], { name: `oht.cover${side > 0 ? "F" : "B"}`, mv: "vehicle" });
   }
   // gripper: plate, two fingers hooking under the FOUP flange, belts up into the housing
   const fingers = [plan(GRIP.x - 2, GRIP.x, -6, 6, 0.3), plan(GRIP.x + GRIP.w, GRIP.x + GRIP.w + 2, -6, 6, 0.3)];
   let g = `<g data-dyn="belts"></g>`;
-  for (const f of fingers) g += box(f, FOUP_TOP + 2.6, GRIP_TOP - FOUP_TOP - 2.6, { tone: "mid" }, 2, 0.2);
-  g += box(GRIP, GRIP_Z, GRIP_TOP - GRIP_Z, { tone: "mid", inner: L(seam(GRIP, GRIP_Z + 1.4, 2), { tone: "faint" }) }, 3, 0.4);
-  g += screws(k.corners(GRIP, 2), GRIP_TOP, 0.4) + L(k.ring(XF, 0, 2.4, GRIP_TOP, P, 16), { tone: "lo" });
-  put("oht", [XF, 0, GRIP_Z + 2], g, [A.slab(GRIP, GRIP_Z, GRIP_TOP - GRIP_Z, {}, 3), ...fingers.map((f) => A.slab(f, FOUP_TOP + 2.6, GRIP_TOP - FOUP_TOP - 2.6, {}, 2))], { name: "oht.gripper", mv: "gripper" });
+  const z0 = GRIP_Z + GRIP_LIFT;
+  const zt = GRIP_TOP + GRIP_LIFT;
+  const zf = FOUP_TOP + 2.6 + GRIP_LIFT;
+  for (const f of fingers) g += box(f, zf, zt - zf, { tone: "mid" }, 2, 0.2);
+  g += box(GRIP, z0, zt - z0, { tone: "mid", inner: L(seam(GRIP, z0 + 1.4, 2), { tone: "faint" }) }, 3, 0.4);
+  g += screws(k.corners(GRIP, 2), zt, 0.4) + L(k.ring(XR, 0, 2.4, zt, P, 16), { tone: "lo" });
+  put("oht", [XR, 0, z0 + 2], g, [A.slab(GRIP, z0, zt - z0, {}, 3), ...fingers.map((f) => A.slab(f, zf, zt - zf, {}, 2))], { name: "oht.gripper", mv: "gripper" });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -537,15 +545,17 @@ const MOVERS = ["vehicle", "gripper", "foup", "door"];
 const POSES = [];
 for (let i = 0; i <= 120; i++) {
   const p = poseAt(i / 120, T);
-  const off = offsetsOf(p);
+  const off = offsetsOf(p, T);
   const id = MOVERS.map((m) => off[m].map((v) => v.toFixed(0)).join(",")).join("|");
   if (!POSES.some((q) => q.id === id)) POSES.push({ id, off, label: `${M.STEPS[p.index].id} ${p.u.toFixed(2)}` });
 }
 let poseReport = "";
+let poseFailures = 0;
 if (!process.argv.includes("--fast")) {
   A.settle(R, P, { states: [0] });
   const items = R.items;
   const rules = [];
+  const clashes = [];
   const dot = (a) => a[0] * V[0] + a[1] * V[1] + a[2] * V[2];
   for (const pose of POSES) {
     items.forEach((item) => (item.move = item.mv ? pose.off[item.mv] : [0, 0, 0]));
@@ -554,12 +564,28 @@ if (!process.argv.includes("--fast")) {
     for (const pair of over.pairs) {
       const aFront = pair.front[0].area >= over.least;
       const bFront = pair.front[1].area >= over.least;
-      if (aFront === bFront) continue;
+      if (aFront === bFront) {
+        // both in front of each other somewhere: the two solids interlock on screen, so no order can be right
+        clashes.push(`${items[pair.a].name} and ${items[pair.b].name} interlock @ ${pose.label}`);
+        continue;
+      }
       const [front, back] = aFront ? [pair.a, pair.b] : [pair.b, pair.a];
       rules.push({ front, back, need: 0.02 + dot(items[back].move) - dot(items[front].move), pose: pose.label });
     }
   }
-  items.forEach((item) => (item.move = [0, 0, 0]));
+  // every pose the slider reaches: no moving solid may pass through another
+  for (const pose of POSES) {
+    items.forEach((item) => {
+      const move = item.mv ? pose.off[item.mv] : [0, 0, 0];
+      item.move = move;
+      item.shapes.forEach((shape) => (shape.move = move));
+    });
+    for (const hit of A.solidClearances(R.solids, { state: 1 })) clashes.push(`${hit.tube} through ${hit.other} by ${(-hit.clearance).toFixed(2)} @ ${pose.label}`);
+  }
+  items.forEach((item) => {
+    item.move = [0, 0, 0];
+    item.shapes.forEach((shape) => (shape.move = item.move));
+  });
   const keys = items.map((item) => item.key);
   for (let round = 0; round < items.length + 2; round++) {
     let changed = false;
@@ -568,11 +594,12 @@ if (!process.argv.includes("--fast")) {
   }
   const broken = rules.filter((rule) => keys[rule.front] - keys[rule.back] < rule.need - 1e-6);
   items.forEach((item, index) => (item.key = keys[index]));
-  poseReport = `poses: ${POSES.length} · ${rules.length} rules · ${broken.length} broken${broken.length ? "\n" + broken.slice(0, 12).map((r) => `  ${items[r.front].name} over ${items[r.back].name} @ ${r.pose}`).join("\n") : ""}`;
+  poseReport = `poses: ${POSES.length} · ${rules.length} rules · ${broken.length} broken · ${clashes.length} clashes${broken.length ? "\n" + broken.slice(0, 12).map((r) => `  ${items[r.front].name} over ${items[r.back].name} @ ${r.pose}`).join("\n") : ""}${clashes.length ? "\n" + clashes.slice(0, 24).map((c) => `  ${c}`).join("\n") : ""}`;
+  poseFailures = broken.length + clashes.length;
 }
 R.items.sort((a, b) => a.key - b.key);
 
-const PIECE_OF = { oht: "oht", stocker: "oht", foup: "foup", port: "port", robot: "robot", tool: "tool", bay: "bay" };
+const PIECE_OF = { oht: "oht", stocker: "stocker", foup: "foup", port: "port", robot: "robot", tool: "tool", bay: "bay" };
 for (const item of R.items) item.piece = PIECE_OF[item.piece] ?? item.piece;
 const groups = R.items.map((item, index) => `<g class="it" data-piece="${item.piece}" data-k="${item.key.toFixed(2)}"${item.mv ? ` data-mv="${item.mv}"` : ""} data-i="${index}">${item.svg}</g>`);
 
@@ -601,7 +628,7 @@ const DATA = {
   order: Object.keys(M.PARTS),
   idle: M.IDLE,
   arm: { shoulder: SHOULDER, link: LINK, fork: FORK, forkZ: FORK_Z, waferR: M.WAFER_R, waferX: WAFER_X, slotZ: SLOT(PICK), toolY: TOOL_Y, frontX: PLATE_X[1], wallY: WALL_Y[1] },
-  belts: { top: HOUSE_Z, grip: GRIP_TOP, at: [[XF - 5, -6], [XF + 5, -6], [XF, 7]] },
+  belts: { top: HOUSE_Z, grip: GRIP_TOP + GRIP_LIFT, lift: GRIP_LIFT, at: [[XR - 5, -6], [XR + 5, -6], [XR, 7]] },
   gate: { z: 88, close: 14 },
 };
 
@@ -609,7 +636,7 @@ const PARTS = DATA.order.map((id, index) => `<button type="button" class="fa-par
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 5</span><span class="iso-plate-corner" data-corner="title">Fab bay · one wafer's trip</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="fa-controls"><span class="fa-hint">Hover a part · Space plays the trip</span><span class="fa-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="fa-stage" tabindex="0" role="slider" aria-label="A fab bay with an overhead hoist transport, a FOUP on a load port, an EFEM robot and a process tool. Hover, or use the arrow keys, to pick a part; Space plays or pauses the wafer's trip; Escape resets it; the slider below steps through the trip." aria-valuemin="0" aria-valuemax="${DATA.order.length}" aria-valuenow="0" aria-valuetext="${M.IDLE}">${svg}</div>`;
-const caption = `One lot of ${M.FOUP.lot} wafers travels sealed in a FOUP (${M.FOUP.waferMm} mm wafers at ${M.FOUP.pitchMm} mm pitch, ${M.FOUP.massKg[0]}–${M.FOUP.massKg[1]} kg loaded). The OHT vehicle lowers it onto a SEMI E15.1 load port, whose datum sits ${M.LOAD_PORT.datumMm} mm above the floor, with every slot ${M.LOAD_PORT.accessMm[0]}–${M.LOAD_PORT.accessMm[1]} mm above that datum so any tool's robot can reach it. The port opens the door into the EFEM, a box of ISO ${M.CLEAN.miniIso[0]}–${M.CLEAN.miniIso[1]} air under its own filter unit, while the bay around it is ISO ${M.CLEAN.bayIso}. Wafer, FOUP and port are to scale (ruler ticks 20 mm); the hoist height, ceiling, tool, stocker, robot and the tool's position behind the EFEM are illustrative, and the ceiling and EFEM walls are cut away.`;
+const caption = `One lot of ${M.FOUP.lot} wafers travels sealed in a FOUP (${M.FOUP.waferMm} mm wafers at ${M.FOUP.pitchMm} mm pitch, ${M.FOUP.massKg[0]}–${M.FOUP.massKg[1]} kg loaded). The OHT vehicle lowers it onto a SEMI E15.1 load port, whose datum sits ${M.LOAD_PORT.datumMm} mm above the floor, with every slot ${M.LOAD_PORT.accessMm[0]}–${M.LOAD_PORT.accessMm[1]} mm above that datum so any tool's robot can reach it. The port opens the door into the EFEM, a box of ${M.CLEAN.miniText} air under its own filter unit, while the bay around it is ISO ${M.CLEAN.bayIso}. Wafer, FOUP and port are to scale (ruler ticks 20 mm); the hoist height, ceiling, tool, stocker, robot and the tool's position behind the EFEM are illustrative, and the ceiling and EFEM walls are cut away.`;
 const scrub = `<span class="fa-scrub"><button type="button" class="fa-play" data-play aria-label="Play the trip"><span class="fa-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="fa-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="The wafer's trip, from the stocker (0) to leaving the tool (1000)"><span class="fa-step" data-step>01 · At the stocker</span></span>`;
 const body = `<figure class="iso-figure fa"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="fa-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 
@@ -619,4 +646,8 @@ const out = writeChapter({ slug: "fab-automation", figure: body, css: CSS, scrip
 console.log("wrote", out.file, `${out.kb} KB`, `${R.items.length} items`, `${R.solids.length} solids`);
 if (poseReport) console.log(poseReport);
 
-A.auditOrExit(R, P);
+const result = A.auditOrExit(R, P);
+if (result && poseFailures) {
+  console.log(`audit failed: ${poseFailures} pose problem${poseFailures === 1 ? "" : "s"} (see poses above)`);
+  process.exitCode = 1;
+}

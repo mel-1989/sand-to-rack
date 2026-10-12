@@ -126,7 +126,7 @@
 
 @media (max-width: 640px) {
   .hb .iso-plate {
-    padding: 48px 8px 84px;
+    padding: 48px 8px 96px;
   }
 
   .hb .iso-plate-corner[data-corner="readout"] {
@@ -389,8 +389,8 @@
 
 @media (max-width: 640px) {
   .hb-stage > svg {
-    width: 108%;
-    margin: 0 -4%;
+    width: 104%;
+    margin: 0 -2%;
   }
 }
 

@@ -72,6 +72,20 @@
   stroke: none;
 }
 
+.euv-svg [data-pose][data-away] {
+  display: none;
+}
+
+.euv-pancake,
+.euv-preflash {
+  fill: var(--euv-glow);
+  stroke: none;
+}
+
+.euv-preline {
+  stroke-width: 0.55;
+}
+
 .euv-dropline {
   opacity: 0.5;
 }
@@ -290,6 +304,10 @@
 }
 
 @media (max-width: 480px) {
+  .euv-stage:focus-visible {
+    outline-offset: -2px;
+  }
+
   .euv-scrub {
     flex-wrap: wrap;
   }

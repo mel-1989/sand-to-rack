@@ -26,6 +26,10 @@ const sorted = nodes.filter((node) => node !== dyn);
 let order = [];
 
 const kerfEl = layers.querySelector("[data-kerf]");
+// the polisher's turning parts: carrier holes, sun gear teeth, upper platen marks, and each wafer's notch
+const spins = [...layers.querySelectorAll("[data-spin]")].map((g) => ({ p: g.dataset.spin.split(",").map(Number), dots: [...g.querySelectorAll("circle")] }));
+const notches = [...layers.querySelectorAll("[data-spin-notch]")].map((g) => ({ p: g.dataset.spinNotch.split(",").map(Number), el: g.querySelector("path") }));
+let shownSpin = -1;
 const innerLeftEl = layers.querySelector("[data-inner-left]");
 
 const N = D.steps.length;
@@ -124,6 +128,29 @@ function drawWeb(shares) {
   kerfEl.innerHTML = web.kerfs ? lineSvg(web.kerfs, { tone: "mid" }) : "";
 }
 
+// the carriers turn while the upper platen is down, from lowering (step 6) to lifting (step 7)
+function drawSpin() {
+  const run = clamp01((s * N - 5.1) / (6.45 - 5.1));
+  const phase = run * Math.PI * 2 * 1.5;
+  if (Math.abs(phase - shownSpin) < 1e-4) return;
+  shownSpin = phase;
+  for (const { p, dots } of spins) {
+    const [x, y, z, r, a0, rate] = p;
+    dots.forEach((dot, j) => {
+      const a = a0 + (j / dots.length) * Math.PI * 2 + rate * phase;
+      const q = flat([x + r * Math.cos(a), y + r * Math.sin(a), z]);
+      dot.setAttribute("cx", f2(q[0]));
+      dot.setAttribute("cy", f2(q[1]));
+    });
+  }
+  for (const { p, el } of notches) {
+    const [x, y, z, r, a0, rate] = p;
+    const a = a0 + rate * phase;
+    const pt = (rad, t) => [x + rad * Math.cos(t), y + rad * Math.sin(t), z];
+    el.setAttribute("d", path([pt(r, a - 0.035), pt(r - 1.6, a), pt(r, a + 0.035)]));
+  }
+}
+
 // ---- placing and depth-sorting the moving pieces ----
 function place(shares) {
   for (const node of sorted) {
@@ -155,6 +182,7 @@ function render() {
   const shares = sharesAt(s);
   place(shares);
   drawWeb(shares);
+  drawSpin();
   const index = stepIndex(s);
   const t = within(s);
   const grind = index > 0 ? 1 : smooth(clamp01((t - 0.1) / 0.75));

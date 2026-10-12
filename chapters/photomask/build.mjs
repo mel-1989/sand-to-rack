@@ -42,6 +42,15 @@ const CHUCK_TOP = 56;
 const BLANK_TOP = 59;
 const MASK_SIDE = 56;
 
+// aperture plate system housing (illustrative proportions)
+const APS_HALF = 30;
+const APS_FLOOR = 211;
+const APS_LID = 223;
+const APS_PLATE = 40;
+const APS_PLATE_Z = 213.4;
+const APS_PLATE_H = 1.2;
+const APS_N = 16;
+
 // rack
 const RACK = { x: -212, y: 14, w: 50, d: 72, r: 2 };
 const RACK_TOP = 156;
@@ -53,15 +62,23 @@ const LL_TOP = 74;
 // finishing bench, front right
 const BENCH = { x: 4, y: 112, w: 168, d: 146, r: 4 };
 const BENCH_TOP = 22;
-const BM = { x: 46, y: 124, w: 64, d: 64, r: 0.8 };
-const SUB_TOP = BENCH_TOP + 6;
-const ML_TOP = SUB_TOP + 3.2;
-const CAP_TOP = ML_TOP + 0.6;
-const ABS_TOP = CAP_TOP + 1.4;
-const POSTS_Y = BM.y + BM.d / 2;
-const BEAM_Z = 56;
-const HEAD_MOVE = [76, 0, 0];
-const PEL_MOVE = [0, -66, 0];
+const BM = { x: 40, y: 126, w: 66, d: 66, r: 0.8 };
+// the EUV stack, drawn far thicker than it is (nm-thin layers on a 6.35 mm blank) so each layer reads at 1x
+const SUB_BOT = BENCH_TOP + 2;
+const SUB_TOP = SUB_BOT + 6;
+const ML_BANDS = 10; // ten bands stand for the 40 Mo/Si pairs
+const ML_BAND = 2.2;
+const ML_TOP = SUB_TOP + ML_BANDS * ML_BAND;
+const CAP_TOP = ML_TOP + 1.6;
+const ABS_TOP = CAP_TOP + 5;
+// the near (+x, +y) corner is cut away: each layer above the glass is notched a little deeper, so the stack reads as a staircase
+const NOTCH_ML = 15;
+const NOTCH_CAP = 30;
+const NOTCH_ABS = 37;
+const POSTS_Y = BM.y - 8; // the inspection bridge stands behind the mask, clear of the staircase
+const BEAM_Z = ABS_TOP + 22;
+const HEAD_MOVE = [56, 0, 0];
+const PEL_MOVE = [0, -68, 0];
 const PEL_SIZE = [M.PELLICLE.sizeMm[0] * (BM.w / M.BLANK.sideMm), M.PELLICLE.sizeMm[1] * (BM.d / M.BLANK.sideMm)];
 
 const PIECES = Object.fromEntries(Object.entries(M.PIECES).map(([id, p]) => [id, { ...p, move: [0, 0, 0] }]));
@@ -73,13 +90,18 @@ const MOVERS = ["stage", "inspect", "pellicle"];
 
 // Each mover's share is a pure function of the slider value s (0..1), shared with the page.
 const STEP = 1 / M.STEPS.length;
+// a ramp is [up0, up1] or [up0, up1, down0, down1]: the stage goes under the column and comes back after the write
 const RAMPS = {
-  stage: [2 * STEP + 0.005, 2 * STEP + 0.05],
+  stage: [2 * STEP + 0.005, 2 * STEP + 0.05, 3 * STEP + 0.005, 3 * STEP + 0.05],
   inspect: [4 * STEP + 0.02, 5 * STEP - 0.02],
   pellicle: [5 * STEP + 0.02, 1 - 0.03],
 };
 const smooth = (t) => t * t * (3 - 2 * t);
-const shareAt = (id, s) => smooth(Math.min(1, Math.max(0, (s - RAMPS[id][0]) / (RAMPS[id][1] - RAMPS[id][0]))));
+const rampOf = (a, b, s) => smooth(Math.min(1, Math.max(0, (s - a) / (b - a))));
+const shareAt = (id, s) => {
+  const r = RAMPS[id];
+  return rampOf(r[0], r[1], s) - (r.length > 2 ? rampOf(r[2], r[3], s) : 0);
+};
 
 // Depth and clearance states: every slider pose the page can show, plus a grid of combinations.
 const STATES = [0, 1];
@@ -114,9 +136,9 @@ function put(piece, ref, svg, shapes, { bias = 0, name, cls } = {}) {
   shapes.forEach((shape) => (shape.name = shape.name ?? id));
   R.put({ piece, at: ref, bias, svg, move: PIECES[piece].move, shapes: shapes.map(R.solid), name: id, cls });
 }
-function slab(piece, plan, z, h, { tone = "mid", steps = 4, bevel = 0, seams = [], extra = "", name, crease, bias = 0, cls } = {}) {
+function slab(piece, plan, z, h, { tone = "mid", steps = 4, bevel = 0, seams = [], extra = "", name, crease, bias = 0, cls, className } = {}) {
   const inner = seams.length ? L(seams.map((sz) => k.sideSeam(plan, sz, P, steps)).join(""), { tone: "faint" }) : "";
-  const svg = S(k.slabOf(plan, z, h, P, steps, bevel), { tone, inner, ...(crease ? { crease } : {}) }) + extra;
+  const svg = S(k.slabOf(plan, z, h, P, steps, bevel), { tone, inner, className, ...(crease ? { crease } : {}) }) + extra;
   put(piece, centreOf(plan, z + h / 2), svg, [A.slab(plan, z, h, {}, steps)], { name: name ?? R.nameFor(`${piece}.slab`), bias, cls });
 }
 function cyl(piece, x, y, r, z, h, { tone = "mid", steps = 32, bevel = 0, extra = "", name, crease, bias = 0 } = {}) {
@@ -285,13 +307,37 @@ function column() {
   turned("optics", COL, [[BRIDGE_TOP + 6, 0], [BRIDGE_TOP + 6, 25], [176, 25], [176, 0]], { name: "optics.lens2", inner: seam(150, 25) + seam(164, 25) });
   turned("optics", COL, [[176, 0], [176, 29], [180, 29], [180, 0]], { tone: "mid", name: "optics.ring", extra: Dots(G.dotsOf(COL, 180, 26.5, 12, P, { all: true }), { size: 0.38 }) });
   turned("optics", COL, [[180, 0], [180, 22], [206, 22], [206, 0]], { name: "optics.lens1", inner: seam(193, 22) });
-  // aperture plate system: a wider drum with the plate stack inside, data port on the -x side
+  // aperture plate system: a square housing with its near walls and lid cut away, the aperture plate on its floor
   turned("aps", COL, [[206, 0], [206, 30], [209, 30], [209, 0]], { tone: "mid", name: "aps.ringLow" });
-  turned("aps", COL, [[209, 0], [209, 28], [223, 28], [223, 0]], { name: "aps.drum", inner: seam(214, 28) + seam(218, 28) });
-  turned("aps", COL, [[223, 0], [223, 30], [226, 30], [226, 0]], { tone: "mid", name: "aps.ringHigh", extra: Dots(G.dotsOf(COL, 226, 27.5, 12, P, { all: true }), { size: 0.38 }) });
-  const portF = G.frameOf([AXIS[0] - 28, AXIS[1], 216], [-1, 0, 0], [0, 1, 0], [0, 0, 1]);
+  const [ax, ay] = AXIS;
+  const hs = APS_HALF;
+  const floor = { x: ax - hs, y: ay - hs, w: 2 * hs, d: 2 * hs, r: 2 };
+  const fscrews = k.corners(floor, 3);
+  slab("aps", floor, 209, APS_FLOOR - 209, { tone: "mid", steps: 4, bevel: 0.4, name: "aps.floor", extra: L(fscrews.map(([x, y]) => k.ring(x, y, 1.1, APS_FLOOR, P, 10)).join(""), { tone: "lo" }) });
+  slab("aps", { x: ax - hs, y: ay - hs, w: 2 * hs, d: 3, r: 0.6 }, APS_FLOOR, APS_LID - APS_FLOOR, { tone: "mid", steps: 2, name: "aps.wallBack", bias: -20 });
+  slab("aps", { x: ax - hs, y: ay - hs + 3, w: 3, d: 2 * hs - 3, r: 0.6 }, APS_FLOOR, APS_LID - APS_FLOOR, { tone: "mid", steps: 2, name: "aps.wallLeft", bias: -20 });
+  // cut walls on the two near sides: their tops are the cut, in the low tone
+  slab("aps", { x: ax - hs + 3, y: ay + hs - 3, w: 2 * hs - 3, d: 3, r: 0.6 }, APS_FLOOR, 2.2, { tone: "lo", steps: 2, name: "aps.cutFront" });
+  slab("aps", { x: ax + hs - 3, y: ay - hs + 3, w: 3, d: 2 * hs - 6, r: 0.6 }, APS_FLOOR, 2.2, { tone: "lo", steps: 2, name: "aps.cutRight" });
+  // the aperture plate on four standoffs; its 16 x 16 hole field stands for 512 x 512
+  const ph = APS_PLATE / 2;
+  const plate = { x: ax - ph, y: ay - ph, w: APS_PLATE, d: APS_PLATE, r: 0.8 };
+  for (const [x, y] of k.corners(plate, 2.4)) cyl("aps", x, y, 1.4, APS_FLOOR, APS_PLATE_Z - APS_FLOOR, { tone: "mid", steps: 14, name: R.nameFor("aps.standoff") });
+  const holes = [];
+  const pitch = (APS_PLATE - 6) / (APS_N - 1);
+  for (let j = 0; j < APS_N; j++) for (let i = 0; i < APS_N; i++) {
+    const [hx, hy] = at([ax - ph + 3 + i * pitch, ay - ph + 3 + j * pitch, APS_PLATE_Z + APS_PLATE_H]);
+    holes.push(`<circle class="pm-ap" data-n="${j * APS_N + i}" cx="${hx.toFixed(2)}" cy="${hy.toFixed(2)}" r="0.55"/>`);
+  }
+  const frame = L(k.planOutline(k.insetPlan(plate, 1.6), APS_PLATE_Z + APS_PLATE_H, P, 2), { tone: "lo" });
+  slab("aps", plate, APS_PLATE_Z, APS_PLATE_H, { tone: "hi", steps: 2, bevel: 0.2, crease: "lo", name: "aps.plate", extra: frame + `<g class="pm-aps">${holes.join("")}</g>` });
+  // the lid survives only as a bridge over the back half; the condenser neck stands on it
+  const lid = { x: ax - hs, y: ay - hs, w: 2 * hs, d: hs + 8, r: 1 };
+  const lscrews = [[ax - hs + 4, ay - hs + 4], [ax + hs - 4, ay - hs + 4], [ax - hs + 4, ay + 4], [ax + hs - 4, ay + 4]];
+  slab("aps", lid, APS_LID, 3, { tone: "mid", steps: 3, bevel: 0.5, name: "aps.lid", extra: L(lscrews.map(([x, y]) => k.ring(x, y, 1.2, APS_LID + 3, P, 10)).join(""), { tone: "lo" }) + Dots(lscrews.map(([x, y]) => at([x, y, APS_LID + 3])), { size: 0.38 }) });
+  const portF = G.frameOf([ax - hs, ay - 6, APS_FLOOR + 8], [-1, 0, 0], [0, 1, 0], [0, 0, 1]);
   turned("aps", portF, [[0, 0], [0, 5], [6, 5], [6, 6.4], [8, 6.4], [8, 0]], { tone: "mid", name: "aps.port" });
-  turned("gun", COL, [[226, 0], [226, 19], [250, 19], [250, 0]], { name: "gun.condenser", inner: seam(238, 19) });
+  turned("gun", COL, [[APS_LID + 3, 0], [APS_LID + 3, 8], [APS_LID + 8, 8], [APS_LID + 12, 19], [250, 19], [250, 0]], { name: "gun.condenser", inner: seam(238, 19) });
   turned("gun", COL, [[250, 0], [250, 23], [254, 23], [254, 0]], { tone: "mid", name: "gun.flange", extra: Dots(G.dotsOf(COL, 254, 21, 10, P, { all: true }), { size: 0.38 }) });
   turned("gun", COL, [[254, 0], [254, 16], [276, 16], [276, 0]], { name: "gun.chamber", inner: seam(265, 16) });
   // HV insulator: ribbed ceramic, then the cable connector
@@ -306,6 +352,7 @@ function column() {
 }
 
 // ---- data path: rack, cables to the aperture plate and the gun ----
+const FIBRE = [];
 function data() {
   const plinth = { ...k.insetPlan(RACK, -1.5) };
   slab("data", plinth, 0, 6, { tone: "lo", steps: 3, name: "data.plinth" });
@@ -315,22 +362,45 @@ function data() {
   const vents = [];
   for (let i = 0; i < 6; i++) vents.push(faceRect("x", doorX, body.y + 12, body.y + body.d - 12, 20 + i * 5, 22 + i * 5));
   const door = faceRect("x", doorX, body.y + 4, body.y + body.d - 4, 10, RACK_TOP - 6);
-  const panels = [0, 1, 2, 3].map((i) => faceRect("x", doorX, body.y + 10, body.y + body.d - 10, 70 + i * 18, 84 + i * 18)).join("");
+  const panels = [0, 1].map((i) => faceRect("x", doorX, body.y + 10, body.y + body.d - 10, 70 + i * 18, 84 + i * 18)).join("");
   const leds = [];
-  for (let i = 0; i < 4; i++) for (let j = 0; j < 8; j++) leds.push(at([doorX, body.y + 14 + j * 5.6, 78 + i * 18]));
+  for (let i = 0; i < 2; i++) for (let j = 0; j < 8; j++) leds.push(at([doorX, body.y + 14 + j * 5.6, 78 + i * 18]));
   const handle = faceRect("x", doorX, body.y + 6, body.y + 8.4, 40, 64);
-  slab("data", body, 6, RACK_TOP - 6, { tone: "mid", steps: 3, bevel: 0.8, name: "data.rack", extra: L(door + panels, { tone: "lo" }) + L(vents.join("") + handle, { tone: "faint" }) + `<g class="pm-leds">${Dots(leds, { size: 0.5, tone: "lo" })}</g>` });
+  // a display on the door: the drawn layout polygon, then the same shape after OPC/ILT (curved, with assist features)
+  const scr = { y0: body.y + 10, y1: body.y + body.d - 10, z0: 108, z1: 140 };
+  const screen = faceRect("x", doorX, scr.y0, scr.y1, scr.z0, scr.z1);
+  const onFace = (pts) => pathOf(pts.map(([y, z]) => [doorX, y, z]));
+  const cy = (scr.y0 + scr.y1) / 2;
+  const cz = (scr.z0 + scr.z1) / 2;
+  // a T-shaped wire end: (u, v) in screen units around the centre
+  const tee = [[-14, 7], [14, 7], [14, 2], [4, 2], [4, -9], [-4, -9], [-4, 2], [-14, 2]];
+  const design = onFace(tee.map(([u, v]) => [cy + u, cz + v]));
+  // ILT: corner-cut the outline three times, pushing the outer corners out (serifs) and the inner corners in
+  let curve = tee.map(([u, v]) => [u * 1.04, v * 1.04]);
+  for (let pass = 0; pass < 3; pass++) {
+    const next = [];
+    curve.forEach((p, i) => {
+      const q = curve[(i + 1) % curve.length];
+      next.push([0.75 * p[0] + 0.25 * q[0], 0.75 * p[1] + 0.25 * q[1]], [0.25 * p[0] + 0.75 * q[0], 0.25 * p[1] + 0.75 * q[1]]);
+    });
+    curve = next;
+  }
+  const ilt = onFace(curve.map(([u, v]) => [cy + u, cz + v]));
+  const assists = [[-14, 10.5, 28, 1.4], [-13, -1, 7, 1.2], [6, -1, 7, 1.2], [-8, -12.5, 16, 1.2]].map(([u, v, w, h]) => onFace([[cy + u, cz + v], [cy + u + w, cz + v], [cy + u + w, cz + v + h], [cy + u, cz + v + h]])).join("");
+  const display = `<g class="pm-screen"><path class="pm-screen-face" d="${screen}"/><path class="pm-design" d="${design}"/><g class="pm-ilt"><path d="${ilt}"/><path d="${assists}"/></g></g>`;
+  slab("data", body, 6, RACK_TOP - 6, { tone: "mid", steps: 3, bevel: 0.8, name: "data.rack", extra: L(door + panels + screen, { tone: "lo" }) + L(vents.join("") + handle, { tone: "faint" }) + display + `<g class="pm-leds">${Dots(leds, { size: 0.5, tone: "lo" })}</g>` });
   // cable glands on the rack roof
   const g1 = [body.x + 32, body.y + 22];
   const g2 = [body.x + 32, body.y + 48];
   for (const [x, y] of [g1, g2]) cyl("data", x, y, 4.2, RACK_TOP, 3, { tone: "mid", steps: 24, name: R.nameFor("data.gland") });
   // data fibre bundle: up from the rack, across to the aperture port
-  const portEnd = [AXIS[0] - 36, AXIS[1], 216];
-  const route1 = G.fillet([[g1[0], g1[1], RACK_TOP + 3], [g1[0], g1[1], 200], [-120, AXIS[1], 216], portEnd], 14, 10, { P, tube: 1.6 });
+  const portEnd = [AXIS[0] - APS_HALF - 8, AXIS[1] - 6, APS_FLOOR + 8];
+  const route1 = G.fillet([[g2[0], g2[1], RACK_TOP + 3], [g2[0], g2[1], 172], [-120, AXIS[1] - 6, APS_FLOOR + 8], portEnd], 14, 10, { P, tube: 1.6 });
+  FIBRE.push(...route1);
   tube("data", route1, 1.6, { name: "data.fibre", tone: "mid" });
   // high-voltage cable: up, over, down onto the gun connector
   const hvEnd = [AXIS[0], AXIS[1], 304];
-  const route2 = G.fillet([[g2[0], g2[1], RACK_TOP + 3], [g2[0], g2[1], 316], [AXIS[0] - 30, AXIS[1], 322], [AXIS[0], AXIS[1], 322], hvEnd], 12, 10, { P, tube: 2.2 });
+  const route2 = G.fillet([[g1[0], g1[1], RACK_TOP + 3], [g1[0], g1[1], 258], [AXIS[0] - 40, AXIS[1] + 4, 258], [AXIS[0] - 40, AXIS[1] + 4, 314], [AXIS[0] - 14, AXIS[1], 322], [AXIS[0], AXIS[1], 322], hvEnd], 12, 10, { P, tube: 2.2 });
   tube("gun", route2, 2.2, { name: "gun.hv", tone: "mid" });
 }
 
@@ -343,27 +413,51 @@ function bench() {
   slab("stand", BENCH, 0, BENCH_TOP, { tone: "mid", steps: 4, bevel: 1, seams: [5], name: "stand.bench", extra: benchExtra });
   slab("stand", tag, BENCH_TOP, 0.6, { tone: "lo", steps: 3, crease: "none", name: "stand.tag", extra: L(tagLines, { tone: "lo", free: true }) + Dots([at([tag.x + 2.5, tag.y + tag.d / 2, BENCH_TOP + 0.6]), at([tag.x + tag.w - 2.5, tag.y + tag.d / 2, BENCH_TOP + 0.6])], { size: 0.4 }) });
   // three kinematic pins under the mask
-  for (const [x, y] of [[BM.x + 8, BM.y + 8], [BM.x + BM.w - 8, BM.y + 8], [BM.x + BM.w / 2, BM.y + BM.d - 8]]) cyl("stand", x, y, 2.6, BENCH_TOP, SUB_TOP - 4 - BENCH_TOP, { tone: "mid", steps: 16, name: R.nameFor("stand.kpin") });
-  // the mask: LTEM substrate, Mo/Si multilayer, Ru cap, TaBN absorber; each layer stepped back at the near corner
-  const sub = BM;
-  slab("mask", sub, SUB_TOP - 4, 4, { tone: "hi", steps: 2, bevel: 0.4, crease: "lo", name: "mask.substrate" });
-  const ml = { x: BM.x, y: BM.y, w: BM.w - 3, d: BM.d, r: 0.6 };
-  const pairs = [];
-  for (let i = 1; i < 10; i++) pairs.push(SUB_TOP + ((ML_TOP - SUB_TOP) * i) / 10);
-  slab("mask", ml, SUB_TOP, ML_TOP - SUB_TOP, { tone: "hi", steps: 2, crease: "lo", seams: pairs, name: "mask.multilayer" });
-  const cap = { x: BM.x, y: BM.y, w: BM.w - 5, d: BM.d, r: 0.5 };
-  slab("mask", cap, ML_TOP, CAP_TOP - ML_TOP, { tone: "mid", steps: 2, name: "mask.cap" });
-  const abs = { x: BM.x, y: BM.y, w: BM.w - 7, d: BM.d, r: 0.4 };
-  const etched = [];
-  const n = 3;
-  const gap = 2;
-  const cell = (abs.w - 8 - gap * (n - 1)) / n;
-  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-    const plan = { x: abs.x + 4 + i * (cell + gap), y: abs.y + 4 + j * (cell + gap), w: cell, d: cell, r: 0.2 };
-    etched.push(k.planOutline(plan, ABS_TOP, P, 2));
-    for (let m = 1; m < 4; m++) etched.push(k.planOutline({ x: plan.x + 1.2, y: plan.y + (m * cell) / 4 - 0.5, w: cell - 2.4, d: 1, r: 0.1 }, ABS_TOP, P, 1));
+  for (const [x, y] of [[BM.x + 8, BM.y + 8], [BM.x + BM.w - 8, BM.y + 8], [BM.x + BM.w / 2, BM.y + BM.d - 8]]) cyl("stand", x, y, 2.6, BENCH_TOP, SUB_BOT - BENCH_TOP, { tone: "mid", steps: 16, name: R.nameFor("stand.kpin") });
+  // the mask: LTEM glass substrate, Mo/Si multilayer, Ru cap, TaBN absorber; the near corner cut away as a staircase
+  const x1 = BM.x + BM.w;
+  const y1 = BM.y + BM.d;
+  const notched = (n) => [[BM.x, BM.y], [x1, BM.y], [x1, y1 - n], [x1 - n, y1 - n], [x1 - n, y1], [BM.x, y1]];
+  // the visible vertical faces of a notched layer: outer +x, inner +y, inner +x, outer +y
+  const facesOf = (n, z0, z1, inset = 0) => [
+    faceRect("x", x1, BM.y + inset, y1 - n, z0, z1),
+    faceRect("y", y1 - n, x1 - n, x1 - inset, z0, z1),
+    faceRect("x", x1 - n, y1 - n, y1, z0, z1),
+    faceRect("y", y1, BM.x + inset, x1 - n - 0, z0, z1),
+  ].join("");
+  const corner = (n, z0, z1) => L(k.segment([x1 - n, y1 - n, z0], [x1 - n, y1 - n, z1], P), { tone: "lo" });
+  function layer(name, n, z0, z1, cls, extra = "", tone = "hi") {
+    const ring = notched(n);
+    const svg = S(k.extrude(ring, z0, z1 - z0, P, { convex: false }), { tone, crease: "lo", className: cls }) + corner(n, z0, z1) + extra;
+    put("mask", [BM.x + BM.w / 2, BM.y + BM.d / 2, (z0 + z1) / 2], svg, [A.extruded(ring, z0, z1 - z0, {})], { name });
   }
-  slab("mask", abs, CAP_TOP, ABS_TOP - CAP_TOP, { tone: "hi", steps: 2, crease: "lo", name: "mask.absorber", extra: `<g class="pm-etch">${L(etched.join(""), { tone: "lo" })}</g>` });
+  slab("mask", BM, SUB_BOT, SUB_TOP - SUB_BOT, { tone: "hi", steps: 2, bevel: 0.4, crease: "lo", name: "mask.substrate", className: "pm-l-sub" });
+  // alternating Mo bands painted over the Si-toned multilayer on every face that looks at the viewer
+  const bands = [];
+  for (let i = 0; i < ML_BANDS; i += 2) bands.push(facesOf(NOTCH_ML, SUB_TOP + i * ML_BAND, SUB_TOP + (i + 1) * ML_BAND));
+  layer("mask.multilayer", NOTCH_ML, SUB_TOP, ML_TOP, "pm-l-si", `<path class="pm-mo" d="${bands.join("")}"/>`);
+  layer("mask.cap", NOTCH_CAP, ML_TOP, CAP_TOP, "pm-l-cap", "", "hi");
+  // absorber openings, etched down to the cap: a line pattern that runs out through the cut faces
+  const xn = x1 - NOTCH_ABS;
+  const yn = y1 - NOTCH_ABS;
+  const trenches = [];
+  const clips = [];
+  const TW = 4.2;
+  const trench = (xa, xb, ya, yb, face) => {
+    const id = `pm-tr${trenches.length}`;
+    const top = pathOf([[xa, ya, ABS_TOP], [xb, ya, ABS_TOP], [xb, yb, ABS_TOP], [xa, yb, ABS_TOP]]);
+    const mouth = face === "y" ? faceRect("y", yb, xa, xb, CAP_TOP, ABS_TOP) : face === "x" ? faceRect("x", xb, ya, yb, CAP_TOP, ABS_TOP) : "";
+    clips.push(`<clipPath id="${id}"><path d="${top}${mouth}"/></clipPath>`);
+    const floor = pathOf([[xa, ya, CAP_TOP], [xb, ya, CAP_TOP], [xb, yb, CAP_TOP], [xa, yb, CAP_TOP]]);
+    const walls = faceRect("x", xa, ya, yb, CAP_TOP, ABS_TOP) + faceRect("y", ya, xa, xb, CAP_TOP, ABS_TOP);
+    trenches.push(`<g clip-path="url(#${id})"><path class="pm-floor" d="${floor}"/><path class="pm-wall" d="${walls}"/></g>` + L(top + mouth, { tone: "lo" }));
+  };
+  for (let x = BM.x + 5; x + TW <= x1 - 4; x += 8.4) {
+    if (x >= xn + 1) trench(x, x + TW, BM.y + 5, yn, "y");
+    else if (x + TW <= xn - 1) trench(x, x + TW, BM.y + 5, yn - 4, "");
+  }
+  for (let y = yn + 4; y + TW <= y1 - 4; y += 8.4) trench(BM.x + 5, xn, y, y + TW, "x");
+  layer("mask.absorber", NOTCH_ABS, CAP_TOP, ABS_TOP, "pm-l-abs", `<defs>${clips.join("")}</defs><g class="pm-etch">${trenches.join("")}</g>`, "hi");
 
   // inspection bridge: two posts and a beam; the head slides along it
   const postA = { x: BM.x - 22, y: POSTS_Y - 5, w: 10, d: 10, r: 1.5 };
@@ -379,18 +473,16 @@ function bench() {
   const plate = { x: hx, y: POSTS_Y + 4, w: 12, d: 3, r: 0.6 };
   slab("inspect", plate, ABS_TOP + 10, BEAM_Z + 6 - ABS_TOP - 10, { tone: "hi", steps: 2, crease: "lo", name: "inspect.plate" });
   const ox = hx + 6;
-  const oy = POSTS_Y + 12;
-  const arm = { x: hx + 2, y: POSTS_Y + 7, w: 8, d: 10, r: 1 };
+  const oy = POSTS_Y + 20;
+  const arm = { x: hx + 2, y: POSTS_Y + 7, w: 8, d: 18, r: 1 };
   slab("inspect", arm, BEAM_Z - 8, 6, { tone: "hi", steps: 2, crease: "lo", name: "inspect.arm" });
   const objF = up(ox, oy);
   turned("inspect", objF, [[ABS_TOP + 3, 0], [ABS_TOP + 3, 1.6], [ABS_TOP + 6, 2.8], [ABS_TOP + 6, 4], [BEAM_Z - 8, 4], [BEAM_Z - 8, 0]], { tone: "hi", name: "inspect.objective", inner: G.arcOf(objF, ABS_TOP + 14, 4, P) });
 
   // pellicle: a frame with a membrane, resting on its cradle; it slides onto the mask
-  const pel = { x: BM.x + (BM.w - 7 - PEL_SIZE[0]) / 2, y: BM.y + (BM.d - PEL_SIZE[1]) / 2 - PEL_MOVE[1], w: PEL_SIZE[0], d: PEL_SIZE[1], r: 1 };
-  for (const x of [pel.x + 1, pel.x + pel.w - 7]) {
-    const rail = { x, y: pel.y + 3, w: 6, d: pel.d - 6, r: 1 };
-    slab("stand", rail, BENCH_TOP, ABS_TOP - BENCH_TOP, { tone: "mid", steps: 2, bevel: 0.3, seams: [BENCH_TOP + 2], name: R.nameFor("stand.cradle"), extra: Dots([[x + 3, rail.y + 3, ABS_TOP], [x + 3, rail.y + rail.d - 3, ABS_TOP]].map(at), { size: 0.4 }) });
-  }
+  const pel = { x: BM.x + (BM.w - PEL_SIZE[0]) / 2, y: BM.y + (BM.d - PEL_SIZE[1]) / 2 - PEL_MOVE[1], w: PEL_SIZE[0], d: PEL_SIZE[1], r: 1 };
+  // four slim posts hold the pellicle frame at the mask's height until it slides on
+  for (const [x, y] of k.corners(pel, 1.8)) cyl("stand", x, y, 1.1, BENCH_TOP, ABS_TOP - BENCH_TOP, { tone: "mid", steps: 14, name: R.nameFor("stand.cradle") });
   const frameH = 2.4;
   // a hollow frame of four bars, and a membrane you can see the pattern through
   const bar = 2.4;
@@ -421,16 +513,29 @@ const groups = R.items.map((item, index) => {
   return `<g class="it" data-piece="${item.piece}" data-k="${item.key.toFixed(2)}" data-m="${mx.toFixed(1)},${my.toFixed(1)},${mz.toFixed(1)}" data-i="${index}">${item.svg}</g>`;
 });
 
-// the electron beam: a narrow cone from the final pole piece to the blank, drawn over everything while writing
+// the electron beam: a narrow cone of beamlets from the final pole piece to a gridded spot on the blank, drawn over everything while writing
 const tip = [AXIS[0], AXIS[1], 64];
-const spot = [AXIS[0], AXIS[1], BLANK_TOP];
 const side = G.unit3(G.cross3([0, 0, 1], V));
-const [l, r] = [-1, 1].map((sgn) => at(G.add3(tip, G.mul3(side, 3.4 * sgn))));
-const s = at(spot);
-const beam = `<g class="pm-beam" aria-hidden="true"><path d="M${l[0].toFixed(1)} ${l[1].toFixed(1)}L${r[0].toFixed(1)} ${r[1].toFixed(1)}L${(s[0] + 0.8).toFixed(1)} ${s[1].toFixed(1)}L${(s[0] - 0.8).toFixed(1)} ${s[1].toFixed(1)}Z"/><circle cx="${s[0].toFixed(1)}" cy="${s[1].toFixed(1)}" r="1.4"/></g>`;
+const SPOT = 2.4; // half-size of the drawn beam-array spot (illustrative: 81.92 µm is far too small to see)
+const spotGrid = [];
+for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) spotGrid.push([AXIS[0] - SPOT + 0.6 + (i * (2 * SPOT - 1.2)) / 3, AXIS[1] - SPOT + 0.6 + (j * (2 * SPOT - 1.2)) / 3, BLANK_TOP]);
+const fan = [-1, -0.5, 0, 0.5, 1].map((t) => {
+  const top = at(G.add3(tip, G.mul3(side, 3.2 * t)));
+  const foot = at(G.add3([AXIS[0], AXIS[1], BLANK_TOP], G.mul3(side, SPOT * 0.8 * t)));
+  return `M${(top[0] - 0.22).toFixed(2)} ${top[1].toFixed(2)}L${(top[0] + 0.22).toFixed(2)} ${top[1].toFixed(2)}L${(foot[0] + 0.12).toFixed(2)} ${foot[1].toFixed(2)}L${(foot[0] - 0.12).toFixed(2)} ${foot[1].toFixed(2)}Z`;
+});
+const spotSquare = pathOf([[AXIS[0] - SPOT, AXIS[1] - SPOT, BLANK_TOP], [AXIS[0] + SPOT, AXIS[1] - SPOT, BLANK_TOP], [AXIS[0] + SPOT, AXIS[1] + SPOT, BLANK_TOP], [AXIS[0] - SPOT, AXIS[1] + SPOT, BLANK_TOP]]);
+const beam = `<g class="pm-beam" aria-hidden="true"><path class="pm-beam-fan" d="${fan.join("")}"/><path class="pm-beam-spot" d="${spotSquare}"/>${spotGrid.map((p, i) => {
+  const [cx, cy] = at(p);
+  return `<circle class="pm-beamlet" data-n="${i}" cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="0.42"/>`;
+}).join("")}</g>`;
 
-const LABEL = `A multi-beam mask writer on an isolation table, with the chamber's near walls and lid cut away. A rack streams pattern data to the electron column, which stands on a bridge over the vacuum chamber: electron gun, aperture plate system, and projection optics down to a pole piece just above the stage. The stage carries a resist-coated mask blank from the load position under the column. A load lock with a reticle pod and a turbo pump sit on the right wall. On a bench in front, the finished EUV mask shows its layers stepped back along one edge, an inspection head on a bridge, and a pellicle on its cradle.`;
-const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="pm-layers">${groups.join("")}</g>${beam}`], className: "pm-svg" });
+// data packets that run along the fibre during tape-out and fracture, drawn over everything (the fibre is above the chamber)
+const FIBRE_PATH = FIBRE.slice(0, -2).map((p) => at(p).map((v) => Number(v.toFixed(2))));
+const pulse = `<g class="pm-pulse" aria-hidden="true">${[0, 1, 2].map((i) => `<circle class="pm-packet" data-n="${i}" cx="0" cy="0" r="1.5"/>`).join("")}</g>`;
+
+const LABEL = `A multi-beam mask writer on an isolation table, with the chamber's near walls and lid cut away. A rack, whose display shows a layout shape before and after OPC/ILT correction, streams pattern data to the electron column, which stands on a bridge over the vacuum chamber: electron gun, an aperture plate system cut open to show the plate and its grid of holes, and projection optics down to a pole piece just above the stage. The stage carries a resist-coated mask blank from the load position under the column and back after the write. A load lock with a reticle pod and a turbo pump sit on the right wall. On a bench in front, the EUV mask has its near corner cut away as a staircase that shows its layers (glass substrate, Mo/Si multilayer in alternating bands, Ru cap, TaBN absorber, with the etched openings running down to the cap), with an inspection head on a bridge behind it and a pellicle on its cradle in front.`;
+const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="pm-layers">${groups.join("")}</g>${beam}${pulse}`], className: "pm-svg" });
 
 const unit = (vector) => {
   const o = at([0, 0, 0]);
@@ -448,6 +553,9 @@ const DATA = {
   ramps: RAMPS,
   steps: M.STEPS,
   dies: DIES.length,
+  stripes: 4,
+  fibre: FIBRE_PATH,
+  holes: APS_N * APS_N,
   idle: M.IDLE,
   done: M.DONE,
 };
@@ -456,7 +564,7 @@ const PARTS = ORDER.map((id, index) => `<button type="button" class="pm-part" da
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">Mask writer · design to mask</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="pm-controls"><span class="pm-hint">Hover a part · Space plays the process</span><span class="pm-live" aria-live="polite" data-live></span></div>`;
 const stage_ = `<div class="pm-stage" tabindex="0" role="slider" aria-label="Multi-beam mask writer and finishing bench. Hover, or use the arrow keys, to pick a part; Space plays or pauses the six process steps; Escape resets to tape-out; the slider below steps through the process." aria-valuemin="0" aria-valuemax="${M.STEPS.length}" aria-valuenow="0" aria-valuetext="${M.IDLE}">${svg}</div>`;
-const caption = `An IMS-class multi-beam mask writer. One electron source lights an aperture plate of ${M.WRITER.beamsSide} × ${M.WRITER.beamsSide} holes (${M.fmt(M.BEAMLETS)} beamlets, each switched on or off by the data path), and ${M.WRITER.reduction}:1 projection optics shrink the array to an ${M.WRITER.fieldUm} µm field of ${M.WRITER.beamNm} nm beams at ${M.WRITER.keV} keV on a ${M.BLANK.sideMm} mm blank. The bench in front stands in for the separate develop, etch, inspection, repair and pellicle tools. The EUV mask's layers are drawn far thicker than they are, and its ${M.STACK.pairs} Mo/Si pairs as ten seams; the pellicle is drawn to scale with the mask (${M.PELLICLE.sizeMm[0]} × ${M.PELLICLE.sizeMm[1]} mm). Machine proportions, the rack, cabling and bench are illustrative.`;
+const caption = `An IMS-class multi-beam mask writer, with the published specs of the first production generation, the MBMW-101 (2016). One electron source lights an aperture plate of ${M.WRITER.beamsSide} × ${M.WRITER.beamsSide} holes (${M.fmt(M.BEAMLETS)} beamlets, each switched on or off by the data path), and ${M.WRITER.reduction}:1 projection optics shrink the array to an ${M.WRITER.fieldUm} µm field of ${M.WRITER.beamNm} nm beams at ${M.WRITER.keV} keV on a ${M.BLANK.sideMm} mm blank. The bench in front stands in for the separate develop, etch, inspection, repair and pellicle tools. The cut-away aperture plate shows a 16 × 16 field of holes standing for the real ${M.WRITER.beamsSide} × ${M.WRITER.beamsSide}, the gridded spot on the blank stands for the ${M.WRITER.fieldUm} µm beam array, and the 4 × 4 fields that light up on the blank show the stage writing it in four stripes (illustrative). The rack's display shows one T-shaped layout feature before and after OPC/ILT (illustrative). The EUV mask's near corner is cut away to show its layers, drawn far thicker than they are, and its ${M.STACK.pairs} Mo/Si pairs as ten alternating bands; the pellicle is drawn to scale with the mask (${M.PELLICLE.sizeMm[0]} × ${M.PELLICLE.sizeMm[1]} mm). Machine proportions, the rack, cabling and bench are illustrative.`;
 const scrub = `<span class="pm-scrub"><button type="button" class="pm-play" data-play aria-label="Play the process"><span class="pm-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="pm-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is tape-out, 1000 is the finished mask"><span class="pm-step" data-step>01 · ${M.STEPS[0].name}</span></span>`;
 const body = `<figure class="iso-figure pm"><div class="iso-plate">${corners}${stage_}${controls}</div><figcaption class="iso-legend">${scrub}<span class="pm-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 

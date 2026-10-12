@@ -11,7 +11,12 @@ const SRC = {
   dgxb200: "https://www.nvidia.com/en-us/data-center/dgx-b200/",
   b200power: "https://glennklockwood.com/garden/processors/b200",
   rubin: "https://www.guru3d.com/story/nvidia-details-rubin-gpu-architecture-with-hbm4-nvlink-6-and-336-billion-transistors/",
-  rubinPower: "https://www.cudocompute.com/products/nvidia-vera-rubin",
+  rubinBlog: "https://developer.nvidia.com/blog/inside-the-nvidia-rubin-platform-six-new-chips-one-ai-supercomputer/",
+  hbm4Jedec: "https://www.trendforce.com/news/2025/04/28/news-following-jedecs-hbm4-standard-whats-next-for-sk-hynix-samsung-and-micron/",
+  rubinCES: "https://www.hpcwire.com/aiwire/2026/01/06/nvidia-says-rubin-will-deliver-5x-ai-inference-boost-over-blackwell/",
+  rubinCES2: "https://siliconangle.com/2026/01/05/nvidia-debuts-rubin-chip-336b-transistors-50-petaflops-ai-performance/",
+  rubinNode: "https://www.igorslab.de/en/rubin-takes-off-nvidia-starts-production-of-its-next-generation-gpu-and-secures-exclusive-hbm4-memory/",
+  rubinPower: "https://technews.tw/2025/09/04/nvidia-rubin-gpu-use-microchannel-lid/",
   hbm4: "https://www.servethehome.com/sk-hynix-hbm-packaging-at-hot-chips-2026/",
 };
 export { SRC };
@@ -89,8 +94,8 @@ export const GENS = [
     hbm: { gen: "HBM3e", stacks: 8, sites: 8 }, // Blackwell technical overview via glennklockwood: 8 stacks
     memGB: 180, // DGX B200 page: 1,440 GB for 8 GPUs = 180 GB usable each (other sources quote 186 or 192 GB)
     bwTBs: 8, // DGX B200 page: 64 TB/s for 8 GPUs, derived per GPU
-    flops: { fmt: "FP4", dense: 9000, unit: "TF" }, // DGX B200 page: 72 PF FP4 dense for 8 GPUs, derived per GPU
-    sparse: 18000, // DGX B200 page: 144 PF FP4 sparse for 8 GPUs, derived per GPU
+    flops: { fmt: "FP4", dense: 9000, unit: "TF" }, // DGX B200 page: "FP4 Tensor Core 144 PFLOPS | 72 PFLOPS" (sparse | dense), 8 GPUs → 9 PF dense per GPU
+    sparse: 18000, // DGX B200 page: 144 PF FP4 sparse for 8 GPUs → 18 PF per GPU
     watts: 1000, // HGX B200 configuration, per NVIDIA technical brief via glennklockwood (up to 1,200 W in GB200)
     nvlinkGBs: 1800, // Blackwell press release: 1.8 TB/s per GPU
     dieLinkTBs: 10, // Blackwell press release: 10 TB/s chip-to-chip link (NV-HBI)
@@ -102,22 +107,28 @@ export const GENS = [
     id: "rubin",
     name: "Rubin",
     arch: "Rubin",
-    year: 2026, // NVIDIA CES 2026, as in chapters/advanced-packaging/model.mjs
-    node: "TSMC N3P", // same source as chapters/advanced-packaging/model.mjs (Guru3D)
+    year: 2026, // NVIDIA at CES 2026 (HPCwire, SiliconANGLE): Rubin systems ship in the second half of 2026
+    node: "TSMC 3 nm (N3P reported)", // Igor's Lab: "TSMC's most advanced 3nm ... presumably N3P"; NVIDIA has not named the variant
     dies: 2,
     dieMm2: null, // not disclosed; reticle-limited
     transistorsB: 336, // Guru3D
-    hbm: { gen: "HBM4", stacks: 8, sites: 8 }, // Guru3D
-    memGB: 288, // Guru3D: 8 x 36 GB
-    bwTBs: 22, // Guru3D
-    flops: { fmt: "NVFP4", dense: 35000, unit: "TF" }, // Guru3D: 35 PF NVFP4 (training figure)
-    sparse: 50000, // Guru3D: up to 50 PF NVFP4 (inference figure)
-    watts: 2300, // NOT an NVIDIA spec: reported by a cloud vendor (cudocompute.com); shown as "reported"
+    // NVIDIA (developer blog) and Guru3D give 288 GB total and 12-high stacks, not a stack count. 8 stacks x 36 GB
+    // (12-high of 24 Gb dies) as in chapters/advanced-packaging/model.mjs, after JEDEC JESD270-4 via TrendForce.
+    hbm: { gen: "HBM4", stacks: 8, sites: 8 },
+    memGB: 288, // NVIDIA developer blog: "Up to 288 GB of HBM4 per GPU"
+    bwTBs: 22, // NVIDIA developer blog: "up to 22 TB/s"; Guru3D
+    // NVIDIA developer blog, Table 2: NVFP4 training 35 PFLOPS, footnoted "Dense compute"; HPCwire and SiliconANGLE
+    // report the same 35 PF training figure from CES 2026.
+    flops: { fmt: "NVFP4", dense: 35000, unit: "TF" },
+    // NVIDIA developer blog: "up to 50 PetaFLOPS NVFP4 for inference" (footnoted "Transformer Engine compute");
+    // Guru3D's spec table (source: NVIDIA): "Up to 50 PFLOPS (Sparse NVFP4)".
+    sparse: 50000,
+    watts: 2300, // NOT an NVIDIA spec: TechNews (Sept 2025), citing a J.P. Morgan note, "dual-die version ... up to 2,300 W"
     wattsReported: true,
     nvlinkGBs: 3600, // Guru3D: NVLink 6, 3.6 TB/s
     packaging: "CoWoS-L",
     new: "HBM4 with a 2,048-bit interface per stack; NVFP4; NVLink 6",
-    src: [SRC.rubin, SRC.rubinPower],
+    src: [SRC.rubinBlog, SRC.rubin, SRC.hbm4Jedec, SRC.rubinCES, SRC.rubinCES2, SRC.rubinNode, SRC.rubinPower],
   },
 ];
 
@@ -133,14 +144,16 @@ export const HBM_MM = {
   HBM4: [11, 12.4],
 };
 
+// Terms join with a no-break space before each "·", so a wrapped line never starts with a lone separator.
+const join = (terms) => terms.join("\u00a0· ");
 const fmt = (v, d = 0) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 export const flopsText = (g, v = g.flops.dense) => (v >= 5000 ? `${fmt(v / 1000)} PF` : `${fmt(v)} TF`);
 export const bwText = (g) => (g.bwTBs < 1 ? `${fmt(g.bwTBs * 1000)} GB/s` : `${fmt(g.bwTBs, Number.isInteger(g.bwTBs) ? 0 : 2)} TB/s`);
-export const wattText = (g) => (g.wattsReported ? `≈${fmt(g.watts / 1000, 1)} kW reported` : `${fmt(g.watts)} W`);
+export const wattText = (g) => (g.wattsReported ? `≈${fmt(g.watts / 1000, 1)}\u00a0kW` : `${fmt(g.watts)} W`); // the caption says Rubin's is an estimate
 export const transText = (g) => `${fmt(g.transistorsB, g.transistorsB % 1 ? 1 : 0)} B`;
 
 // The readout while a package is lit: short enough to wrap to two lines at 390 px.
-export const sayOf = (g) => `${g.name} ${g.year} · ${transText(g)} transistors · ${g.memGB} GB ${g.hbm.gen} · ${bwText(g)} · ${flopsText(g)} ${g.flops.fmt} · ${wattText(g)}`;
+export const sayOf = (g) => join([`${g.name} ${g.year}`, `${transText(g)} transistors`, `${g.memGB} GB ${g.hbm.gen}`, bwText(g), `${flopsText(g)} ${g.flops.fmt}${g.flops.note ? ` ${g.flops.note}` : ""}`, wattText(g)]);
 
 const first = GENS[0];
 const last = GENS[GENS.length - 1];
@@ -148,10 +161,10 @@ export const GROWTH = {
   transistors: last.transistorsB / first.transistorsB, // ≈ 16x
   bandwidth: last.bwTBs / first.bwTBs, // ≈ 24x
   memory: last.memGB / first.memGB, // 18x
-  flops: last.flops.dense / first.flops.dense, // 280x, but FP16 vs FP4
+  flops: last.flops.dense / first.flops.dense, // 280x, dense to dense, but FP16 vs NVFP4
   years: last.year - first.year,
 };
-export const IDLE = `${first.name} to ${last.name} · ${GROWTH.years} years · ${Math.round(GROWTH.transistors)}× transistors · ${Math.round(GROWTH.bandwidth)}× bandwidth`;
+export const IDLE = join([`${first.name} to ${last.name}`, `${GROWTH.years}\u00a0years`, `${Math.round(GROWTH.transistors)}×\u00a0transistors`, `${Math.round(GROWTH.bandwidth)}×\u00a0bandwidth`]);
 
 // DRAM core dies per stack, drawn as seams on each stack's side.
 export const HBM_HIGH = {
@@ -159,5 +172,5 @@ export const HBM_HIGH = {
   HBM2e: 8, // Ampere whitepaper: "eight memory dies per stack" (16 GB stacks on the 80 GB part)
   HBM3: 8, // derived: 80 GB over 5 stacks = 16 GB, eight 16 Gb dies
   HBM3e: 8, // derived: 24 GB stacks, eight 24 Gb dies
-  HBM4: 12, // as chapters/advanced-packaging/model.mjs: 12-high, 36 GB
+  HBM4: 12, // Guru3D: "12-high memory stacks"; 36 GB each as in chapters/advanced-packaging/model.mjs
 };

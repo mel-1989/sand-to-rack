@@ -225,15 +225,19 @@ function preclean() {
   }, { cabinet: doors(deg, "v", -58, 130, 236, 7, 21), body: viewport(deg, "v", -60, 214, 52) });
 }
 
+const LL_WIN = 31.5; // load-lock window radius (illustrative)
 function loadlocks() {
   for (const deg of [180, 240]) {
     block("loadlock", deg, { x: CH0 + 2, y: -42, w: 76, d: 84, r: 3 }, 0, Z.cab, { seam: 4, name: `loadlock.cabinet${deg}` });
     block("loadlock", deg, { x: CH0, y: -44, w: 80, d: 88, r: 4 }, Z.cab, 46, { bevel: 0.8, seam: Z.cab + 6, name: `loadlock.body${deg}` });
     const lid = { x: CH0 + 2, y: -42, w: 76, d: 84, r: 3 };
     const [cx, cy] = loc(deg, 156, 0);
-    const window = L(k.ring(cx, cy, 20, 74, P, 48), { tone: "lo" }) + Dots(Array.from({ length: 10 }, (_, i) => at([cx + 22.5 * Math.cos((i / 10) * 2 * Math.PI), cy + 22.5 * Math.sin((i / 10) * 2 * Math.PI), 74])), { size: 0.4 });
+    // a large glass window over the wafer station: the wafer (and the robot blade reaching in) shows through it
+    const bolts = Dots(Array.from({ length: 16 }, (_, i) => at([cx + 34.6 * Math.cos(((i + 0.5) / 16) * 2 * Math.PI), cy + 34.6 * Math.sin(((i + 0.5) / 16) * 2 * Math.PI), 74])), { size: 0.4 });
+    const glass = `<path class="dz-glass" d="${k.ring(cx, cy, LL_WIN, 74, P, 64)}"/>`;
+    const seen = deg === 180 ? `<use href="#dz-carry" clip-path="url(#dz-clip-ll)"/>` : "";
+    const window = glass + seen + L(k.ring(cx, cy, LL_WIN, 74, P, 64), { tone: "lo" }) + L(k.ring(cx, cy, LL_WIN + 1.6, 74, P, 64), { tone: "faint" }) + bolts;
     block("loadlock", deg, lid, 70, 4, { bevel: 0.5, extra: window + screwsOn(deg, lid, 74, 4), name: `loadlock.lid${deg}` });
-    can("loadlock", cx, cy, 16, 74, 1.2, { tone: "hi", steps: 48, extra: L(k.ring(cx, cy, 11, 75.2, P, 40), { tone: "faint" }), name: `loadlock.viewport${deg}` });
     const [gx, gy] = loc(deg, 186, 32);
     can("loadlock", gx, gy, 4, 74, 10, { bevel: 0.3, extra: L(k.ring(gx, gy, 2, 84, P, 12), { tone: "lo" }), name: `loadlock.gauge${deg}` });
     block("loadlock", deg, { x: 196, y: -36, w: 8, d: 72, r: 1 }, 30, 34, { bevel: 0.4, seam: 36, name: `loadlock.door${deg}` });
@@ -280,7 +284,8 @@ const VALVES = [
   { id: "N", x: 181, label: M.ALD.purge },
   { id: "B", x: 196, label: M.ALD.coreactant },
 ];
-const SHOWER = { r: 36, z0: 66, z1: 72 };
+const SHOWER = { r: 36, z0: 66, z1: 72, cut: 4 }; // the faceplate is cut a little in front of centre (y = cut)
+const LID_CUT = -18; // the lid is cut further back, so the faceplate and backing plate show as steps below it
 
 function ald() {
   const cabinet = { x: 118, y: -58, w: 126, d: 116, r: 3 };
@@ -304,32 +309,47 @@ function ald() {
   can("ald", PX, 0, 7, Z.tcFloor + 2, 8, { inner: L(k.sideArc(PX, 0, 7, 35, P, 16), { tone: "faint" }), name: "ald.shaft" });
   const pedTop = L(k.ring(PX, 0, 31.5, RIG.PED_TOP, P, 64), { tone: "faint" }) + L([0, 1, 2].map((i) => k.ring(...pin(i), 1.8, RIG.PED_TOP, P, 12)).join(""), { tone: "lo" });
   can("ald", PX, 0, 34, 40, RIG.PED_TOP - 40, { steps: 72, bevel: 0.6, inner: L(k.sideArc(PX, 0, 34, 42, P, 48), { tone: "faint" }), extra: pedTop, name: "ald.pedestal" });
-  // showerhead, backing plate and stem hung from the lid, cut in half on the lid's cut line (y = 0)
-  const half = (r, n = 40) => [...Array.from({ length: n + 1 }, (_, i) => [PX + r * Math.cos(Math.PI + (Math.PI * i) / n), -r * Math.sin((Math.PI * i) / n)])];
-  const halfSolid = (name, r, z0, z1, { extra = "", inner = "" } = {}) => {
-    const ring = half(r);
-    put("ald", [PX, -r / 2, (z0 + z1) / 2], S(k.extrude(ring, z0, z1 - z0, P, { bevel: 0.4 }), { tone: "mid", inner }) + extra, [A.extruded(ring, z0, z1 - z0, {})], { name });
+  // showerhead faceplate, backing plate and stem hung from the lid: a stepped section, each cut further forward than the one above
+  const chord = (r, yc, n = 44) => {
+    const a0 = Math.asin(yc / r);
+    return Array.from({ length: n + 1 }, (_, i) => {
+      const a = Math.PI - a0 + ((Math.PI + 2 * a0) * i) / n;
+      return [PX + r * Math.cos(a), r * Math.sin(a)];
+    });
   };
-  // cut face of the showerhead: the gas plenum and the holes down to the face
-  const face = (x, z) => at([x, 0, z]);
-  const plenum = [face(PX - 31, SHOWER.z0 + 3), face(PX + 31, SHOWER.z0 + 3), face(PX + 31, SHOWER.z1 - 1.4), face(PX - 31, SHOWER.z1 - 1.4)];
+  const cutSolid = (name, r, yc, z0, z1, { extra = "", inner = "", lit = false } = {}) => {
+    const ring = chord(r, yc);
+    put("ald", [PX, (yc - r) / 2, (z0 + z1) / 2], S(k.extrude(ring, z0, z1 - z0, P, { bevel: 0.4 }), { tone: "mid", inner, lit }) + extra, [A.extruded(ring, z0, z1 - z0, {})], { name });
+  };
+  // cut face of the faceplate: the gas plenum and the holes from it down to the face
+  const yc = SHOWER.cut;
+  const half = Math.sqrt(SHOWER.r ** 2 - yc ** 2);
+  const face = (x, z, y = yc) => at([x, y, z]);
+  const plenum = [face(PX - half + 5, SHOWER.z0 + 2.6), face(PX + half - 5, SHOWER.z0 + 2.6), face(PX + half - 5, SHOWER.z1 - 1.4), face(PX - half + 5, SHOWER.z1 - 1.4)];
   let holes = "";
-  for (let x = PX - 28; x <= PX + 28.1; x += 4) holes += `M${face(x, SHOWER.z0).join(" ")}L${face(x, SHOWER.z0 + 3).join(" ")}`;
+  for (let x = PX - 28; x <= PX + 28.1; x += 4) holes += `M${face(x, SHOWER.z0).join(" ")}L${face(x, SHOWER.z0 + 2.6).join(" ")}`;
   const cut = `<path class="dz-void" d="M${plenum.map((p) => p.join(" ")).join("L")}Z"/>` + L(holes, { tone: "lo" });
-  halfSolid("ald.showerhead", SHOWER.r, SHOWER.z0, SHOWER.z1, { extra: cut + Dots(Array.from({ length: 11 }, (_, i) => at([PX + 33 * Math.cos(Math.PI * (1 + (i + 0.5) / 11)), 33 * Math.sin(Math.PI * (1 + (i + 0.5) / 11)), SHOWER.z1])), { size: 0.42 }) });
-  halfSolid("ald.backing", 28, SHOWER.z1, SHOWER.z1 + 4);
-  halfSolid("ald.stem", 10, SHOWER.z1 + 4, Z.body, { extra: `<path class="dz-void" d="M${[face(PX - 4, SHOWER.z1 + 4), face(PX + 4, SHOWER.z1 + 4), face(PX + 4, Z.body), face(PX - 4, Z.body)].map((p) => p.join(" ")).join("L")}Z"/>` });
-  // lid, kept over the back half
-  const lid = { x: CH0, y: -60, w: 130, d: 60, r: 1 };
+  // the faceplate's exposed top rim, outside the backing plate, carries its clamp screws
+  const rimScrews = Array.from({ length: 13 }, (_, i) => Math.PI * (0.96 + (i * 1.08) / 12)).map((a) => [PX + 32 * Math.cos(a), 32 * Math.sin(a)]).filter(([, y]) => y < yc - 2);
+  const rim = L(rimScrews.map(([x, y]) => k.ring(x, y, 1.3, SHOWER.z1, P, 12)).join(""), { tone: "lo" }) + Dots(rimScrews.map(([x, y]) => at([x, y, SHOWER.z1])), { size: 0.4 });
+  cutSolid("ald.showerhead", SHOWER.r, yc, SHOWER.z0, SHOWER.z1, { extra: cut + rim, lit: true });
+  const backBolts = Array.from({ length: 9 }, (_, i) => Math.PI * (1.06 + (i * 0.88) / 8)).map((a) => [PX + 24 * Math.cos(a), 24 * Math.sin(a)]).filter(([, y]) => y > LID_CUT + 2 || y < -60);
+  cutSolid("ald.backing", 28, 0, SHOWER.z1, SHOWER.z1 + 4, { extra: Dots(backBolts.map(([x, y]) => at([x, y, SHOWER.z1 + 4])), { size: 0.4 }) });
+  cutSolid("ald.stem", 10, 0, SHOWER.z1 + 4, Z.lid, { extra: `<path class="dz-void" d="M${[face(PX - 4, SHOWER.z1 + 4, 0), face(PX + 4, SHOWER.z1 + 4, 0), face(PX + 4, Z.lid, 0), face(PX - 4, Z.lid, 0)].map((p) => p.join(" ")).join("L")}Z"/>` });
+  // gas inlet flange on top of the stem, bolted down onto the lid's cut edge
+  const flangeBolts = Array.from({ length: 7 }, (_, i) => Math.PI * (1.08 + (i * 0.84) / 6)).map((a) => [PX + 17 * Math.cos(a), 17 * Math.sin(a)]);
+  cutSolid("ald.inlet", 20, 0, Z.lid, Z.lid + 2.4, { extra: L(flangeBolts.map(([x, y]) => k.ring(x, y, 1.2, Z.lid + 2.4, P, 12)).join(""), { tone: "lo" }) + Dots(flangeBolts.map(([x, y]) => at([x, y, Z.lid + 2.4])), { size: 0.38 }) });
+  // lid, kept over the back of the chamber
+  const lid = { x: CH0, y: -60, w: 130, d: 60 + LID_CUT, r: 1 };
   const lidScrews = [];
   for (let x = CH0 + 5; x <= CH0 + 125; x += 15) lidScrews.push([x, -56]);
-  for (let y = -44; y <= -4; y += 12) lidScrews.push([CH0 + 4, y]);
+  for (let y = -44; y <= LID_CUT - 4; y += 12) lidScrews.push([CH0 + 4, y]);
   block("ald", 0, lid, Z.body, Z.lid - Z.body, { bevel: 0.6, steps: 3, extra: L(lidScrews.map(([x, y]) => k.ring(x, y, 1.4, Z.lid, P, 12)).join(""), { tone: "lo" }) + Dots(lidScrews.map(([x, y]) => at([x, y, Z.lid])), { size: 0.4 }), name: "ald.lid" });
   // valve manifold with three ALD valves
-  const mani = { x: 154, y: -36, w: 54, d: 16, r: 1.5 };
+  const mani = { x: 154, y: -40, w: 54, d: 16, r: 1.5 };
   block("ald", 0, mani, Z.lid, 8, { bevel: 0.4, seam: Z.lid + 2, name: "ald.manifold" });
   for (const v of VALVES) {
-    const y = -28;
+    const y = -32;
     const body = S(k.cylinder(v.x, y, 5, Z.lid + 8, 5, P, 28), { tone: "mid" });
     const act = S(k.cylinder(v.x, y, 6.2, Z.lid + 13, 11, P, 32, 0.4), { tone: "hi", inner: L(k.sideArc(v.x, y, 6.2, Z.lid + 16, P, 20), { tone: "faint" }) });
     const cap = S(k.cylinder(v.x, y, 3.6, Z.lid + 24, 2, P, 20), { tone: "mid" }) + L(k.ring(v.x, y, 1.6, Z.lid + 26, P, 12), { tone: "lo" });
@@ -347,7 +367,7 @@ function ald() {
   block("ald", 0, pump, 0, 26, { bevel: 0.6, seam: [4, 22], extra: L(fins.join(""), { tone: "faint" }) + screwsOn(0, pump, 26, 4), name: "ald.pump" });
   can("ald", 222, 117, 9, 26, 14, { bevel: 0.4, inner: L(k.sideArc(222, 117, 9, 30, P, 24), { tone: "faint" }), extra: L(k.knurl(222, 117, 9, 31, 39, 26, P), { tone: "lo" }), name: "ald.pumpmotor" });
   pipe("ald.foreline", [[204, pump.y, 15], [204, 58, 15]], 3.2);
-  for (const v of VALVES) feedLine(`ald.feed${v.id}`, [[v.x, -36, Z.lid + 4], [v.x, -70, Z.lid + 4], [v.x, -70, 52]], 1.5);
+  for (const v of VALVES) feedLine(`ald.feed${v.id}`, [[v.x, -40, Z.lid + 4], [v.x, -70, Z.lid + 4], [v.x, -70, 52]], 1.5);
 }
 
 // a straight line with a bolted flange on each end
@@ -441,7 +461,7 @@ function halfPlane(x0, x1) {
   const b1 = at([x1, 400, zb]);
   return `M${a0.join(" ")}L${b0.join(" ")}L${b1.join(" ")}L${a1.join(" ")}Z`;
 }
-const DEFS = `<defs><clipPath id="dz-clip-tc"><path d="${halfPlane(-AP, CH0)}"/></clipPath><clipPath id="dz-clip-ch"><path d="${halfPlane(122, 600)}"/></clipPath><g id="dz-carry" data-dyn="carry"></g></defs>`;
+const DEFS = `<defs><clipPath id="dz-clip-tc"><path d="${halfPlane(-AP, CH0)}"/></clipPath><clipPath id="dz-clip-ch"><path d="${halfPlane(122, 600)}"/></clipPath><clipPath id="dz-clip-ll"><path d="${k.ring(RIG.LL_X, 0, LL_WIN, 74, P, 64)}"/></clipPath><g id="dz-carry" data-dyn="carry"></g></defs>`;
 
 const groups = [];
 for (const item of R.items) {
@@ -464,6 +484,7 @@ const DATA = {
   film: M.ALD.film,
   valves: VALVES.map((v) => v.id),
   shower: SHOWER,
+  lidCut: LID_CUT,
   pins: [0, 1, 2].map(pin),
 };
 

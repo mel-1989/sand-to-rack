@@ -19,7 +19,7 @@ export const TRAY = {
   bf3: 2, // [DGX] 2x BlueField-3, dual-port
   e1s: 4, // [DGX] 4x 3.84 TB E1.S NVMe (QCT lists 8 bays; the DGX configuration is drawn)
   memTB: 1.7, // [TB] "1.7 TB of fast memory" per compute tray
-  pflops: 80, // [TB] "80 petaflops of AI performance" per compute tray (FP4)
+  pflops: 80, // [TB] "80 petaflops of AI performance" per compute tray; [NV72] lists 40 PF FP4 per superchip, sparse (dense is half), × 2 superchips = 80 PF FP4 sparse
   superchipW: 2700, // [REG] each GB200 superchip rated 2,700 W
   uqd: "UQD04", // [QCT] blind-mate UQD04 liquid inlets on each tray
 };
@@ -62,16 +62,20 @@ export const COOL = {
   inletMaxC: 45, // [QCT] maximum liquid inlet temperature
   returnMaxC: 65, // [QCT] maximum liquid return temperature
   rackLpm: 130, // [QCT] up to 130 L/min per rack
-  liquidKW: 115, // [QCT] heat taken by liquid
+  liquidKW: 115, // [QCT] heat taken by liquid, in QCT's 132 kW cooling design budget (sized above the ≈120 kW typical draw)
   airKW: 17, // [QCT] heat taken by air (SSDs, NICs, risers)
   regInC: 25, // [REG] one GTC 2024 description: water in at 25 °C ...
   regLps: 2, // [REG] ... at two litres a second, leaving about 20 °C warmer
   regRiseC: 20, // [REG]
+  liquidShare: 0, // derived below
 };
 
 // Drawing scale: the tray is drawn at 1 unit = 2 mm across and in height (1U = 44.45 mm = 22 units).
 // Its depth, the board layout and the rack slot fixture are illustrative.
 export const MM = 0.5;
+COOL.liquidShare = Math.round((COOL.liquidKW / (COOL.liquidKW + COOL.airKW)) * 100); // 87 %, derived from [QCT]'s 132 kW cooling design budget
+
+const NB = "\u00a0"; // non-breaking space between a number and its unit in readouts
 export const U_UNITS = 44.45 * MM;
 
 const fmt = (value, digits = 0) => value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -83,7 +87,7 @@ export const PIECES = {
   },
   plates: {
     name: "Cold plate loop",
-    say: `${TRAY.gpus + TRAY.grace} cold plates · ${COOL.liquidKW} of ${COOL.liquidKW + COOL.airKW} kW a rack leaves by liquid`,
+    say: `${TRAY.gpus + TRAY.grace} cold plates · ≈${COOL.liquidShare}% of the heat leaves by liquid`,
   },
   lid: {
     name: "Tray and front I/O",
@@ -110,12 +114,24 @@ export const PIECES = {
 // The process the slider steps through, in order.
 export const STEPS = [
   { id: "pkg", label: "packages onto the boards", say: `${TRAY.superchips} superchips · ${TRAY.gpus} GPUs + ${TRAY.grace} CPUs onto the boards` },
-  { id: "plates", label: "cold plates clamp down", say: `cold plates on all ${TRAY.gpus + TRAY.grace} chips · hoses to the manifold` },
-  { id: "lid", label: "the tray closes", say: `lid on · ${TRAY.memTB} TB fast memory · ${TRAY.pflops} PF FP4` },
+  { id: "plates", label: "cold plates clamp down", say: `cold plates on all ${TRAY.gpus + TRAY.grace} chips · hoses to the tray manifold` },
+  { id: "lid", label: "the tray closes", say: `lid on · ${TRAY.memTB} TB fast memory · ${TRAY.pflops} PF FP4 (sparse)` },
   { id: "tray", label: "slides into the rack", say: `blind-mate · 2 × ${TRAY.uqd} · bus bar · NVLink` },
   { id: "flow", label: "coolant flows", say: `≤${COOL.inletMaxC} °C in · ≤${COOL.returnMaxC} °C out · ≤${COOL.rackLpm} L/min` },
   { id: "spine", label: "NVLink spine connects", say: `${fmt(gpuPorts)} links · ${GPU.nvlinkTBs} TB/s a GPU · ${RACK.nvlinkTBs} TB/s` },
 ];
 
-export const IDLE = `${TRAY.gpus} GPUs · ${TRAY.grace} CPUs a tray · ${RACK.gpus} GPUs a rack`;
-export const DONE = `${RACK.gpus} GPUs · one NVLink domain · ≈${RACK.kW} kW`;
+
+// Keep each quantity on one line when the readout wraps at phone width: a non-breaking space after
+// every number, after "×" and "≤"/"≈", and inside the short phrases below.
+const KEEP = ["PF FP4 (sparse)", "tray manifold", "one NVLink domain", "of the heat", "by liquid"];
+const tidy = (text) => {
+  let out = text;
+  for (const phrase of KEEP) out = out.split(phrase).join(phrase.replace(/ /g, NB));
+  return out.replace(/(\d[\d,.]*\+?%?) (?=\S)/g, `$1${NB}`).replace(/([×]) /g, `$1${NB}`);
+};
+for (const piece of Object.values(PIECES)) piece.say = tidy(piece.say);
+for (const step of STEPS) step.say = tidy(step.say);
+
+export const IDLE = tidy(`${TRAY.gpus} GPUs · ${TRAY.grace} CPUs a tray · ${RACK.gpus} GPUs a rack`);
+export const DONE = tidy(`${RACK.gpus} GPUs · one NVLink domain · ≈${RACK.kW} kW`);

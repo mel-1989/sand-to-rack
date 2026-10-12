@@ -44,6 +44,9 @@ export const SCANNER = {
   // Tom's Hardware (https://www.tomshardware.com/tech-industry/semiconductors/asmls-planned-low-na-euv-machine-price-hikes-reportedly-frustrate-tsmc-lithography-machine-maker-comes-knocking-to-make-bank-on-tsmcs-profitable-fabs-potentially-costing-the-taiwanese-chipmaker-billions):
   // NXE:3400C and 3600D at about $160-195 M, the 3800E higher still; trade-press estimates, ASML publishes no price.
   priceM: [160, 195],
+  // TWINSCAN dual stage, also NA 0.33 and 26 x 33 mm: https://www.asml.com/en/products/euv-lithography-systems/twinscan-nxe-3600d (per-wafer measurements at a
+  // metrology position while another, just-measured wafer is exposed)
+  waferStages: 2,
 };
 export const SECONDS_PER_WAFER = 3600 / SCANNER.wph; // derived: ≈16.4 s per wafer
 

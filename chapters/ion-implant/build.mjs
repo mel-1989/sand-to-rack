@@ -20,13 +20,14 @@ const ELEVATION = 36;
 
 const ZB = 52; // beam height
 const Y1 = 90; // first leg of the beamline runs along +x at this y
-const RHO = 64; // bend radius of the kept ion in the analyzer
+const RHO = 70; // bend radius of the kept ion in the analyzer
+const DR = RHO - 64; // the magnet's rings grow with the bend radius
 const MX = 20; // magnet entrance plane
 const C = [MX, Y1 - RHO]; // bend centre
 const BX = C[0] + RHO; // second leg runs along -y at this x
 const CY = C[1];
 
-const BED = { x: -242, y: -174, w: 432, d: 304, r: 10 };
+const BED = { x: -242, y: -174, w: 432, d: 312, r: 10 };
 const BED_H = 12;
 const FOOT_H = 7;
 
@@ -41,11 +42,13 @@ const CUP_R = 5;
 const CUP_MOUTH = 3.4;
 const SCANNER = { y0: -51, y1: -94, w0: 11, w1: 42, z0: 40, z1: 64 };
 const SLIT = 1.2; // resolving slit half-width (illustrative)
+const WALL_IN = 53.5 + DR; // beam chamber walls inside the magnet
+const WALL_OUT = 74.5 + DR;
 const NEAR_X = 4; // near-mass paths are drawn this many times wider apart than true
 
 const RTP = [-150, -96];
-const COUPON = { x: 126, y: 98, w: 40, d: 4, r: 0.4 };
-const COUPON_Z = [8, 34];
+const COUPON = { x: 134, y: 72, w: 48, d: 5, r: 0.4 };
+const COUPON_Z = [8, 64];
 
 const P = k.fitProjection([...k.boxCorners(BED, -BED_H - FOOT_H, 0), [-206, 40, 96], [BX, -164, 100], [RTP[0], RTP[1], 66], [28, -164, 100]], W, H, { pad: 22, azimuth: AZIMUTH, elevation: ELEVATION });
 const V = G.viewOf(P);
@@ -198,20 +201,26 @@ function source() {
 }
 
 // ---- 4. extraction electrodes on insulating posts ----
-const ELECTRODES = [-138, -129, -120];
+// three electrodes spaced wide enough that the beam can be seen in the gaps between them (illustrative spacing)
+const ELECTRODES = [-140, -123, -106];
+const ELECTRODE_R = 11;
+const FLIGHT_X0 = -98;
 function extraction() {
-  const rail = { x: -143, y: Y1 - 5, w: 28, d: 10, r: 1 };
+  const rail = { x: -145, y: Y1 - 5, w: 44, d: 10, r: 1 };
   box("extract", rail, 0, 6, { tone: "mid", seam: 2, extra: Dots([at([rail.x + 3, Y1, 6]), at([rail.x + rail.w - 3, Y1, 6])], { size: 0.45 }), name: "extract.rail" });
-  for (const x of ELECTRODES) {
-    turned("extract", AZ([x, Y1, 6]), discP(0, ZB - 15 - 6, 1.8), { tone: "mid", name: "extract.post" });
-    turned("extract", AX([0, Y1, ZB]), ringP(x - 0.8, x + 0.8, 3.2, 15), { tone: "hi", name: "extract.electrode", attrs: "data-stage=extract" });
-  }
+  // each electrode carries a glow on its rim and one round its aperture: they switch on in turn as the beam is drawn out
+  const F = AX([0, Y1, ZB]);
+  ELECTRODES.forEach((x, i) => {
+    turned("extract", AZ([x, Y1, 6]), discP(0, ZB - ELECTRODE_R - 6, 1.8), { tone: "mid", name: "extract.post" });
+    const glow = `<path class="ii-ringglow" d="${G.arcOf(F, x + 0.8, ELECTRODE_R, P)}"/><path class="ii-aperture" d="${G.circleOf(F, x + 0.8, 3.2, P)}"/>`;
+    turned("extract", F, ringP(x - 0.8, x + 0.8, 3.2, ELECTRODE_R), { tone: "hi", name: "extract.electrode", attrs: `data-xring="${i}"`, extra: glow });
+  });
 }
 
 // ---- 5. flight tube to the magnet ----
 function flightTube(x0) {
   const F = AX([0, Y1, ZB]);
-  turned("extract", F, ringP(x0, x0 + 3, 7, 13), { tone: "mid", name: "extract.flange", extra: Dots(G.dotsOf(F, x0, 10.5, 8, P, { fade: [0.04, 0.42] }), { size: 0.4 }) });
+  turned("extract", F, ringP(x0, x0 + 3, 7, 13), { tone: "mid", name: "extract.flange", attrs: `data-xring="${ELECTRODES.length}"`, extra: Dots(G.dotsOf(F, x0, 10.5, 8, P, { fade: [0.04, 0.42] }), { size: 0.4 }) + `<path class="ii-ringglow" d="${G.arcOf(F, x0 + 3, 13, P)}"/>` });
   const end = MX - 3;
   turned("magnet", F, ringP(x0 + 3, end - 3, 7, 9), { tone: "mid", name: "magnet.tube", inner: L([-80, -20].map((x) => G.arcOf(F, x, 9, P)).join(""), { tone: "faint" }) });
   turned("magnet", F, ringP(end - 3, end, 7, 13), { tone: "mid", name: "magnet.tube-flange" });
@@ -223,17 +232,18 @@ function flightTube(x0) {
 // ---- 6. analyzer magnet, upper pole and lid removed ----
 function magnet() {
   const yokeTop = 38;
-  sector("magnet", 28, 100, -8, 98, 0, yokeTop, { tone: "mid", name: "magnet.yoke", seams: [8, 30] });
-  sector("magnet", 34, 46, 0, 90, yokeTop, 7, { tone: "hi", name: "magnet.coil-in", seams: [yokeTop + 2.4, yokeTop + 4.8] });
-  sector("magnet", 82, 94, 0, 90, yokeTop, 7, { tone: "hi", name: "magnet.coil-out", seams: [yokeTop + 2.4, yokeTop + 4.8] });
-  sector("magnet", 47, 81, 0, 90, yokeTop, 8, { tone: "mid", name: "magnet.pole" });
-  sector("magnet", 52, 76, 0, 90, 46, 2, { tone: "lo", name: "magnet.floor" });
-  sector("magnet", 52, 53.5, 0, 90, 48, 6, { tone: "mid", name: "magnet.wall-in" });
-  sector("magnet", 74.5, 76, 0, 90, 48, 6, { tone: "mid", name: "magnet.wall-out" });
+  sector("magnet", 28 + DR, 100 + DR, -8, 98, 0, yokeTop, { tone: "mid", name: "magnet.yoke", seams: [8, 30] });
+  sector("magnet", 34 + DR, 46 + DR, 0, 90, yokeTop, 7, { tone: "hi", name: "magnet.coil-in", seams: [yokeTop + 2.4, yokeTop + 4.8] });
+  sector("magnet", 82 + DR, 94 + DR, 0, 90, yokeTop, 7, { tone: "hi", name: "magnet.coil-out", seams: [yokeTop + 2.4, yokeTop + 4.8] });
+  sector("magnet", 47 + DR, 81 + DR, 0, 90, yokeTop, 8, { tone: "mid", name: "magnet.pole" });
+  sector("magnet", WALL_IN - 1.5, WALL_OUT + 1.5, 0, 90, 46, 2, { tone: "lo", name: "magnet.floor" });
+  sector("magnet", WALL_IN - 1.5, WALL_IN, 0, 90, 48, 6, { tone: "mid", name: "magnet.wall-in" });
+  // the near (outer) chamber wall is cut low so the beam's arc stays in view above it
+  sector("magnet", WALL_OUT, WALL_OUT + 1.5, 0, 90, 48, 2, { tone: "mid", name: "magnet.wall-out" });
   // bolts on the yoke top outside the coils
   const bolts = [];
-  for (let a = 4; a <= 86; a += 10) for (const r of [31, 97]) bolts.push(at([C[0] + r * Math.cos(a * DEG), C[1] + r * Math.sin(a * DEG), yokeTop]));
-  put("magnet", [C[0] + 60, C[1] + 60, yokeTop], Dots(bolts, { size: 0.45 }), [A.box([C[0] + 28 * 0.7, C[1] + 28 * 0.7, yokeTop], [C[0] + 98, C[1] + 98, yokeTop + 0.1])], { name: "magnet.bolts", record: false });
+  for (let a = 4; a <= 86; a += 10) for (const r of [31 + DR, 97 + DR]) bolts.push(at([C[0] + r * Math.cos(a * DEG), C[1] + r * Math.sin(a * DEG), yokeTop]));
+  put("magnet", [C[0] + 60 + DR, C[1] + 60 + DR, yokeTop], Dots(bolts, { size: 0.45 }), [A.box([C[0] + (28 + DR) * 0.7, C[1] + (28 + DR) * 0.7, yokeTop], [C[0] + 98 + DR, C[1] + 98 + DR, yokeTop + 0.1])], { name: "magnet.bolts", record: false });
   // entrance plate (beam port) and exit plate with the resolving slit: recorded as the solid around the opening
   const ent = { x: MX - 3, y: Y1 - 14, w: 3, d: 28, r: 0.4 };
   const entPaths = S(k.slabOf(ent, yokeTop, 28, P, 2, 0.3), { tone: "mid" });
@@ -304,7 +314,7 @@ function station() {
   turned("station", F, discP(-4, 0, PLATEN_R), { tone: "mid", bevel: 0.4, name: "station.platen", attrs: mv, extra: Dots(G.dotsOf(F, 0, PLATEN_R - 2, 16, P, { all: true }), { size: 0.4 }) });
   const face = G.circleOf(F, 0.8, WAFER_R, P);
   const notch = Dots([at(G.pointOf(F, 0.8, WAFER_R - 1.4, -Math.PI / 2))], { size: 0.5, tone: "lo" });
-  turned("station", F, discP(0, 0.8, WAFER_R), { tone: "hi", name: "station.wafer", attrs: mv, extra: `<path class="ii-dose" d="${face}"/>` + notch });
+  turned("station", F, discP(0, 0.8, WAFER_R), { tone: "hi", name: "station.wafer", attrs: `${mv} data-pwafer`, extra: `<path class="ii-dose" d="${face}"/>` + notch });
   // Faraday cup on a bracket from the side wall, mouth facing the beam
   const CF = G.frameOf(CUP, [0, 1, 0], [1, 0, 0], [0, 0, 1]);
   box("station", { x: 34, y: -148, w: 41 - 34, d: 6, r: 0.4 }, ZB - 3, 6, { tone: "mid", name: "station.bracket" });
@@ -317,24 +327,40 @@ function station() {
   Tube.tubePieces(cable, 0.7, P, { maxLength: 10, spacing: 1 }).forEach((part, index) => R.put({ piece: "station", at: part.mid, svg: Tube.tubeSvg(part, { tone: "mid" }), name: `${cid}:${index}`, route: cid, chunk: index, shapes: [A.tube(part.points, part.radii)] }));
 }
 
-// ---- 10. witness coupon: a cleaved piece whose face shows where the ions stop (depth exaggerated) ----
-const NM_PER_UNIT = 25;
+// ---- 10. witness piece: a cleaved strip of an implanted wafer beside the end station. Its front face is split
+// into three lanes (B, P, As) with a depth ruler down the left edge; depths are scaled, not to the figure's units ----
+const NM_PER_UNIT = 10;
 function coupon() {
-  const holder = { x: COUPON.x - 4, y: COUPON.y - 6, w: COUPON.w + 8, d: 12, r: 1 };
-  box("station", holder, 0, COUPON_Z[0], { tone: "mid", seam: 3, name: "station.holder", extra: Dots([at([holder.x + 2, holder.y + 6, COUPON_Z[0]]), at([holder.x + holder.w - 2, holder.y + 6, COUPON_Z[0]])], { size: 0.45 }) });
+  const holder = { x: COUPON.x - 5, y: COUPON.y - 7, w: COUPON.w + 10, d: COUPON.d + 12, r: 1.2 };
+  const hf = holder.y + holder.d;
+  const feet = [[holder.x + 3, hf - 3], [holder.x + holder.w - 3, hf - 3], [holder.x + 3, holder.y + 3], [holder.x + holder.w - 3, holder.y + 3]];
+  box("station", holder, 0, COUPON_Z[0], { tone: "mid", seam: 3, name: "station.holder", extra: Dots(feet.map(([x, y]) => at([x, y, COUPON_Z[0]])), { size: 0.45 }) });
+  // clamp jaws either side of the strip
+  for (const x of [COUPON.x - 4, COUPON.x + COUPON.w]) box("station", { x, y: COUPON.y - 2, w: 4, d: COUPON.d + 4, r: 0.4 }, COUPON_Z[0], 10, { tone: "mid", bevel: 0.3, name: "station.jaw" });
   const top = COUPON_Z[1];
   const yF = COUPON.y + COUPON.d;
-  const bands = M.SPECIES_ORDER.map((id) => {
+  const lane = COUPON.w / 3;
+  const x0 = COUPON.x;
+  // lane dividers and the depth ruler: ticks every 100 nm from the surface, a longer tick each 200 nm
+  let marks = "";
+  for (let i = 1; i < 3; i++) marks += ptsPath([[x0 + lane * i, yF, top], [x0 + lane * i, yF, COUPON_Z[0] + 10]]);
+  const ticks = [];
+  for (let nm = 100; top - nm / NM_PER_UNIT > COUPON_Z[0] + 10.5; nm += 100) ticks.push(ptsPath([[x0, yF, top - nm / NM_PER_UNIT], [x0 + (nm % 200 ? 1.6 : 3), yF, top - nm / NM_PER_UNIT]]));
+  const ruler = L(marks, { tone: "faint" }) + L(ticks.join(""), { tone: "lo" });
+  const bands = M.SPECIES_ORDER.map((id, i) => {
     const depth = M.SPECIES[id].rpNm / NM_PER_UNIT;
-    const spread = depth * 0.5;
-    const zTop = top - depth + spread;
-    const zBot = Math.max(COUPON_Z[0] + 0.5, top - depth - spread);
-    const xR = COUPON.x + COUPON.w;
-    const band = ptsPath([[COUPON.x, yF, zTop], [xR, yF, zTop], [xR, COUPON.y, zTop], [xR, COUPON.y, zBot], [xR, yF, zBot], [COUPON.x, yF, zBot]], true);
-    const peak = ptsPath([[COUPON.x, yF, top - depth], [xR, yF, top - depth], [xR, COUPON.y, top - depth]]);
+    const spread = depth * 0.45;
+    const zTop = Math.min(top - 0.3, top - depth + spread);
+    const zBot = Math.max(COUPON_Z[0] + 10.5, top - depth - spread);
+    const xa = x0 + lane * i + (i ? 0.4 : 3.4);
+    const xb = x0 + lane * (i + 1) - 0.4;
+    const band = ptsPath([[xa, yF, zTop], [xb, yF, zTop], [xb, yF, zBot], [xa, yF, zBot]], true);
+    const peak = ptsPath([[xa, yF, top - depth], [xb, yF, top - depth]]);
     return `<g class="ii-depth" data-species="${id}"><path class="ii-band" d="${band}"/>${L(peak, { tone: "lit" })}</g>`;
   }).join("");
-  box("station", COUPON, COUPON_Z[0], top - COUPON_Z[0], { tone: "hi", steps: 2, bevel: 0.3, name: "station.coupon", extra: bands });
+  const names = M.SPECIES_ORDER.map((id, i) => `<g transform="${k.sideMatrix([x0 + lane * i + lane / 2 - (id === "As" ? 2.4 : 1.3), yF], COUPON_Z[0] + 4, P, "left")}"><text class="ii-lane" data-species="${id}" font-size="4.2" x="0" y="0">${id}</text></g>`).join("");
+  const rule = L(ptsPath([[x0, yF, COUPON_Z[0] + 10], [x0 + COUPON.w, yF, COUPON_Z[0] + 10]]), { tone: "lo" });
+  box("station", COUPON, COUPON_Z[0], top - COUPON_Z[0], { tone: "hi", steps: 2, bevel: 0.3, name: "station.coupon", extra: rule + ruler + bands + names });
 }
 
 // ---- 11. RTP spike-anneal chamber ----
@@ -355,17 +381,26 @@ function anneal() {
   turned("anneal", F, discP(6, 8, 36), { tone: "lo", name: "anneal.reflector", extra: Dots([[cx - 12, cy + 6], [cx + 4, cy - 14], [cx + 14, cy + 10], [cx - 4, cy + 18]].map(([x, y]) => at([x, y, 8])), { size: 0.55, tone: "hi" }) });
   turned("anneal", F, ringP(8, 16, 24.6, 26), { tone: "mid", name: "anneal.support" });
   turned("anneal", F, ringP(16, 17.4, 22, 28), { tone: "mid", name: "anneal.edgering" });
-  turned("anneal", F, discP(17.4, 18.2, 25), { tone: "hi", name: "anneal.wafer", extra: `<path class="ii-heat" d="${G.circleOf(F, 18.2, 25, P)}"/>`, attrs: "data-hot-wafer" });
+  turned("anneal", F, discP(17.4, 18.2, 25), { tone: "hi", name: "anneal.wafer", extra: `<path class="ii-dose ii-adose" d="${G.circleOf(F, 18.2, 25, P)}"/><path class="ii-heat" d="${G.circleOf(F, 18.2, 25, P)}"/>`, attrs: "data-hot-wafer" });
   // lamphead on three posts
   const posts = [open + 180, open + 100, open + 260].map((a) => [cx + 39 * Math.cos(a * DEG), cy + 39 * Math.sin(a * DEG)]);
   for (const [x, y] of byDepth(posts)) turned("anneal", AZ([x, y, 34]), discP(0, 16, 2.4), { tone: "mid", name: "anneal.post" });
-  const head = [];
-  for (let q = -4; q <= 4; q++) for (let r = -4; r <= 4; r++) {
-    const x = cx + (q + r * 0.5) * 8.4;
-    const y = cy + r * 7.3;
-    if (Math.hypot(x - cx, y - cy) < 36) head.push(at([x, y, 64]));
+  // quartz window hung under the lamp head: the lamps sit above it, the wafer below
+  turned("anneal", F, discP(47.2, 50, 34), { tone: "lo", name: "anneal.window", extra: `<path class="ii-lamps" d="${G.arcOf(F, 47.2, 34, P)}"/>` });
+  // lamp head: a honeycomb of lamp cells, each a hexagonal reflector round a bulb end
+  const cells = [];
+  const bulbs = [];
+  const pitch = 7.2;
+  const hex = (x, y, r) => ptsPath(Array.from({ length: 6 }, (_, i) => [x + r * Math.cos((i * 60 + 30) * DEG), y + r * Math.sin((i * 60 + 30) * DEG), 64]), true);
+  for (let row = -6; row <= 6; row++) for (let col = -6; col <= 6; col++) {
+    const x = cx + (col + (row % 2 ? 0.5 : 0)) * pitch;
+    const y = cy + row * pitch * 0.866;
+    if (Math.hypot(x - cx, y - cy) > 36) continue;
+    cells.push(hex(x, y, pitch / Math.sqrt(3) - 0.35));
+    bulbs.push(at([x, y, 64]));
   }
-  turned("anneal", F, discP(50, 64, 44), { tone: "hi", bevel: 0.6, name: "anneal.lamphead", attrs: "data-lamps", inner: L(G.arcOf(F, 56, 44, P), { tone: "faint" }), extra: Dots(head, { size: 0.7, tone: "mid" }) + `<path class="ii-lamps" d="${G.arcOf(F, 50.6, 44, P)}"/>` });
+  const honey = L(cells.join(""), { tone: "lo", free: true }) + Dots(bulbs, { size: 0.55, tone: "mid" }) + `<path class="ii-lampcells" d="${cells.join("")}"/>`;
+  turned("anneal", F, discP(50, 64, 44), { tone: "hi", bevel: 0.6, name: "anneal.lamphead", attrs: "data-lamps", inner: L(G.arcOf(F, 56, 44, P), { tone: "faint" }), extra: honey });
   for (const [x, y] of byDepth([[cx + 30, cy - 30], [cx + 36, cy - 14]])) turned("anneal", AZ([x, y, 64]), discP(0, 5, 2.6), { tone: "mid", bevel: 0.3, name: "anneal.water" });
 }
 
@@ -376,7 +411,7 @@ const EXIT_S = ENTRY_S + (RHO * Math.PI) / 2;
 const BEAM_LENGTH = EXIT_S + (CY - SCANNER.y0);
 function beam() {
   const segs = [];
-  const gaps = [[BEAM_START, ELECTRODES[0] - 0.8], ...ELECTRODES.slice(0, -1).map((x, i) => [x + 0.8, ELECTRODES[i + 1] - 0.8]), [ELECTRODES[2] + 0.8, -112]];
+  const gaps = [[BEAM_START, ELECTRODES[0] - 0.8], ...ELECTRODES.slice(0, -1).map((x, i) => [x + 0.8, ELECTRODES[i + 1] - 0.8]), [ELECTRODES[2] + 0.8, FLIGHT_X0]];
   for (const [x0, x1] of gaps) segs.push({ points: [[x0, Y1, ZB], [x1, Y1, ZB]], s0: x0 - BEAM_START, s1: x1 - BEAM_START, dots: [true, true] });
   const n = 12;
   for (let i = 0; i < n; i++) {
@@ -415,9 +450,9 @@ function rejected() {
           hit = "plate";
           break;
         }
-        if (d <= 53.5 || d >= 74.5) {
+        if (d <= WALL_IN || d >= WALL_OUT) {
           end = p;
-          hit = d <= 53.5 ? "inner" : "outer";
+          hit = d <= WALL_IN ? "inner" : "outer";
           break;
         }
         if (!pts.length || G.len3(G.sub3(p, pts[pts.length - 1])) > 1.5) pts.push(p);
@@ -463,16 +498,45 @@ function cabinet() {
   Tube.tubePieces(route, 0.8, P, { maxLength: 14, spacing: 1 }).forEach((part, index) => R.put({ piece: "source", at: part.mid, svg: Tube.tubeSvg(part, { tone: "mid" }), name: `${id}:${index}`, route: id, chunk: index, shapes: [A.tube(part.points, part.radii)] }));
 }
 
+// wafer handling: the load lock on the end station, the atmospheric wafer handler (EFEM) behind it with its
+// fan-filter unit, two load ports with FOUPs, and the operator console. A wafer leaves the end station the same way
+// it came, back to its FOUP, which then travels to the separate anneal tool.
 function loadLock() {
   const ll = { x: 132, y: -156, w: 26, d: 44, r: 1.5 };
-  const vp = L(k.sideRing([ll.x + ll.w, -134, 24], 6, "x", P), { tone: "lo" }) + L(k.sideRing([ll.x + ll.w, -134, 24], 4.4, "x", P), { tone: "faint" });
+  const vp = L(k.sideRing([145, ll.y + ll.d, 24], 6, "y", P), { tone: "lo" }) + L(k.sideRing([145, ll.y + ll.d, 24], 4.4, "y", P), { tone: "faint" });
   box("station", ll, 0, 40, { tone: "mid", bevel: 0.5, seam: 6, name: "station.loadlock", extra: L(k.planOutline(k.insetPlan(ll, 3), 40, P, 3), { tone: "faint" }) + Dots(k.corners(ll, 3).map(([x, y]) => at([x, y, 40])), { size: 0.45 }) + vp });
   turned("station", AZ([145, -134, 40]), discP(0, 8, 5), { tone: "mid", bevel: 0.3, name: "station.ll-actuator", extra: L(k.ring(145, -134, 2.4, 48, P, 16), { tone: "lo" }) });
-  const port = { x: 162, y: -152, w: 24, d: 36, r: 1.2 };
-  box("station", port, 0, 30, { tone: "mid", bevel: 0.5, seam: 4, name: "station.loadport" });
-  const foup = { x: 164, y: -150, w: 20, d: 32, r: 3 };
-  box("station", foup, 30, 24, { tone: "hi", bevel: 0.6, steps: 5, name: "station.foup", seam: 36, extra: L(k.planOutline(k.insetPlan(foup, 3), 54, P, 4), { tone: "faint" }) });
-  box("station", { x: 170, y: -140, w: 8, d: 12, r: 1 }, 54, 3, { tone: "mid", bevel: 0.3, name: "station.foup-handle" });
+  // EFEM: a tall box along the right edge; its near face carries a window and seams, its top a fan-filter unit
+  const ef = { x: 158, y: -156, w: 28, d: 132, r: 1.5 };
+  const xF = ef.x + ef.w;
+  const win = ptsPath([[xF, -146, 18], [xF, -40, 18], [xF, -40, 44], [xF, -146, 44]], true);
+  const panels = [-112, -78].map((y) => ptsPath([[xF, y, 6], [xF, y, 50]])).join("");
+  box("station", ef, 0, 50, { tone: "mid", bevel: 0.5, seam: 6, name: "station.efem", extra: L(win, { tone: "lo" }) + L(panels, { tone: "faint" }) + Dots([at([xF, -150, 47]), at([xF, -30, 47])], { size: 0.45 }) });
+  const ffu = { x: 161, y: -153, w: 22, d: 126, r: 1.2 };
+  const grille = [];
+  const gi = k.insetPlan(ffu, 3.5);
+  for (let y = gi.y + 4; y < gi.y + gi.d - 2; y += 6) grille.push(k.lineOnTop([gi.x, y], [gi.x + gi.w, y], 56, P));
+  box("station", ffu, 50, 6, { tone: "hi", bevel: 0.4, name: "station.ffu", extra: L(k.planOutline(gi, 56, P, 3), { tone: "lo" }) + L(grille.join(""), { tone: "faint" }) + Dots(k.corners(ffu, 2.4).map(([x, y]) => at([x, y, 56])), { size: 0.45 }) });
+  // two load ports docked to the handler's inboard face, a FOUP on each
+  for (const y0 of [-104, -64]) {
+    const port = { x: 134, y: y0, w: 24, d: 32, r: 1.2 };
+    box("station", port, 0, 30, { tone: "mid", bevel: 0.5, seam: 4, name: "station.loadport" });
+    const foup = { x: 136, y: y0 + 2, w: 20, d: 28, r: 3 };
+    box("station", foup, 30, 24, { tone: "hi", bevel: 0.6, steps: 5, name: "station.foup", seam: 36, attrs: "data-foup", extra: L(k.planOutline(k.insetPlan(foup, 3), 54, P, 4), { tone: "faint" }) });
+    box("station", { x: 142, y: y0 + 10, w: 8, d: 12, r: 1 }, 54, 3, { tone: "mid", bevel: 0.3, name: "station.foup-handle" });
+  }
+  // operator console: pedestal, keyboard shelf, monitor on a post
+  const ped = { x: 160, y: 6, w: 20, d: 18, r: 1.2 };
+  box("station", ped, 0, 38, { tone: "mid", bevel: 0.5, seam: 4, name: "station.console", extra: Dots(k.corners(ped, 2.4).map(([x, y]) => at([x, y, 38])), { size: 0.45 }) });
+  const shelf = { x: 160, y: 24, w: 20, d: 8, r: 0.8 };
+  const keys = [];
+  for (let i = 0; i < 3; i++) keys.push(k.lineOnTop([shelf.x + 3, shelf.y + 2 + i * 2], [shelf.x + shelf.w - 3, shelf.y + 2 + i * 2], 33.6, P));
+  box("station", shelf, 32, 1.6, { tone: "hi", bevel: 0.2, name: "station.shelf", extra: L(keys.join(""), { tone: "faint", free: true }) });
+  turned("station", AZ([170, 12, 38]), discP(0, 6, 1.6), { tone: "mid", name: "station.monitor-post" });
+  const mon = { x: 156, y: 10, w: 28, d: 3, r: 0.6 };
+  const yM = mon.y + mon.d;
+  const screen = ptsPath([[mon.x + 2, yM, 46], [mon.x + mon.w - 2, yM, 46], [mon.x + mon.w - 2, yM, 60], [mon.x + 2, yM, 60]], true);
+  box("station", mon, 44, 18, { tone: "mid", bevel: 0.3, name: "station.monitor", extra: L(screen, { tone: "lo" }) });
 }
 
 bed();
@@ -481,7 +545,7 @@ source();
 // gas lines: valve port up, forward over the source, down onto the manifold
 for (const b of BOTTLES) pipe("gas", [[b.x, BOTTLE_Y, 70], [b.x, BOTTLE_Y, 92], [b.x, Y1 - 3, 92], [b.x, Y1 - 3, ZB + SRC.r + 6]], 1.1, { name: `gas.line-${b.id}` });
 extraction();
-flightTube(-112);
+flightTube(FLIGHT_X0);
 magnet();
 column();
 scanner(SCANNER.y0);
@@ -498,7 +562,7 @@ if (!process.argv.includes("--fast")) A.settle(R, P);
 R.items.sort((a, b) => a.key - b.key);
 const groups = R.items.map((item, index) => `<g class="it" data-piece="${item.piece}" data-i="${index}" ${item.attrs ?? ""}>${item.svg}</g>`);
 
-const LABEL = `An ion implanter and a rapid thermal anneal chamber on one bed. From the back left: three dopant gas bottles feeding a valve manifold on the ion source; an insulator bushing and three extraction electrodes; a flight tube into the analyzer magnet, shown with its upper pole removed so the beam can be seen bending; the exit plate with the resolving slit; a ten-ring acceleration column; the scanner housing; and an open end station where a tilted platen carries the wafer up and down through the scanned beam beside a Faraday cup. At the back sits the lamp-heated anneal chamber, cut open to show its wafer.`;
+const LABEL = `An ion implanter and a rapid thermal anneal chamber on one bed. From the back left: three dopant gas bottles feeding a valve manifold on the ion source; an insulator bushing and three extraction electrodes; a flight tube into the analyzer magnet, shown with its upper pole removed so the beam can be seen bending; the exit plate with the resolving slit; a ten-ring acceleration column; the scanner housing; and the end station, its vacuum chamber cut away, where a tilted platen carries the wafer up and down through the scanned beam beside a Faraday cup. Behind it are the load lock, the wafer handler with two FOUPs on load ports, and the operator console, with a cleaved witness piece in front. At the back sits the lamp-heated anneal chamber, a separate tool, cut open to show its wafer under a quartz window and a honeycomb of lamps.`;
 const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="ii-layers">${groups.join("")}</g>`], className: "ii-svg" });
 
 const O = at([0, 0, 0]);
@@ -515,7 +579,7 @@ const DATA = {
   ZB,
   scan: { y0: SCANNER.y1, platenY: PLATEN_C[1], tilt: TILT, platenR: PLATEN_R, waferR: WAFER_R, travel: SCAN_Z, cupX: CUP[0], cupMouth: CUP_MOUTH, cupY: CUP[1] + 5, wallY: -158, railY: -155, railHalf: 5, uMin: CUP[0] - BX, uMax: 30, waferS: 0.8 },
   beam: { length: BEAM_LENGTH, entry: ENTRY_S, exit: EXIT_S },
-  pieces: Object.fromEntries(Object.entries(M.PIECES).map(([id, p]) => [id, { name: p.name, say: p.say }])),
+  pieces: Object.fromEntries(Object.entries(M.PIECES).map(([id, p]) => [id, { name: p.name, say: p.say, short: p.short ?? p.say }])),
   order: M.ORDER,
   steps: M.STEPS,
   species: Object.fromEntries(M.SPECIES_ORDER.map((id) => {
@@ -526,6 +590,7 @@ const DATA = {
   tiltDeg: M.TILT_DEG,
   anneal: M.ANNEAL,
   idle: `${M.RECIPE.finalKeV} keV · ${M.sci(M.RECIPE.dose)} cm⁻² · illustrative recipe`,
+  idleShort: `${M.RECIPE.finalKeV} keV · ${M.sci(M.RECIPE.dose)} cm⁻² (illustrative)`,
   doseText: M.sci(M.RECIPE.dose),
 };
 
@@ -534,7 +599,7 @@ const SPECIES_BUTTONS = M.SPECIES_ORDER.map((id) => `<button type="button" class
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 9</span><span class="iso-plate-corner" data-corner="title">Ion implanter · anatomy</span><span class="iso-plate-corner" data-corner="readout" data-readout>${DATA.idle}</span></div>`;
 const controls = `<div class="ii-controls"><span class="ii-hint">Hover a part · Space plays</span><span class="ii-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="ii-stage" tabindex="0" role="slider" aria-label="Ion implanter and anneal chamber. Hover, or use the arrow keys, to pick a part; Space plays or pauses the implant; Escape resets it; the slider below steps through the process." aria-valuemin="0" aria-valuemax="${M.ORDER.length}" aria-valuenow="0" aria-valuetext="${DATA.idle}">${svg}</div>`;
-const caption = `An ion implanter, then a lamp anneal. The source turns ${M.SPECIES.B.gas}, ${M.SPECIES.P.gas} or ${M.SPECIES.As.gas} into a plasma; the electrodes pull ions out; the analyzer magnet bends each ion on a radius that grows with the square root of its mass, so only the chosen ion lines up with the slit. The column then raises the energy (real tools span ${M.TOOLS.mediumKeV[0]} keV to ${M.TOOLS.maxMeV} MeV), the scanner sweeps the beam side to side while the platen, tilted ${M.TILT_DEG}° to stop channelling, slides the wafer up and down through it, and a Faraday cup at the edge of the sweep counts the charge that sets the dose (${M.sci(M.TOOLS.doseRange[0])} to ${M.sci(M.TOOLS.doseRange[1])} ions per cm²). At ${M.RECIPE.finalKeV} keV boron stops about ${M.SPECIES.B.rpNm} nm deep, phosphorus ${M.SPECIES.P.rpNm} nm and arsenic ${M.SPECIES.As.rpNm} nm (SRIM), as the cleaved coupon shows, tinted where the dopant sits. A spike anneal to about ${M.ANNEAL.spikeC.toLocaleString("en-US")} °C repairs the lattice and switches the dopants on. Layout, sizes, the ${M.RECIPE.extractKeV} keV extraction and the recipe are illustrative; the magnet's upper pole is removed, near-mass paths are drawn ${NEAR_X}× further apart than true, and coupon depths are scaled.`;
+const caption = `An ion implanter, then a lamp anneal. The source turns ${M.SPECIES.B.gas}, ${M.SPECIES.P.gas} or ${M.SPECIES.As.gas} into a plasma; the electrodes pull ions out; the analyzer magnet bends each ion on a radius that grows with the square root of its mass, so only the chosen ion lines up with the slit. The column then raises the energy (real tools span about ${M.MIN_KEV} keV to ${M.TOOLS.maxMeV} MeV across high-current, medium-current and high-energy classes), the scanner sweeps the beam side to side while the platen, tilted ${M.TILT_DEG}° to stop channelling, slides the wafer up and down through it, and a Faraday cup at the edge of the sweep counts the charge that sets the dose (about ${M.sci(M.TOOLS.doseRange[0])} to ${M.sci(M.TOOLS.highCurrentDose[1])} ions per cm² across tool classes). At ${M.RECIPE.finalKeV} keV boron stops about ${M.SPECIES.B.rpNm} nm deep, phosphorus ${M.SPECIES.P.rpNm} nm and arsenic ${M.SPECIES.As.rpNm} nm (SRIM), as the cleaved witness piece at the front right shows: its face carries a depth ruler and all three bands, the chosen dopant lit. The implanted wafer then goes back through the load lock to its FOUP and on to a separate anneal tool, drawn at the back of the bed, where a spike anneal (peak shown as about ${M.ANNEAL.spikeC.toLocaleString("en-US")} °C, illustrative, at the top of the ${M.ANNEAL.rtpC[0]}–${M.ANNEAL.rtpC[1].toLocaleString("en-US")} °C lamp-RTP window) repairs the lattice and switches the dopants on. Layout, sizes, the ${M.RECIPE.extractKeV} keV extraction and the recipe are illustrative; the magnet's upper pole is removed and the end-station chamber is cut away, near-mass paths are drawn ${NEAR_X}× further apart than true, and coupon depths are scaled.`;
 const scrub = `<span class="ii-scrub"><button type="button" class="ii-play" data-play aria-label="Play the implant"><span class="ii-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="ii-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is idle, 1000 is annealed"><span class="ii-step" data-step>idle</span></span>`;
 const pick = `<span class="ii-species" role="group" aria-label="Dopant">${SPECIES_BUTTONS}</span>`;
 const body = `<figure class="iso-figure ii"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}${pick}<span class="ii-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;

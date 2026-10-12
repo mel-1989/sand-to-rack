@@ -10,11 +10,14 @@ const SRC = {
   imec: "https://www.eejournal.com/industry_news/imec-demonstrates-die-to-wafer-hybrid-bonding-with-a-cu-interconnect-pad-pitch-of-2%C2%B5m", // imec ECTC 2024: 2 µm Cu/SiCN D2W, <350 nm overlay, <2.5 nm Cu recess, target 1 µm
   tsmc: "https://www.eenewseurope.com/en/tsmc-soic-roadmap-2029-chip-stacking", // TSMC 2026 symposium, as reported: SoIC at 6 µm today, 4.5 µm by 2029
   bell: "https://patents.google.com/patent/US3006067A", // Bell Telephone Laboratories, thermo-compression bonding of gold wire to semiconductors, filed 1957
+  xilinx: "https://sst.semiconductor-digest.com/insights-from-leading-edge/2010/11/iftle-23-xilinx-28-nm-multidie-fpga-copper-pillar-advances-at-amkor-and-intel-looking-at-foundry-options", // Xilinx Virtex-7 2000T: four FPGA slices on micro-bumps on a TSMC silicon interposer; first shipped 25 Oct 2011
+  sony: "https://www.techinsights.com/blog/samsung-galaxy-s7-edge-teardown", // Sony IMX260 image sensor in the Galaxy S7 (2016): first Cu-Cu hybrid bonding in high volume, wafer-to-wafer
   hbm: "https://anysilicon.com/high-bandwidth-memory-white-paper/", // first HBM product: AMD Fiji, June 2015, DRAM dies joined by TSVs and micro-bumps
 };
 export { SRC };
 
 // Per square-grid joint: one connection per pitch × pitch cell. Derived, not quoted.
+export const pitchText = (e) => e.pitchLabel || String(e.pitch);
 export const perMm2 = (pitchUm) => 1e6 / (pitchUm * pitchUm);
 
 // The four ways a die has been joined to what is under it, oldest first.
@@ -23,10 +26,12 @@ export const ERAS = [
     id: "wire",
     name: "Wire bond",
     short: "wire bond",
-    pitch: 60, // µm, pad pitch along the die edge; K&S calls <60 µm "ultra-fine pitch" (SRC.ks)
+    pitch: 60, // µm, upper bound of fine pitch; production fine-pitch wire bonding runs at about 35-50 µm. Pad pitch along the die edge; K&S calls <60 µm "ultra-fine pitch" (SRC.ks)
+    pitchLabel: "≤60", // shown as an upper bound, not a typical value
     labPitch: 35, // µm, demonstrated in the lab (SRC.ks)
     wireUm: 15, // µm gold wire used at 35 µm pitch (SRC.ks)
     bondC: [150, 240], // °C stage temperature for Au/Cu ball bonding (SRC.ks)
+    example: "",
     since: "1957", // Bell Labs thermocompression gold-wire bond (SRC.bell); still >90 % of chip interconnects in 2005 (SRC.ks)
     faceUp: true, // the die goes down face up and is wired at its edge afterwards
     area: false, // pads only on the edge, so connections per mm² of die area is not a grid number
@@ -39,6 +44,7 @@ export const ERAS = [
     short: "C4 solder",
     pitch: 130, // µm (SRC.amd)
     since: "1964", // IBM (SRC.ibm)
+    example: "",
     faceUp: false,
     area: true,
     how: "flipped onto solder bumps, reflowed in an oven",
@@ -49,7 +55,8 @@ export const ERAS = [
     name: "Cu micro-bump",
     short: "micro-bump",
     pitch: 50, // µm, micro-bump 3D (SRC.amd)
-    since: "2015", // first HBM stacks, AMD Fiji (SRC.hbm)
+    since: "2011", // first shipped: Xilinx Virtex-7 2000T on a TSMC silicon interposer (SRC.xilinx)
+    example: "HBM 2015", // first HBM stacks, AMD Fiji (SRC.hbm)
     faceUp: false,
     area: true,
     how: "copper pillar with solder cap, thermocompression bond",
@@ -60,7 +67,8 @@ export const ERAS = [
     name: "Hybrid bond",
     short: "hybrid",
     pitch: 9, // µm, AMD 3D V-Cache on TSMC SoIC (SRC.amd, SRC.amdQuote)
-    since: "2022", // Ryzen 7 5800X3D; Besi Chameo Ultra Plus in production since 2022 (SRC.besi)
+    since: "2016", // first high volume, wafer-to-wafer: Sony IMX260 image sensor (SRC.sony)
+    example: "die-to-wafer 2022", // Ryzen 7 5800X3D (AMD 3D V-Cache); Besi Chameo Ultra Plus in production since 2022 (SRC.besi)
     faceUp: false,
     area: true,
     how: "Cu pads in oxide meet flat, no solder; anneal joins the copper",

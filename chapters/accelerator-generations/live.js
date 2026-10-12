@@ -73,6 +73,8 @@ let frame = 0;
 let last = 0;
 let spoken = "";
 let replay = false; // after the return to the start, play again
+let dragging = false; // a pointer is holding the scrub slider
+let stillTimer = 0; // reduced motion: Play jumps one generation per STEP_SECONDS
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const ease = (t) => t * t * (3 - 2 * t);
@@ -148,8 +150,41 @@ function describe() {
   }
 }
 
+// ---- phone camera: below 480 px the long bench is too small to read, so the view zooms onto the package
+// the gantry is over (or the picked one) and widens back to the whole bench at rest ----
+const svgEl = stage.querySelector("svg");
+const phone = matchMedia("(max-width: 480px)");
+const ZOOM = 0.56; // share of the full view shown when zoomed
+let shownView = "";
+function camera(share) {
+  const [W, H] = D.view;
+  let w = 0;
+  let s = share;
+  if (phone.matches) {
+    if (selected) {
+      w = 1;
+      s = D.stops[IDS.indexOf(selected)];
+    } else w = ease(clamp(T));
+  }
+  const z = 1 + (ZOOM - 1) * w;
+  const [a, b] = D.cam;
+  const cx = a[0] + (b[0] - a[0]) * s;
+  const cy = a[1] + (b[1] - a[1]) * s - 32; // a little above the package, so the camera head stays in frame
+  const vw = W * z;
+  const vh = H * z;
+  const x = clamp(W / 2 + (cx - W / 2) * w - vw / 2, 0, W - vw);
+  const y = clamp(H / 2 + (cy - H / 2) * w - vh / 2, 0, H - vh);
+  const text = `${x.toFixed(1)} ${y.toFixed(1)} ${vw.toFixed(1)} ${vh.toFixed(1)}`;
+  if (text === shownView) return;
+  shownView = text;
+  svgEl.setAttribute("viewBox", text);
+  stage.toggleAttribute("data-zoomed", w > 0);
+}
+
 function render() {
-  place(shareAt(T));
+  const share = shareAt(T);
+  place(share);
+  camera(share);
   const i = stepOf(T);
   light(selected ?? (i < 0 ? null : GENS[i].id));
   if (selected) screen(IDS.indexOf(selected), IDS.indexOf(selected), 1);
@@ -157,14 +192,14 @@ function render() {
   else screen(i, i - 1, T >= N ? 1 : ease(clamp((T - i) / MOVE)));
   const text = readoutText();
   if (readout.textContent !== text) readout.textContent = text;
-  const playing = replay || (moving() && goal === N && rate === 1 / STEP_SECONDS);
+  const playing = !!stillTimer || replay || (moving() && goal === N && rate === 1 / STEP_SECONDS);
   playText.textContent = playing ? "Pause" : T >= N - 1e-4 ? "Replay" : "Play";
   playButton.toggleAttribute("data-playing", playing);
   playButton.setAttribute("aria-label", playing ? "Pause" : "Play the inspection run");
   const label = i < 0 ? "ready" : `${pad(i + 1)} · ${GENS[i].step}`;
   if (stepText.textContent !== label) stepText.textContent = label;
   const value = String(Math.round((T / N) * 1000));
-  if (scrubInput.value !== value && document.activeElement !== scrubInput) scrubInput.value = value;
+  if (scrubInput.value !== value && !dragging) scrubInput.value = value;
   describe();
 }
 
@@ -192,10 +227,12 @@ function tick(now) {
     goal = N;
     rate = 1 / STEP_SECONDS;
   }
+  if (!moving() && T !== goal && Math.abs(goal - T) <= 1e-4) T = goal; // never park a hair off the goal
   if (moving()) {
     const stepBy = rate * dt;
-    T = Math.abs(goal - T) <= stepBy ? goal : T + Math.sign(goal - T) * stepBy;
+    T = Math.abs(goal - T) <= Math.max(stepBy, 1e-4) ? goal : T + Math.sign(goal - T) * stepBy;
   }
+  if (T !== goal && Math.abs(goal - T) <= 1e-4) T = goal; // a step can land a hair off the goal: snap so moving() and the idle text agree
   render();
   frame = visible && (moving() || touring) ? requestAnimationFrame(tick) : 0;
 }
@@ -219,7 +256,13 @@ function seek(to, seconds, cap = 0) {
   run();
 }
 
+function stopSteps() {
+  clearTimeout(stillTimer);
+  stillTimer = 0;
+}
+
 function quietTour() {
+  stopSteps();
   touring = false;
   tookOver = true;
   clearTimeout(idleTimer);
@@ -233,8 +276,30 @@ function goTo(index) {
   render();
 }
 
+function stillStep() {
+  // reduced motion: jump to the next generation, dwell, repeat; the last jump lands at the end of the run
+  const at = stepOf(T);
+  T = at >= N - 2 ? N : at + 1 + DWELL;
+  goal = T;
+  rate = 0;
+  stillTimer = T >= N ? 0 : setTimeout(stillStep, STEP_SECONDS * 1000);
+  render();
+}
+
 function togglePlay() {
+  const wasStepping = !!stillTimer;
   quietTour();
+  if (still.matches) {
+    selected = null;
+    replay = false;
+    if (wasStepping) {
+      render();
+      return;
+    }
+    if (T >= N - 1e-4) T = 0;
+    stillStep();
+    return;
+  }
   selected = null;
   if ((moving() && goal === N) || replay) {
     replay = false;
@@ -379,6 +444,10 @@ document.addEventListener("keydown", (event) => {
   goTo(next);
 });
 
+scrubInput.addEventListener("pointerdown", () => (dragging = true));
+for (const type of ["pointerup", "pointercancel", "lostpointercapture", "blur"]) scrubInput.addEventListener(type, () => (dragging = false));
+document.addEventListener("pointerup", () => (dragging = false));
+document.addEventListener("pointercancel", () => (dragging = false));
 scrubInput.addEventListener("input", () => {
   quietTour();
   selected = null;
@@ -397,4 +466,5 @@ const hint = root.querySelector(".ag-hint");
 const wording = () => hint && (hint.textContent = narrow.matches ? "Tap a package · tap the bench to play" : "Hover a package · Space runs the gantry");
 wording();
 narrow.addEventListener("change", wording);
+phone.addEventListener("change", render);
 render();

@@ -73,7 +73,7 @@ const COND_L = 100;
 const COND = { armZ: [40, 48], armW: 12, discR: 12, discTop: 22, carrierTop: 26, neckR: 5, capR: 7, capTop: 55 };
 const SWEEP = { park: 122, from: 176, to: 208 };
 
-const CLEAN = { tray: { x: 128, y: 62, w: 76, d: 122, r: 4 }, trayTop: 10, cx: 166, cy: 123, cz: 56, rollR: 10, y0: 75, y1: 171, blockTop: 66 };
+const CLEAN = { tray: { x: 128, y: 80, w: 76, d: 122, r: 4 }, trayTop: 10, cx: 166, cy: 141, cz: 56, rollR: 10, y0: 93, y1: 189, blockTop: 66 };
 const TUB = { x: -118, y: -118, w: 236, d: 236, wall: 6, top: 12 };
 
 const MOVES = { stand: [0, 0, 0], carriage: [DX, 0, 0], head: [DX, 0, LIFT], cup: [0, 0, CUP_STROKE] };
@@ -385,19 +385,19 @@ function loadPort() {
   const stagePlan = { x: -244, y: 104, w: 84, d: 76, r: 3 };
   const st = box(stagePlan, 0, 6, {}, { steps: 3, bevel: 0.6, inner: L(k.sideSeam(stagePlan, 3, P, 3), { tone: "faint" }) });
   const pins = Dots([[-222, 128], [-182, 128], [-202, 162]].map(([x, y]) => at([x, y, 6])), { size: 0.6 });
-  put("stand", "cup", [-202, 142, 3], st.svg + pins + Dots(k.corners(stagePlan, 3).map(([x, y]) => at([x, y, 6])), { size: 0.45 }), [st.shape], { name: "cup.port" });
+  put("stand", "port", [-202, 142, 3], st.svg + pins + Dots(k.corners(stagePlan, 3).map(([x, y]) => at([x, y, 6])), { size: 0.45 }), [st.shape], { name: "port.port" });
   const shell = { x: -234, y: 112, w: 64, d: 62, r: 6 };
   const f = box(shell, 6, 50, { tone: "mid" }, { steps: 6, bevel: 0.8, inner: L([16, 46].map((z) => k.sideSeam(shell, z, P, 6)).join(""), { tone: "faint" }) });
   const flangePlan = { x: -212, y: 133, w: 20, d: 20, r: 2 };
   const neck = box({ x: -206, y: 139, w: 8, d: 8, r: 1 }, 56, 4, {}, { steps: 2 });
   const flange = box(flangePlan, 60, 3, {}, { steps: 2, bevel: 0.4 });
   const groove = L(k.planOutline(k.insetPlan(flangePlan, 3), 63, P, 2), { tone: "faint" });
-  put("stand", "cup", [-202, 143, 30], f.svg + L(k.planOutline(k.insetPlan(shell, 5), 56, P, 6), { tone: "lo" }), [f.shape], { name: "cup.foup" });
-  put("stand", "cup", [-202, 143, 60], neck.svg + flange.svg + groove, [neck.shape, flange.shape], { name: "cup.foup-flange" });
+  put("stand", "port", [-202, 143, 30], f.svg + L(k.planOutline(k.insetPlan(shell, 5), 56, P, 6), { tone: "lo" }), [f.shape], { name: "port.foup" });
+  put("stand", "port", [-202, 143, 60], neck.svg + flange.svg + groove, [neck.shape, flange.shape], { name: "port.foup-flange" });
   const door = { x: -170, y: 118, w: 2, d: 50, r: 0.6 };
   const d = box(door, 12, 38, {}, { steps: 2, bevel: 0.3 });
   const keys = L([131, 155].map((y) => k.sideRing([-168, y, 31], 2.4, "x", P, 20)).join(""), { tone: "lo" });
-  put("stand", "cup", [-169, 143, 31], d.svg + keys, [d.shape], { name: "cup.door" });
+  put("stand", "port", [-169, 143, 31], d.svg + keys, [d.shape], { name: "port.door" });
 }
 
 // ---- around the machine: slurry supply, signal tower, travel motor ----
@@ -465,7 +465,7 @@ const groups = R.items.map((item, index) => {
   return `<g class="cmp-it" data-piece="${item.piece}" data-part="${item.part}" data-k="${item.key.toFixed(2)}" data-m="${mx},${my},${mz}" data-i="${index}">${item.svg}</g>`;
 });
 
-const LABEL = "A chemical mechanical polisher. A carrier head hangs from a carriage on an overhead beam; it picks a wafer off a load cup, carries it to a rotating platen covered with a polishing pad, and presses it face down while a slurry arm drips abrasive slurry and a diamond conditioner disc sweeps the pad. Beside it, a brush cleaner holds a wafer upright between two roller brushes.";
+const LABEL = "A chemical mechanical polisher. A carrier head hangs from a carriage on an overhead beam; it picks a wafer off a load cup, carries it to a rotating platen covered with a polishing pad, and presses it face down while a slurry arm drips abrasive slurry and a diamond conditioner disc sweeps the pad. A load port with a closed wafer pod sits at the left. Beside the platen, a brush cleaner holds a wafer upright between two roller brushes.";
 const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="cmp-layers">${groups.join("")}</g>`], className: "cmp-svg" });
 
 const vec = (v) => {
@@ -473,7 +473,7 @@ const vec = (v) => {
   const p = at(v);
   return [p[0] - o[0], p[1] - o[1]];
 };
-const PARTS_ORDER = ["platen", "head", "slurry", "cond", "cup", "clean"];
+const PARTS_ORDER = ["platen", "head", "slurry", "cond", "cup", "port", "clean"];
 const DATA = {
   P,
   V,
@@ -514,9 +514,10 @@ const legend = PARTS_ORDER.map((id, index) => `<button type="button" class="cmp-
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">CMP polisher · one platen</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="cmp-controls"><span class="cmp-hint">Hover a part · Space plays</span><span class="cmp-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="cmp-stage" tabindex="0" role="group" aria-label="CMP polisher. Hover, or use the arrow keys, to pick a part; Space plays or pauses the polish; Escape resets it; the slider below steps through the process.">${svg}</div>`;
-const inset = `<div class="cmp-inset" aria-hidden="true"><span class="cmp-inset-title">Fig 1b · section under the head</span><svg viewBox="0 0 300 52" class="cmp-section"><rect class="cmp-oxide" x="0" y="30" width="300" height="22"/><path class="cmp-cu" data-cu d=""/><path class="cmp-barrier" data-barrier d=""/><path class="cmp-surf" data-surf d=""/></svg><span class="cmp-inset-note" data-inset-note>copper overburden</span></div>`;
-const caption = `One platen of a CMP polisher, drawn as a single station, with the brush cleaner that follows. The head holds a ${M.WAFER_MM} mm wafer face down on a polyurethane pad; in 3M's 750-wafer copper run on an Applied Reflexion LK, the first platen ran ${M.REFLEXION.bulkPsi} psi and removed about ${M.BULK_NM} nm/min with ${M.REFLEXION.bulkWiwnu} % within-wafer non-uniformity, then a second platen clears the last copper at about ${M.CLEAR_NM} nm/min and stops on an endpoint signal. The diamond conditioner runs ${M.REFLEXION.condLbf} lbf at ${M.REFLEXION.condRpm} rpm, ${M.REFLEXION.sweepsPerMin} sweeps a minute. Platen and head speeds (${M.PLATEN_RPM} and ${M.HEAD_RPM} rpm) and the ${M.MIRRA.slurryMlMin} ml/min slurry flow are from a published Mirra copper study. The gantry stands in for the carousel or swing arms real tools use; sizes, the layout and the section in Fig 1b are illustrative, and the motion is slowed.`;
-const scrub = `<span class="cmp-scrub"><button type="button" class="cmp-play" data-play aria-label="Play the polish"><span class="cmp-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="cmp-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is loading, 1000 is the brush clean"><span class="cmp-step" data-step>01 · ${M.PHASES[0].label}</span></span>`;
+const HEAD_CUT = `<svg viewBox="0 -16 300 60" class="cmp-cut" data-headcut><rect class="cmp-cut-pad" x="0" y="34" width="300" height="10"/><g class="cmp-cut-head"><rect class="cmp-cut-body" x="136" y="-6" width="28" height="8"/><rect class="cmp-cut-body" x="28" y="2" width="244" height="16" rx="2"/><rect class="cmp-cut-ring" x="28" y="18" width="14" height="16"/><rect class="cmp-cut-ring" x="258" y="18" width="14" height="16"/><rect class="cmp-cut-zone" data-zone="1" x="131" y="19.5" width="38" height="10" rx="1"/><path class="cmp-cut-arrow" d="M147.0 22.5L153.0 22.5L150.0 27Z"/><rect class="cmp-cut-zone" data-zone="2" x="107" y="19.5" width="22" height="10" rx="1"/><path class="cmp-cut-arrow" d="M115.0 22.5L121.0 22.5L118.0 27Z"/><rect class="cmp-cut-zone" data-zone="2" x="171" y="19.5" width="22" height="10" rx="1"/><path class="cmp-cut-arrow" d="M179.0 22.5L185.0 22.5L182.0 27Z"/><rect class="cmp-cut-zone" data-zone="3" x="85" y="19.5" width="20" height="10" rx="1"/><path class="cmp-cut-arrow" d="M92.0 22.5L98.0 22.5L95.0 27Z"/><rect class="cmp-cut-zone" data-zone="3" x="195" y="19.5" width="20" height="10" rx="1"/><path class="cmp-cut-arrow" d="M202.0 22.5L208.0 22.5L205.0 27Z"/><rect class="cmp-cut-zone" data-zone="4" x="65" y="19.5" width="18" height="10" rx="1"/><path class="cmp-cut-arrow" d="M71.0 22.5L77.0 22.5L74.0 27Z"/><rect class="cmp-cut-zone" data-zone="4" x="217" y="19.5" width="18" height="10" rx="1"/><path class="cmp-cut-arrow" d="M223.0 22.5L229.0 22.5L226.0 27Z"/><rect class="cmp-cut-zone" data-zone="5" x="47" y="19.5" width="16" height="10" rx="1"/><path class="cmp-cut-arrow" d="M52.0 22.5L58.0 22.5L55.0 27Z"/><rect class="cmp-cut-zone" data-zone="5" x="237" y="19.5" width="16" height="10" rx="1"/><path class="cmp-cut-arrow" d="M242.0 22.5L248.0 22.5L245.0 27Z"/><rect class="cmp-cut-membrane" x="44" y="29.5" width="212" height="1.6"/><rect class="cmp-cut-wafer" x="46" y="31.1" width="208" height="2.9"/></g></svg>`;
+const inset = `<div class="cmp-inset" aria-hidden="true"><span class="cmp-inset-title">Fig 1b · carrier head, cut away</span>${HEAD_CUT}<span class="cmp-inset-note">retaining ring round the wafer; the membrane behind it is split into pressure zones, so the edge and centre can be pressed differently (five zones here, illustrative)</span><span class="cmp-inset-title cmp-inset-sub">Fig 1c · section under the head</span><svg viewBox="0 0 300 52" class="cmp-section"><rect class="cmp-oxide" x="0" y="30" width="300" height="22"/><path class="cmp-cu" data-cu d=""/><path class="cmp-barrier" data-barrier d=""/><path class="cmp-surf" data-surf d=""/></svg><span class="cmp-inset-note" data-inset-note>copper overburden</span></div>`;
+const caption = `One platen of a CMP polisher, drawn as a single station, with the brush cleaner that follows. The head holds a ${M.WAFER_MM} mm wafer face down on a polyurethane pad; in 3M's 750-wafer copper run on an Applied Reflexion LK, the first platen ran ${M.REFLEXION.bulkPsi} psi and removed about ${M.BULK_NM} nm/min with ${M.REFLEXION.bulkWiwnu} % within-wafer non-uniformity, then a second platen clears the last copper at about ${M.CLEAR_NM} nm/min and stops on an endpoint signal. The diamond conditioner runs ${M.REFLEXION.condLbf} lbf at ${M.REFLEXION.condRpm} rpm, ${M.REFLEXION.sweepsPerMin} sweeps a minute. Platen and head speeds (${M.PLATEN_RPM} and ${M.HEAD_RPM} rpm) and the ${M.MIRRA.slurryMlMin} ml/min slurry flow are from a published 200 mm Mirra copper study that ran ${M.MIRRA.psi[0]}–${M.MIRRA.psi[1]} psi, a different tool and recipe from the Reflexion numbers. Wafers arrive in a sealed pod at the load port on the left; the robot that moves them is not drawn. The gantry stands in for the carousel or swing arms real tools use; sizes, the layout, the head cut-away in Fig 1b and the section in Fig 1c are illustrative, and the motion is slowed.`;
+const scrub = `<span class="cmp-scrub"><button type="button" class="cmp-play" data-play aria-label="Play the polish"><span class="cmp-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="cmp-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is loading, 1000 is the brush clean" aria-valuetext="01 · ${M.PHASES[0].label}"><span class="cmp-step" data-step>01 · ${M.PHASES[0].label}</span></span>`;
 const body = `<figure class="iso-figure cmp"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}${inset}<span class="cmp-parts">${legend}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 
 const CSS = readFileSync(join(HERE, "cmp.css"), "utf8");

@@ -7,7 +7,7 @@ const NV_PR = "https://investor.nvidia.com/news/press-release-details/2025/NVIDI
 const NEXTPLATFORM = "https://www.nextplatform.com/2025/03/18/nvidia-weaves-silicon-photonics-into-infiniband-and-ethernet/";
 const IEEE_3DJ = "https://grouper.ieee.org/groups/802/3/minutes/nov23/2311_3dj_closed_report.pdf";
 const RING_PAPER = "https://pmc.ncbi.nlm.nih.gov/articles/PMC10831040/";
-const TSMC_PR = "https://www.businesswire.com/news/home/20240424190528/de";
+const TSMC_PR = "https://pr.tsmc.com/english/news/3136";
 
 export const URLS = { NV_BLOG, NV_PR, NEXTPLATFORM, IEEE_3DJ, RING_PAPER, TSMC_PR };
 
@@ -47,7 +47,9 @@ export const SX = {
 };
 
 // Power and signal loss. NVIDIA GTC 2025 figures as reported by The Next Platform (NEXTPLATFORM),
-// whose article notes the math "was shown for 1.6 Tb/sec ports".
+// whose article notes the math "was shown for 1.6 Tb/sec ports". NVIDIA presented this 30 W vs 9 W breakdown for a
+// 1.6 Tb/s port on Spectrum-X Photonics (the Ethernet switch); it is used here as representative of the Quantum-X class
+// package the figure draws.
 export const POWER = {
   portTbps: 1.6,
   pluggableW: 30, // DSP "burns 20 watts" + externally modulated laser "runs at 10 watts"
@@ -58,12 +60,14 @@ export const POWER = {
   cpoEngineW: 7,
   pluggableLossDb: 22, // 200 Gb/s channel, five transitions
   cpoLossDb: 4, // one transition
-  claimX: 3.5, // "3.5x more power efficiency" (NVIDIA press release, NV_PR)
+  claimX: 3.5, // "3.5x more power efficiency": NVIDIA's headline claim (NV_PR); the per-port watts give 3.3x (see powerX)
   signalX: 63, // "63x greater signal integrity" (NV_PR)
 };
 // derived: energy per bit at 1.6 Tb/s (1 W per Tb/s = 1 pJ/bit)
 export const pjPluggable = POWER.pluggableW / POWER.portTbps; // 18.75 pJ/bit
 export const pjCpo = POWER.cpoW / POWER.portTbps; // 5.625 pJ/bit
+// derived: 30 W / 9 W = 3.3x, as The Next Platform notes ("By our math, that is a 3.3X reduction"; NEXTPLATFORM)
+export const powerX = POWER.pluggableW / POWER.cpoW;
 export const lossGap = POWER.pluggableLossDb - POWER.cpoLossDb; // 18 dB
 export const lossRatio = Math.pow(10, lossGap / 10); // about 63x, matching NVIDIA's "63x"
 
@@ -83,10 +87,11 @@ export const RING = {
   gbps: 200,
 };
 
-// TSMC COUPE (Compact Universal Photonic Engine), announced April 2024 (TSMC_PR); the electronic IC is
-// stacked on the photonic IC with SoIC hybrid bonding. Roadmap from trade press (Tom's Hardware / AnandTech, 2024):
-// 1.6 Tb/s engine in an OSFP pluggable first, then co-packaged with the switch or processor.
-export const COUPE = { name: "COUPE", bond: "SoIC hybrid bonding" };
+// TSMC COUPE (Compact Universal Photonic Engine), TSMC press release, 24 April 2024 (TSMC_PR). This is TSMC's April 2024
+// roadmap, stated as a dated plan, not as a completed milestone: "SoIC-X chip stacking
+// technology to stack an electrical die on top of a photonic die"; "qualify COUPE for small form factor pluggables in 2025,
+// followed by integration into CoWoS packaging as co-packaged optics (CPO) in 2026".
+export const COUPE = { name: "COUPE", bond: "SoIC-X", pluggableYear: 2025, cpoYear: 2026 };
 
 const fmt = (v, d = 0) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 export { fmt };
@@ -97,7 +102,7 @@ export const STEPS = [
   { id: "laser", name: "Laser light in", say: `ELS · ${ELS.lasers} lasers · steady light down the laser fibre`, run: ["els"] },
   { id: "ring", name: "Ring encodes the bit", say: `micro-ring · ${RING.gbps} Gb/s PAM4 · four light levels`, run: ["pic"] },
   { id: "fibre", name: "Out on the fibre", say: `single-mode fibre · ${REACH.smfM} m or ${fmt(REACH.smfLongM / 1000)} km reach`, run: ["fibre"] },
-  { id: "detect", name: "Photodetector", say: "germanium photodiode · light back to current", run: ["rx"] },
+  { id: "detect", name: "Photodetector", say: "photodiode · light back to current", run: ["rx"] },
   { id: "back", name: "Back to electrical", say: "TIA amplifies · SerDes receives · bit delivered", run: ["asic", "rxeic"] },
   { id: "compare", name: "Compare a pluggable", say: `pluggable ${POWER.pluggableW} W · ${POWER.pluggableLossDb} dB  vs  CPO ${POWER.cpoW} W · ${POWER.cpoLossDb} dB`, run: ["osfp"] },
 ];

@@ -96,6 +96,35 @@ function stepSay(index) {
   return step.say;
 }
 
+// Steps 1-3 happen in the feed skid: dots walk along the pipe being used, bubbles rise in the
+// hydrochlorinator's sight glass, and the column's trays light one after another, bottom to top.
+// All of it follows s, so a scrub moves it and a reduced-motion jump simply lands on the next pose.
+const bubbles = [...root.querySelectorAll(".pz-bubble")].map((el, i, all) => ({ el, x: ((i * 0.382 + 0.1) % 1) * 0.7 + 0.15, phase: i / all.length }));
+const trays = [...root.querySelectorAll(".pz-tray")];
+let shownProcess = "";
+function drawProcess(index) {
+  const step = D.steps[index];
+  const u = s <= 0.0005 ? 0 : clamp((s - step.from) / (step.to - step.from));
+  const id = s <= 0.0005 && !selected ? "" : step.id;
+  if (root.dataset.pzStep !== id) root.dataset.pzStep = id;
+  root.style.setProperty("--pz-run", (u * 90).toFixed(1));
+  const key = `${id}:${u.toFixed(3)}`;
+  if (key === shownProcess) return;
+  shownProcess = key;
+  if (id === "tcs" && D.sight) {
+    const b = D.sight;
+    const w = b.x1 - b.x0;
+    const h = b.y1 - b.y0;
+    for (const bubble of bubbles) {
+      const rise = (bubble.phase + u * 4) % 1;
+      bubble.el.setAttribute("cx", (b.x0 + bubble.x * w + Math.sin((rise + bubble.phase) * 6.28) * w * 0.05).toFixed(2));
+      bubble.el.setAttribute("cy", (b.y1 + 1 - rise * (h + 2)).toFixed(2));
+    }
+  }
+  const hot = id === "dist" ? Math.floor(u * trays.length * 2) % trays.length : -1;
+  trays.forEach((tray, i) => tray.toggleAttribute("data-hot", i === hot || i === hot - 1));
+}
+
 function draw() {
   const r = D.rSlim + (D.rFinal - D.rSlim) * growthOf(s);
   if (Math.abs(r - shownRadius) > 0.004) {
@@ -124,6 +153,7 @@ function draw() {
     order = next;
   }
   const index = stepIndexOf(s);
+  drawProcess(index);
   const label = stepLabel(index);
   if (stepText.textContent !== label) stepText.textContent = label;
   if (index !== shownStep) {

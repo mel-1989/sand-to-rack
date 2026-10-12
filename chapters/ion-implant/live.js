@@ -23,23 +23,42 @@ const sup = (n) => String(n).replace(/\d/g, (d) => "⁰¹²³⁴⁵⁶⁷⁸⁹"
 const beamItems = items.filter((el) => el.hasAttribute("data-beam")).map((el) => ({ el, s0: Number(el.dataset.s0), s1: Number(el.dataset.s1), paths: [...el.querySelectorAll("path")], dots: [...el.querySelectorAll("circle")] }));
 for (const b of beamItems) for (const p of b.paths) (p.setAttribute("pathLength", "1"), p.setAttribute("stroke-dasharray", "1 1"));
 const rejectItems = items.filter((el) => el.hasAttribute("data-reject"));
-for (const el of rejectItems) for (const p of el.querySelectorAll("path")) (p.setAttribute("pathLength", "1"), p.setAttribute("stroke-dasharray", "1 1"));
+// rejected ions are drawn dashed, so they read apart from the kept beam; the dashes grow along the path
+const rejectPaths = new Map(rejectItems.map((el) => [el, [...el.querySelectorAll("path")].map((p) => ({ p, len: 0, shown: "" }))]));
+const DASH = 2.2;
+const GAP = 1.6;
+function dashTo(entry, frac) {
+  if (!entry.len) entry.len = entry.p.getTotalLength ? entry.p.getTotalLength() || 1 : 1;
+  const want = clamp(frac) * entry.len;
+  const parts = [];
+  for (let at = 0; at < want - 1e-3; at += DASH + GAP) parts.push(f1(Math.min(DASH, want - at)), f1(GAP));
+  parts.push("0", f1(entry.len + 10));
+  const text = parts.join(" ");
+  if (text !== entry.shown) (entry.shown = text, entry.p.setAttribute("stroke-dasharray", text));
+}
 const movers = items.filter((el) => el.dataset.move === "platen");
 const ringsHot = items.filter((el) => el.hasAttribute("data-ring")).sort((a, b) => a.dataset.ring - b.dataset.ring);
+const xrings = items.filter((el) => el.hasAttribute("data-xring")).sort((a, b) => a.dataset.xring - b.dataset.xring);
+const xCount = new Set(xrings.map((el) => el.dataset.xring)).size;
+const platenWafer = items.find((el) => el.hasAttribute("data-pwafer"));
+const foups = items.filter((el) => el.hasAttribute("data-foup"));
 const fanItem = items.find((el) => el.hasAttribute("data-fanitem"));
 const fan = fanItem.querySelector("[data-fan]");
 const fanGlow = fanItem.querySelector("[data-fan-glow]");
 const spot = fanItem.querySelector("[data-spot]");
 const exitDot = fanItem.querySelector("[data-exit]");
-const dose = stage.querySelector(".ii-dose");
+const dose = stage.querySelector(".ii-dose:not(.ii-adose)");
+const annealDose = stage.querySelector(".ii-adose");
 const heat = stage.querySelector(".ii-heat");
-const lamps = stage.querySelector(".ii-lamps");
+const lamps = [...stage.querySelectorAll(".ii-lamps, .ii-lampcells")];
 const cupGlow = stage.querySelector(".ii-cupglow");
 const lampItem = items.find((el) => el.hasAttribute("data-lamps"));
 const hotWafer = items.find((el) => el.hasAttribute("data-hot-wafer"));
 const plasma = items.find((el) => el.hasAttribute("data-plasma"));
 const cupItem = items.find((el) => el.hasAttribute("data-cup"));
 const depths = [...stage.querySelectorAll(".ii-depth")];
+const lanes = [...stage.querySelectorAll(".ii-lane")];
+const small = matchMedia("(max-width: 480px)");
 const speciesItems = items.filter((el) => el.dataset.species);
 
 // ---- state ----
@@ -131,10 +150,15 @@ function render() {
   for (const el of rejectItems) {
     const show = rej > 0 && el.dataset.reject === species;
     el.toggleAttribute("hidden", !show);
-    if (show) reveal(el.querySelectorAll("path"), rej * 2 - (el.dataset.half === "1" ? 1 : 0));
+    if (show) for (const entry of rejectPaths.get(el)) dashTo(entry, rej * 2 - (el.dataset.half === "1" ? 1 : 0));
   }
   // column rings light in turn
   ringsHot.forEach((el, i) => setHot(el, index === 3 ? t * ringsHot.length > i : false));
+  // extraction electrodes switch on one after another, then hold while the beam runs
+  for (const el of xrings) {
+    const i = Number(el.dataset.xring);
+    setHot(el, index === 1 ? ease(t) * (xCount + 0.4) > i + 0.4 : index >= 2 && index <= 4);
+  }
   // scan
   let dz = 0;
   let doseFrac = index > 4 ? 1 : 0;
@@ -167,23 +191,41 @@ function render() {
     fanItem.setAttribute("hidden", "");
   }
   place(dz);
-  dose.style.opacity = String(0.5 * doseFrac);
   cupGlow.style.opacity = on === "cup" ? "0.9" : "0";
   setGlow(cupItem, on === "cup");
   // depth coupon
-  for (const g of depths) g.toggleAttribute("data-show", index >= 5 && g.dataset.species === species);
+  for (const g of depths) {
+    g.toggleAttribute("data-show", index >= 5);
+    g.toggleAttribute("data-lit", g.dataset.species === species);
+  }
+  for (const el of lanes) el.toggleAttribute("data-lit", el.dataset.species === species);
   // anneal: a spike up and back down
   let temp = 0;
   if (index === 6) temp = t < 0.55 ? ease(t / 0.55) : 1 - ease((t - 0.55) / 0.45) * 0.75;
   else if (index > 6) temp = 0.25;
   const glow = index === 6 ? temp : 0;
   heat.style.opacity = String(0.85 * glow);
-  lamps.style.opacity = String(glow);
+  for (const el of lamps) el.style.opacity = String(glow);
+  // the same wafer moves on: it leaves the platen (back to its FOUP) and appears in the anneal chamber, dopant-tinted
+  const moved = index === 6 ? ease(clamp(t / 0.18)) : index > 6 ? 1 : 0;
+  if (platenWafer) platenWafer.style.opacity = String(1 - 0.85 * moved);
+  dose.style.opacity = String(0.5 * doseFrac * (1 - moved));
+  if (annealDose) annealDose.style.opacity = String(0.5 * moved * (1 - glow * 0.6));
+  for (const el of foups) setGlow(el, index === 6 && t < 0.22);
   setGlow(lampItem, index === 6 && t < 0.6);
   setGlow(hotWafer, index === 6 && glow > 0.4);
   // words
   const T = Math.round(25 + (D.anneal.spikeC - 25) * temp);
-  const words = [
+  const short = small.matches;
+  const words = short ? [
+    `ionising ${sp.gas} · ${sp.name.toLowerCase()} plasma`,
+    `extracting at ${D.recipe.extractKeV} keV`,
+    `keeps ${sp.ion} · Bρ ${sp.rho.toFixed(3)} T·m`,
+    `accelerating · ${Math.round(D.recipe.extractKeV + (D.recipe.finalKeV - D.recipe.extractKeV) * ease(t))} keV`,
+    `${on === "cup" ? "Faraday cup" : `tilt ${D.tiltDeg}°`} · ${fmtDose(D.recipe.dose * doseFrac)} cm⁻²`,
+    `${sp.ion} stops ≈${sp.rp} nm deep`,
+    `spike anneal · ${T.toLocaleString("en-US")} °C`,
+  ] : [
     `ionising ${sp.gas} · ${sp.name.toLowerCase()} plasma`,
     `extracting at ${D.recipe.extractKeV} keV · all fragments`,
     `magnet keeps ${sp.ion} · Bρ ${sp.rho.toFixed(3)} T·m · drops ${sp.rejects.join(" ")}`,
@@ -192,7 +234,8 @@ function render() {
     `${sp.ion} at ${D.recipe.finalKeV} keV stops ≈${sp.rp} nm deep`,
     `spike anneal · ${T.toLocaleString("en-US")} °C`,
   ];
-  stepWords = index < 0 ? D.idle : index >= N ? `annealed · ${sp.name.toLowerCase()} active, lattice repaired` : words[index];
+  const done = short ? `${species} active · lattice repaired` : `annealed · ${sp.name.toLowerCase()} active, lattice repaired`;
+  stepWords = index < 0 ? (short ? D.idleShort : D.idle) : index >= N ? done : words[index];
   return { index, t };
 }
 
@@ -245,7 +288,7 @@ function showControls() {
 
 function draw() {
   render();
-  say(selected ? D.pieces[selected].say : stepWords);
+  say(selected ? (small.matches && D.pieces[selected].short) || D.pieces[selected].say : stepWords);
   showControls();
   describe();
 }
@@ -410,7 +453,25 @@ scrubInput.addEventListener("input", () => {
   draw();
 });
 
+// keyboard on the slider: arrows move a quarter step, PageUp/PageDown a whole step, Home/End the ends
+scrubInput.addEventListener("keydown", (event) => {
+  const q = 1 / (N * 4);
+  const by = { ArrowRight: q, ArrowUp: q, ArrowLeft: -q, ArrowDown: -q, PageUp: 1 / N, PageDown: -1 / N }[event.key];
+  let next = null;
+  if (by !== undefined) next = by > 0 ? (Math.floor(s / Math.abs(by) + 1e-6) + 1) * Math.abs(by) : (Math.ceil(s / Math.abs(by) - 1e-6) - 1) * Math.abs(by);
+  else if (event.key === "Home") next = 0;
+  else if (event.key === "End") next = 1;
+  if (next === null) return;
+  event.preventDefault();
+  takeOver();
+  playing = false;
+  select(null);
+  s = clamp(next);
+  draw();
+});
+
 playButton.addEventListener("click", togglePlay);
+small.addEventListener("change", draw);
 
 if (still.matches) touring = false;
 const narrow = matchMedia("(hover: none), (max-width: 480px)");

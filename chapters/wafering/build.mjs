@@ -244,7 +244,7 @@ function web() {
   put("stand", "web", "stand.web-top-left", [-(RO.R[0] + INNER) / 2, 0, ZW], `<g class="wf-web">${L(topL, { tone: "mid", className: "wf-wire" })}<g data-inner-left></g></g>`, [sheet(BELT.top[1][0], ZW, -INNER, ZW)], { loose: true });
   put("stand", "web", "stand.web-top-right", [(RO.R[0] + INNER) / 2, 0, ZW], `<g class="wf-web">${L(topR, { tone: "mid", className: "wf-wire" })}</g>`, [sheet(INNER, ZW, BELT.top[0][0], ZW)], { loose: true });
   put("stand", "web", "stand.web-left", [-33, 0, 80], L(lft, { tone: "mid", className: "wf-wire" }), [sheet(BELT.left[0][0], BELT.left[0][1], BELT.left[1][0], BELT.left[1][1], ya, WIRE_Y[WIRE_Y.length - 2])], { loose: true });
-  put("stand", "web", "stand.web-right", [33, 0, 80], L(rgt, { tone: "mid", className: "wf-wire" }), [sheet(BELT.right[0][0], BELT.right[0][1], BELT.right[1][0], BELT.right[1][1], WIRE_Y[1], yb)], { loose: true });
+  put("stand", "web", "stand.web-right", [33, 0, 80], L(rgt, { tone: "faint", className: "wf-wire" }), [sheet(BELT.right[0][0], BELT.right[0][1], BELT.right[1][0], BELT.right[1][1], WIRE_Y[1], yb)], { loose: true });
   void wireShape;
 }
 
@@ -529,7 +529,10 @@ function polisher() {
   }
   put("stand", "dsp", "stand.dsp-platen", [cx, cy, 12], platen.svg + L(k.ring(cx, cy, 92, PLATEN_TOP, P, 128), { tone: "faint" }) + Dots(pins, { size: 0.35, tone: "lo" }), [platen.shape]);
   const sun = cyl(cx, cy, 8, PLATEN_TOP, 0.8, { tone: "mid" }, { steps: 32 });
-  put("stand", "dsp", "stand.dsp-sun", [cx, cy, PLATEN_TOP], sun.svg, [sun.shape]);
+  // spin marks: live.js turns these round their centre while the polisher runs (data-spin = x, y, z, r, start angle, rate)
+  const spinDots = (x, y, z, r, count, a0, rate, size, tone) =>
+    `<g data-spin="${x.toFixed(2)},${y.toFixed(2)},${z},${r},${a0},${rate}">${Dots(Array.from({ length: count }, (_, j) => at([x + r * Math.cos(a0 + (j / count) * TAU), y + r * Math.sin(a0 + (j / count) * TAU), z])), { size, tone })}</g>`;
+  put("stand", "dsp", "stand.dsp-sun", [cx, cy, PLATEN_TOP], sun.svg + spinDots(cx, cy, PLATEN_TOP + 0.8, 6, 10, 0, -2, 0.45, "lo"), [sun.shape]);
   const cr = 42;
   const carriers = [Math.PI / 2 + 0.2, Math.PI / 2 + 0.2 + TAU / 3, Math.PI / 2 + 0.2 + (2 * TAU) / 3].map((a) => [cx + 51 * Math.cos(a), cy + 51 * Math.sin(a)]);
   carriers.forEach(([x, y], i) => {
@@ -539,14 +542,10 @@ function polisher() {
       const a = (j / 60) * TAU;
       teeth.push(at([x + (cr - 0.9) * Math.cos(a), y + (cr - 0.9) * Math.sin(a), PLATEN_TOP + 0.8]));
     }
-    const holes = [0, 1, 2, 3, 4, 5].map((j) => {
-      const a = (j / 6) * TAU + 0.3;
-      return [x + 39.6 * Math.cos(a), y + 39.6 * Math.sin(a)];
-    });
-    put("stand", "dsp", `stand.dsp-carrier${i}`, [x, y, PLATEN_TOP], disc.svg + Dots(teeth, { size: 0.3, tone: "mid" }) + Dots(holes.map(([hx, hy]) => at([hx, hy, PLATEN_TOP + 0.8])), { size: 0.5, tone: "lo" }), [disc.shape]);
+    put("stand", "dsp", `stand.dsp-carrier${i}`, [x, y, PLATEN_TOP], disc.svg + Dots(teeth, { size: 0.3, tone: "mid" }) + spinDots(x, y, PLATEN_TOP + 0.8, 39.6, 6, 0.3, 1, 0.75, "lo"), [disc.shape]);
     const w = cyl(x, y, M.R_INGOT, PLATEN_TOP + 0.8, 1.0, { tone: "hi", crease: "lo" }, { steps: 96 });
     const a0 = Math.atan2(y - cy, x - cx);
-    put("stand", "wafers", `stand.dsp-wafer${i}`, [x, y, PLATEN_TOP + 1.3], w.svg + notchSvg(x, y, PLATEN_TOP + 1.8, M.R_INGOT, a0 + Math.PI) + `<g class="wf-shine">${L(path3([[x - 20, y + 14, PLATEN_TOP + 1.8], [x + 8, y - 16, PLATEN_TOP + 1.8]]), { tone: "faint", free: true })}</g>`, [w.shape]);
+    put("stand", "wafers", `stand.dsp-wafer${i}`, [x, y, PLATEN_TOP + 1.3], w.svg + `<g data-spin-notch="${x.toFixed(2)},${y.toFixed(2)},${PLATEN_TOP + 1.8},${M.R_INGOT},${(a0 + Math.PI).toFixed(4)},1">${notchSvg(x, y, PLATEN_TOP + 1.8, M.R_INGOT, a0 + Math.PI)}</g>` + `<g class="wf-shine">${L(path3([[x - 20, y + 14, PLATEN_TOP + 1.8], [x + 8, y - 16, PLATEN_TOP + 1.8]]), { tone: "faint", free: true })}</g>`, [w.shape]);
   });
   // lift column with its carriage and arm, and the upper platen
   const col = { x: cx - 122, y: cy - 8, w: 14, d: 16, r: 1.5 };
@@ -562,7 +561,7 @@ function polisher() {
   const hub = cyl(cx, cy, 22, upZ + 11, 5, { tone: "mid" }, { steps: 56, bevel: 0.4 });
   const top = cyl(cx, cy, DSP.r - 3, upZ, 11, { tone: "mid" }, { steps: 128, bevel: 0.8, inner: L(k.sideArc(cx, cy, DSP.r - 3, upZ + 4, P, 64), { tone: "faint" }) });
   const topLines = L([84, 62, 40].map((rr) => k.ring(cx, cy, rr, upZ + 11, P, 112)).join(""), { tone: "faint" }) + screwsOn([0, 1, 2, 3, 4, 5].map((j) => [cx + 15 * Math.cos((j / 6) * TAU), cy + 15 * Math.sin((j / 6) * TAU)]), upZ + 16, 0.9);
-  put("dsp", "dsp", "dsp.upper", [cx, cy, upZ], top.svg + topLines, [top.shape]);
+  put("dsp", "dsp", "dsp.upper", [cx, cy, upZ], top.svg + topLines + spinDots(cx, cy, upZ + 11, 73, 12, 0.1, 0.5, 0.6, "lo"), [top.shape]);
   put("dsp", "dsp", "dsp.hub", [cx, cy, upZ + 11], hub.svg + hanger.svg + Dots([0, 1, 2, 3, 4, 5].map((j) => at([cx + 15 * Math.cos((j / 6) * TAU), cy + 15 * Math.sin((j / 6) * TAU), upZ + 16])), { size: 0.45 }), [hub.shape, hanger.shape]);
   put("dsp", "dsp", "dsp.arm", centreOf(arm, upZ + 36), armS.svg + Dots([at([cx - 3, cy, upZ + 45]), at([cx + 3, cy, upZ + 45])], { size: 0.45 }), [armS.shape]);
   put("dsp", "dsp", "dsp.carriage", centreOf(car, upZ + 22), carS.svg + Dots([at([car.x + car.w, car.y + 3, upZ + 26]), at([car.x + car.w, car.y + car.d - 3, upZ + 26]), at([car.x + car.w, car.y + 3, upZ + 42]), at([car.x + car.w, car.y + car.d - 3, upZ + 42])], { size: 0.4 }), [carS.shape]);
@@ -676,7 +675,7 @@ const PART_BUTTONS = PARTS.map(([id, name], index) => `<button type="button" cla
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 3</span><span class="iso-plate-corner" data-corner="title">Multi-wire saw · wafering</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="wf-controls"><span class="wf-hint">Hover a part · Space plays the process</span><span class="wf-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="wf-stage" tabindex="0" role="slider" aria-label="Multi-wire saw and wafer finishing. Hover, or use the arrow keys, to pick a part; Space plays or pauses the process; Escape returns to the start; the slider below steps through the process." aria-valuemin="0" aria-valuemax="${PARTS.length}" aria-valuenow="0" aria-valuetext="${M.IDLE}">${svg}</div>`;
-const caption = `A slurry multi-wire saw of the kind that slices ${M.WAFER.diameterMm} mm silicon (Komatsu NTC's MWM3050NQ takes a block up to ${M.SAW.workDiaMm} mm across and ${M.SAW.workLenMm} mm long and runs ${M.fmt(M.SAW.wireDiaMm, 2)} mm wire at up to ${M.fmt(M.SAW.wireSpeedMMin)} m/min under ${M.SAW.tensionN[0]}–${M.SAW.tensionN[1]} N, from ${M.SAW.wireStoreKm} km on the supply spool). One wire is wound hundreds of times round grooved guide rollers to make the web; the head feeds the glued ingot down through it at ${M.SAW.feedMmMin[0]}–${M.SAW.feedMmMin[1]} mm/min, so even at the top rate a ${M.WAFER.diameterMm} mm cut takes at least ${M.minCutMin} minutes. Drawn here: one wire for roughly every ${M.perDrawnWire} real ones, spaced end to end along the block so the nearest runs across its end face, and wafer thickness exaggerated about six times. The ingot, wafers and ruler (10 mm ticks) are to scale; machine sizes, the three-roller layout and the finishing stations are illustrative. The finished wafer: ${M.WAFER.diameterMm} ± ${M.WAFER.diameterTolMm} mm, ${M.WAFER.thicknessUm} ± ${M.WAFER.thicknessTolUm} µm thick, a ${M.fmt(M.WAFER.notchDepthMm, 1)} mm notch, both faces polished.`;
+const caption = `A slurry multi-wire saw of the kind that slices ${M.WAFER.diameterMm} mm silicon (Komatsu NTC's MWM3050NQ takes a block up to ${M.SAW.workDiaMm} mm across and ${M.SAW.workLenMm} mm long and runs ${M.fmt(M.SAW.wireDiaMm, 2)} mm wire at up to ${M.fmt(M.SAW.wireSpeedMMin)} m/min under ${M.SAW.tensionN[0]}–${M.SAW.tensionN[1]} N, from ${M.SAW.wireStoreKm} km on the supply spool). One wire is wound hundreds of times round grooved guide rollers to make the web; the head feeds the glued ingot down through it at ${M.SAW.feedMmMin[0]}–${M.SAW.feedMmMin[1]} mm/min, so even at the top rate a ${M.WAFER.diameterMm} mm cut takes at least ${M.minCutMin} minutes. Drawn here: one wire for roughly every ${M.perDrawnWire} real ones, spaced end to end along the block so the nearest runs across its end face, and wafer thickness exaggerated about six times. Grinding to diameter and gluing to the beam happen off the saw, on a cylindrical grinder and a mounting bench; the figure shows the block where it will be cut. The ingot, wafers and ruler (10 mm ticks) are to scale; machine sizes, the three-roller layout and the finishing stations are illustrative. The finished wafer: ${M.WAFER.diameterMm} ± ${M.WAFER.diameterTolMm} mm, ${M.WAFER.thicknessUm} ± ${M.WAFER.thicknessTolUm} µm thick, a ${M.fmt(M.WAFER.notchDepthMm, 1)} mm notch, both faces polished.`;
 const scrub = `<span class="wf-scrub"><button type="button" class="wf-play" data-play aria-label="Play the process"><span class="wf-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="wf-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is the raw ingot, 1000 is the finished wafer"><span class="wf-step" data-step>01 · ${M.STEPS[0].name}</span></span>`;
 const body = `<figure class="iso-figure wf"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="wf-parts">${PART_BUTTONS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 

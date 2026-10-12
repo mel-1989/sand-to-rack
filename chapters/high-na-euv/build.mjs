@@ -231,12 +231,6 @@ function frame() {
   for (let x = POB_X[0] + 6; x <= POB_X[1] - 5; x += 10) pbolts.push(at([x, face + 3, POB_TOP - 4]), at([x, face + 3, POB_FLOOR[1] + 4]));
   const pseams = [k.segment([-10, face + 3, POB_FLOOR[1]], [-10, face + 3, POB_TOP], P)];
   box("optics", "optics.panel", [panel.x, panel.y, POB_FLOOR[1]], [panel.x + panel.w, panel.y + panel.d, POB_TOP], { tone: "lo" }, { r: 0.4, inner: L(k.sideSeam(panel, 150, P, 2), { tone: "faint" }), extra: Dots(pbolts, { size: 0.42, tone: "mid" }) + L(pseams.join(""), { tone: "faint" }), bias: -20 });
-  const endw = { x: POB_X[0] - 6, y: face, w: 6, d: 72, r: 0.6 };
-  box("optics", "optics.endwall", [endw.x, endw.y, POB_FLOOR[0]], [endw.x + endw.w, endw.y + endw.d, POB_TOP], { tone: "mid" }, {
-    r: 0.6,
-    inner: L(k.sideSeam(endw, 150, P, 2), { tone: "faint" }),
-    extra: Dots([90, 120, 180, 210].map((z) => at([endw.x + endw.w, endw.y + endw.d - 4, z])), { size: 0.4 }) + L(k.segment([endw.x + endw.w, endw.y + 36, POB_FLOOR[0]], [endw.x + endw.w, endw.y + 36, POB_TOP], P), { tone: "faint" }),
-  });
   // floor: three bars round the exit opening the light cone passes through
   const slot = { x0: -18, x1: 38, y1: 26 };
   const floorBars = [
@@ -531,7 +525,8 @@ const DIES = (() => {
 })();
 function waferSvg(cx, cy, live) {
   const top = WAFER_TOP;
-  let extra = L(k.lineOnTop([cx, cy - WAFER_R], [cx, cy - WAFER_R + 2.6], top, P), { tone: "lo" });
+  let grid = L(k.lineOnTop([cx, cy - WAFER_R], [cx, cy - WAFER_R + 2.6], top, P), { tone: "lo" });
+  let extra = "";
   const lines = [];
   const chord = (axis, v) => {
     const h = Math.sqrt(Math.max(0, WAFER_R * WAFER_R - v * v));
@@ -545,9 +540,9 @@ function waferSvg(cx, cy, live) {
     const v = (j + 0.5) * HALF[1];
     if (Math.abs(v) < WAFER_R - 1) lines.push(k.lineOnTop(...chord("y", v), top, P));
   }
-  extra += L(lines.join(""), { tone: "faint" });
+  grid += L(lines.join(""), { tone: "faint" });
   if (live) {
-    const disc = path3(Array.from({ length: 96 }, (_, i) => [cx + WAFER_R * Math.cos((i / 96) * Math.PI * 2), cy + WAFER_R * Math.sin((i / 96) * Math.PI * 2), top]), true);
+    const disc = path3(Array.from({ length: 96 }, (_, i) => [cx + (WAFER_R - 0.5) * Math.cos((i / 96) * Math.PI * 2), cy + (WAFER_R - 0.5) * Math.sin((i / 96) * Math.PI * 2), top]), true);
     const cells = DIES.flatMap(([dx, dy], index) =>
       [-1, 1].map((side) => {
         const x0 = cx + dx - DIE[0] / 2;
@@ -560,9 +555,9 @@ function waferSvg(cx, cy, live) {
     const d0 = DIES[0];
     const seam = `<g class="hna-seam">${L(path3([[cx + d0[0] - DIE[0] / 2, cy + d0[1], top], [cx + d0[0] + DIE[0] / 2, cy + d0[1], top]]), { tone: "lit", className: "hna-ray" })}</g>`;
     const outline = `<path class="hna-die" d="${path3([[cx + d0[0] - DIE[0] / 2, cy + d0[1] - DIE[1] / 2, top], [cx + d0[0] + DIE[0] / 2, cy + d0[1] - DIE[1] / 2, top], [cx + d0[0] + DIE[0] / 2, cy + d0[1] + DIE[1] / 2, top], [cx + d0[0] - DIE[0] / 2, cy + d0[1] + DIE[1] / 2, top]], true)}"/>`;
-    extra = `<clipPath id="hna-clip"><path d="${disc}"/></clipPath>` + extra.replace(/^/, "") + `<g class="hna-cells" clip-path="url(#hna-clip)">${cells.join("")}</g>${outline}${seam}`;
+    extra = `<clipPath id="hna-clip"><path d="${disc}"/></clipPath><g class="hna-cells" clip-path="url(#hna-clip)">${cells.join("")}</g>${outline}${seam}`;
   }
-  return S(k.cylinder(cx, cy, WAFER_R, CHUCK_TOP, 1, P, 96, 0.3), { tone: "hi", crease: "lo" }) + extra;
+  return S(k.cylinder(cx, cy, WAFER_R, CHUCK_TOP, 1, P, 96, 0.3), { tone: "hi", crease: "lo", inner: grid }) + extra;
 }
 function wafers() {
   put("wafer", "wafer.expose", [WC[0], WC[1], CHUCK_TOP + 0.5], waferSvg(WC[0], WC[1], true), [A.cylinder(WC[0], WC[1], WAFER_R, CHUCK_TOP, 1)], { attrs: ' data-move="wafer" data-wafer="expose"' });

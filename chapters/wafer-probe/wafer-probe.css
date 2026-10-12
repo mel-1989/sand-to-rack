@@ -208,7 +208,7 @@
 
 .wp-step {
   flex: none;
-  width: 150px;
+  width: 182px;
   font: 10.5px/1.2 var(--anatomy-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -259,6 +259,14 @@
 .wp-scr.wp-p { fill: var(--wp-pass); }
 .wp-scr.wp-f { fill: var(--wp-fail); }
 
+/* the dies on the wafer itself: tinted when binned, failing dies inked */
+.wp-wdface { fill: transparent; transition: fill 120ms linear; }
+.wp-ink { fill: transparent; }
+.wp-wd[data-done][data-pass="1"] .wp-wdface { fill: color-mix(in srgb, var(--wp-pass) 30%, transparent); }
+.wp-wd[data-done][data-pass="0"] .wp-wdface { fill: color-mix(in srgb, var(--wp-fail) 34%, transparent); }
+.wp-wd[data-done] .wp-ink { fill: var(--anatomy-strong); }
+.wp-wd[data-cur] .wp-wdface { fill: color-mix(in srgb, var(--anatomy-lit) 45%, transparent); }
+
 /* live indicators */
 .wp-lens[data-on] .iso-line, .wp-lens[data-on] path { stroke: var(--anatomy-lit); }
 .wp-leds circle, .wp-leds .iso-dot { transition: fill 100ms linear; }
@@ -267,5 +275,4 @@
 
 @media (max-width: 640px) {
   .wp .iso-plate { padding-top: 36px; }
-  .wp-stage > svg { transform: scale(1.14); transform-origin: 50% 45%; }
 }

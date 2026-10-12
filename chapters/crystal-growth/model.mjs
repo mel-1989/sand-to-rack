@@ -6,11 +6,12 @@ export const SRC = {
   tu: "https://www.electrochem.org/dl/ma/201/pdfs/0564.pdf", // Tu et al., Growth of 300 mm Si single crystals in a 24-inch hot zone (ECS Meeting Abstracts 201)
   ekz: "https://pdf.directindustry.com/pdf/pva-tepla-group/ekz-3500/54259-341859.html", // PVA TePla EKZ 3500 catalogue
   siltronic: "https://www.siltronic.com/en/press/press-releases/siltronic-inaugurates-extension-to-crystal-pulling-hall-at-freiberg-site.html",
-  dashPatent: "https://patents.google.com/patent/US6670036", // seed 8-20 mm, Dash neck about 3 mm
+  dashPatent: "https://patents.google.com/patent/US6670036", // seed 8-20 mm, Dash neck 3-5 mm at its narrowest; growth with or without necking
   dash: "https://doi.org/10.1063/1.1735186", // W. C. Dash, Growth of silicon crystals free from dislocations, J. Appl. Phys. 30, 459 (1959)
   ohsaka: "https://authors.library.caltech.edu/5430/", // Ohsaka et al. 1997, liquid Si density at Tm
   hmcz: "https://patents.justia.com/patent/8460462", // HMCZ, oxygen below 5e17 /cm3
   field: "https://patents.google.com/patent/US10731271", // horizontal field of at least 2000 G
+  purge: "https://patents.google.com/patent/US8187383", // SiO evaporated from the melt surface is entrained in the inert purge gas and discharged at the chamber bottom
 };
 
 export const SI = {
@@ -23,14 +24,16 @@ export const SI = {
 export const RUN = {
   crystalMm: 300, // SRC.tu, SRC.siltronic
   hotZoneIn: 24, // crucible / hot zone size, inches. SRC.tu
-  hotZoneMainIn: 32, // "most of the 300 mm crystals are now produced in 32-inch hot zones". SRC.tu
+  hotZoneMainIn: 32, // "most of the 300 mm crystals are now produced in 32-inch hot zones" (as of 2002). SRC.tu
+  hotZoneMainYear: 2002, // year of the Tu et al. abstract. SRC.tu
   chargeKg: 140, // SRC.tu
   crystalRpm: [5, 14], // SRC.tu
   crucibleRpm: [6, 12], // SRC.tu
   oxygenPpma: [23, 33], // controlled range with a cusp field. SRC.tu
   days: [5, 7], // a pulling run at Siltronic Freiberg. SRC.siltronic
   seedMm: [8, 20], // conventional seed diameter. SRC.dashPatent
-  neckMm: 3, // Dash neck diameter. SRC.dashPatent, SRC.dash
+  neckMm: 3, // Dash neck diameter drawn and quoted, the low end of the range. SRC.dashPatent, SRC.dash
+  neckRangeMm: [3, 5], // minimum neck diameter. SRC.dashPatent
   residualKg: 8, // melt left in the crucible at the end, illustrative
   spinCrystal: 10, // rpm drawn, inside SRC.tu's range
   spinCrucible: 8, // rpm drawn, opposite direction, inside SRC.tu's range
@@ -117,4 +120,4 @@ export const STEPS = [
 // slider share of each step (illustrative pacing, not true time: the body takes most of a multi-day run)
 export const SPAN = [0.14, 0.1, 0.1, 0.12, 0.3, 0.1, 0.14];
 
-export const IDLE = `Czochralski puller · ${RUN.crystalMm} mm · ${RUN.hotZoneIn}" hot zone · ${RUN.chargeKg} kg charge`;
+export const IDLE = `Czochralski puller · ${RUN.crystalMm}\u00a0mm · ${RUN.hotZoneIn}"\u00a0hot\u00a0zone · ${RUN.chargeKg}\u00a0kg\u00a0charge`;

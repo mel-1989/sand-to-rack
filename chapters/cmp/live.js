@@ -44,6 +44,7 @@ const cupWafer = find('[data-wafer="cup"]');
 const cleanWafer = find('[data-wafer="clean"]');
 const rodClip = layers.querySelector("#cmp-rod [data-hold]");
 const cupRodNode = nodes.find((n) => n.el.querySelector("#cmp-cuprod"));
+const headCut = root.querySelector("[data-headcut]");
 const section = {
   cu: root.querySelector("[data-cu]"),
   barrier: root.querySelector("[data-barrier]"),
@@ -67,8 +68,13 @@ function poseAt(s) {
   const cond = local("condition", s);
   const flat = local("flatten", s);
   const end = local("endpoint", s);
-  const u = load < 0.3 ? ease(load / 0.3) : load < 0.42 ? 1 : 1 - ease((load - 0.42) / 0.2);
-  const c = 1 - ease((load - 0.5) / 0.5);
+  // after the rinse the head carries the wafer back over the load cup, the cup takes it, and the robot hands it to the cleaner
+  const back = clean > 0;
+  const u = back
+    ? clean < 0.28 ? 0 : clean < 0.38 ? ease((clean - 0.28) / 0.1) : clean < 0.44 ? 1 : 1 - ease((clean - 0.44) / 0.14)
+    : load < 0.3 ? ease(load / 0.3) : load < 0.42 ? 1 : 1 - ease((load - 0.42) / 0.2);
+  const c = back ? ease(clean / 0.26) : 1 - ease((load - 0.5) / 0.5);
+  const cupWafer = back ? (clean < 0.36 ? 0 : 1 - ease((clean - 0.6) / 0.12)) : load > 0.36 ? 0 : 1;
   const h = s < PH[2].t0 ? 1 : rinse < 0.45 ? 1 - ease(press) : ease((rinse - 0.45) / 0.5);
   const platen = ease(slurry / 0.6) * (1 - ease(clean / 0.5));
   const headSpin = ease(press / 0.8) * (1 - ease((rinse - 0.3) / 0.3));
@@ -77,8 +83,8 @@ function poseAt(s) {
   const sweep = ease(cond / 0.5) * (1 - ease((rinse - 0.05) / 0.4));
   const flatten = ease(flat);
   const endpoint = end >= 0 && rinse < 0.2 ? ease(end / 0.3) * (1 - ease(rinse / 0.2)) : 0;
-  const brush = ease(clean / 0.3);
-  return { u, c, h, platen, headSpin, slurryOn, water, sweep, flatten, dish: ease(end / 0.6), endpoint, brush, waferIn: load > 0.36, waferClean: ease(clean / 0.25), wetLevel: ease(slurry / 0.8) };
+  const brush = ease((clean - 0.62) / 0.25);
+  return { u, c, h, platen, headSpin, slurryOn, water, sweep, flatten, dish: ease((end - 0.6) / 0.4), endpoint, brush, cupWafer, waferClean: ease((clean - 0.62) / 0.14), wetLevel: ease(slurry / 2) };
 }
 
 // ---- drawing helpers for the parts that turn ----
@@ -141,7 +147,7 @@ function streamAt(i, alpha, kind) {
   if (alpha < 0.01) return "";
   const x = D.NOZZLES[i];
   const y = D.NOZZLE_Y;
-  const w = 0.8 * Math.min(1, alpha * 1.4);
+  const w = 1.1 * Math.min(1, alpha * 1.4);
   const a = iso([x - w, y, D.NOZZLE_TIP], P);
   const b = iso([x + w, y, D.NOZZLE_TIP], P);
   const c = iso([x + w, y, D.PAD_TOP], P);
@@ -150,21 +156,50 @@ function streamAt(i, alpha, kind) {
 }
 function puddle(level, water) {
   if (level < 0.01) return "";
-  const [cx, cy] = [D.NOZZLES[0] + 3.5, D.NOZZLE_Y];
-  const r = 6 + 44 * level;
-  const pts = [];
-  for (let i = 0; i < 48; i++) {
-    const a = (i / 48) * TAU;
-    let px = cx + r * Math.cos(a);
-    let py = cy + r * 0.92 * Math.sin(a);
-    const d = Math.hypot(px - D.PLATEN[0], py - D.PLATEN[1]);
-    if (d > D.PAD_R - 3) {
-      px = D.PLATEN[0] + ((px - D.PLATEN[0]) * (D.PAD_R - 3)) / d;
-      py = D.PLATEN[1] + ((py - D.PLATEN[1]) * (D.PAD_R - 3)) / d;
-    }
-    pts.push(iso([px, py, D.PAD_TOP], P));
+  const [cx, cy] = D.PLATEN;
+  const nx = D.NOZZLES[0];
+  const ny = D.NOZZLE_Y;
+  const r0 = Math.hypot(nx - cx, ny - cy);
+  const a0 = Math.atan2(ny - cy, nx - cx);
+  // the pad carries the slurry round from the drip point and spreads it outward as it turns
+  const sweep = Math.min(TAU - 0.02, 0.6 + TAU * 1.3 * level);
+  const inner = Math.max(6, r0 - 8 - 10 * level);
+  const outer = Math.min(D.PAD_R - 3, r0 + 8 + 62 * level);
+  const n = 64;
+  const rim = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const a = a0 + sweep * t;
+    // the leading tip thins out where the newest slurry has not spread yet
+    const grow = Math.min(1, (1 - t) * 3 + 0.25);
+    rim.push(iso([cx + (inner + (outer - inner) * (1 - grow) * 0.5) * Math.cos(a), cy + (inner + (outer - inner) * (1 - grow) * 0.5) * Math.sin(a), D.PAD_TOP], P));
   }
-  return `<path class="cmp-wet${water > 0.5 ? " cmp-wet-water" : ""}" opacity="${(0.7 * level).toFixed(2)}" d="${pathOf2(pts, true)}"/>`;
+  const out = [];
+  for (let i = n; i >= 0; i--) {
+    const t = i / n;
+    const a = a0 + sweep * t;
+    const grow = Math.min(1, (1 - t) * 3 + 0.25);
+    out.push(iso([cx + (outer - (outer - inner) * (1 - grow) * 0.5) * Math.cos(a), cy + (outer - (outer - inner) * (1 - grow) * 0.5) * Math.sin(a), D.PAD_TOP], P));
+  }
+  const band = sweep >= TAU - 0.03 ? ring(inner, outer) : pathOf2([...rim, ...out], true);
+  function ring(a, b) {
+    const one = (r) => {
+      const pts = [];
+      for (let i = 0; i < 72; i++) {
+        const t = (i / 72) * TAU;
+        pts.push(iso([cx + r * Math.cos(t), cy + r * Math.sin(t), D.PAD_TOP], P));
+      }
+      return pts;
+    };
+    return pathOf2(one(b), true) + pathOf2(one(a).reverse(), true);
+  }
+  const spot = [];
+  for (let i = 0; i < 24; i++) {
+    const t = (i / 24) * TAU;
+    spot.push(iso([nx + 3 + 7 * Math.cos(t), ny + 7 * Math.sin(t), D.PAD_TOP], P));
+  }
+  const kind = water > 0.5 ? " cmp-wet-water" : "";
+  return `<path class="cmp-wet${kind}" fill-rule="evenodd" opacity="${(0.7 * Math.min(1, level * 1.6)).toFixed(2)}" d="${band}"/><path class="cmp-wet cmp-wet-spot${kind}" opacity="${(0.9 * Math.min(1, level * 3)).toFixed(2)}" d="${pathOf2(spot, true)}"/>`;
 }
 
 // ---- Fig 1b: the copper section flattening ----
@@ -285,7 +320,11 @@ function draw(pose) {
   place(pose);
   const [px, py] = D.PLATEN;
   const [hx, hy] = D.HEAD;
-  spin.pad.innerHTML = windowAt(ang.platen, pose.endpoint > 0.5);
+  // the sensor reads the film only while the window passes under the wafer: it blinks once a revolution
+  const wx = px + 63 * Math.cos(ang.platen) - hx;
+  const wy = py + 63 * Math.sin(ang.platen) - hy;
+  const under = pose.h < 0.2 && Math.hypot(wx, wy) < D.WAFER_R + 10;
+  spin.pad.innerHTML = windowAt(ang.platen, pose.endpoint > 0.5 && under);
   spin.side.innerHTML = spinTicks(px, py, D.PLATEN_R, 5, 16, 12, ang.platen);
   spin.body.innerHTML = spinTicks(hx, hy, D.BODY_R, 24, D.BODY_TOP, 10, ang.head);
   spin.plate.innerHTML = spinDots(hx, hy, D.PLATE_R - 6.5, D.PLATE_TOP, 8, ang.head);
@@ -300,9 +339,14 @@ function draw(pose) {
     condEl.innerHTML = part.svg + spinDots(part.d[0], part.d[1], D.COND.capR - 4, D.COND.capTop, 3, ang.cond);
   }
   rolls.forEach((el) => (el.innerHTML = rollerRibs(Number(el.dataset.roll), ang.roll)));
-  cupWafer.style.opacity = pose.waferIn ? "0" : "1";
+  cupWafer.style.opacity = pose.cupWafer.toFixed(2);
   cleanWafer.style.opacity = pose.waferClean.toFixed(2);
   stage.toggleAttribute("data-endpoint", pose.endpoint > 0.5);
+  if (headCut) {
+    const pressed = pose.h < 0.25 && pose.headSpin > 0.2;
+    headCut.toggleAttribute("data-pressed", pressed);
+    headCut.style.setProperty("--cmp-lift", `${(pose.h * 8).toFixed(2)}px`);
+  }
   drawSection(pose.flatten, pose.dish);
 }
 
@@ -321,7 +365,10 @@ function showPlay() {
   playButton.toggleAttribute("data-playing", playing);
   playButton.setAttribute("aria-label", playing ? "Pause the polish" : "Play the polish");
   const text = stepLabel();
-  if (stepText.textContent !== text) stepText.textContent = text;
+  if (stepText.textContent !== text) {
+    stepText.textContent = text;
+    scrubInput.setAttribute("aria-valuetext", text);
+  }
   const v = String(Math.round(s * 1000));
   if (scrubInput.value !== v) scrubInput.value = v;
 }

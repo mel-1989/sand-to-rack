@@ -28,7 +28,15 @@ const TRK = { x: -330, y: -90, w: 214, d: 152, r: 3 };
 const DECK = 40;
 const CUP = { coat: [-288, 16], dev: [-206, 16] };
 const HP = { soft: [-290, -54], peb: [-226, -54], chill: [-162, -54] };
-const ROBOT = [-150, 10];
+const ROBOT = [-150, -6];
+// robot heights: base, shoulder, link1, elbow, link2, fork; a wafer on the fork sits at FORK_TOP, one in transit at TRANSIT
+const RZ = { base: DECK + 7.6, shoulder: DECK + 11.6, link1: DECK + 15.6, elbow: DECK + 18.6, link2: DECK + 21.6, fork: DECK + 23 };
+const FORK_TOP = RZ.fork;
+const TRANSIT = DECK + 24;
+const ROBOT_L = 27;
+const HAND = [-146, -42]; // wafer centre on the fork at rest (over the chill plate)
+const HAND_OUT = [-124, -2]; // wafer centre on the fork turned toward the tunnel
+const POSES = 19;
 
 // scanner
 const SB = { x: -100, y: -66, w: 404, d: 130, r: 3 }; // scanner base frame, z 0..10
@@ -41,15 +49,22 @@ const POB_Z = [60, 66];
 const DECK_Z = [244, 252];
 const CEIL_Z = [262, 268];
 const LL = { x: -88, y: -34, w: 56, d: 68, r: 2 }; // load lock
-const LL_TOP = 62;
+const LL_TOP = 80;
+const TUNNEL_Z = [24, 74];
+const GATE = { x0: -32, x1: -16, y: 16, z0: 18, z1: 50 }; // gate valve between load lock and vacuum chamber
+const POB = { x0: -10, x1: 112, yb: -24, yf: -18, yo: 12, top: [228, 234], rightTop: 150 }; // projection optics box
+const ILL_Y = [-56, -18]; // illuminator housing, hanging from the ceiling
+const SILL_Z = 22; // the cut-down chamber walls
 
 // wafer stage
-const BM = { x: -6, y: -50, w: 122, d: 108, r: 2 }; // balance mass
+const BM = { x: -6, y: -50, w: 192, d: 108, r: 2 }; // balance mass, under both wafer stages
 const BM_TOP = 20;
 const STAGE = { x: 17, y: -26, w: 56, d: 52, r: 2 };
 const STAGE_TOP = 30;
 const CHUCK_TOP = 35;
 const WC = [45, 0]; // wafer centre on the stage
+const STAGE2 = { x: 122, y: -26, w: 56, d: 52, r: 2 }; // the measure-side stage (TWINSCAN: one measures, one exposes)
+const WC2 = [150, 0];
 
 // source
 const VC = [250, 0];
@@ -69,7 +84,7 @@ const PATH = {
   IF: [250, 170],
   FF: [275, 232, 12],
   PF: [190, 205, 11],
-  GM: [122, 178, 9],
+  GM: [126, 178, 9],
   RET: [70, 252],
   M1: [20, 205, 11],
   M2: [82, 192, 10],
@@ -113,6 +128,7 @@ const rad = (deg) => (deg * Math.PI) / 180;
 
 // ---- the recorder: every drawn item records its true shape ----
 const R = A.recorder(P);
+const putItem = (...args) => put(...args);
 function put(piece, name, ref, svg, shapes, { bias = 0, ghost = false, attrs = "" } = {}) {
   const id = R.nameFor(name);
   shapes.forEach((shape) => (shape.name = shape.name ?? id));
@@ -291,23 +307,68 @@ function track() {
     put("track", `track.${id}.lid`, [cx, cy, lidZ + 3], lidSvg, [A.cylinder(cx, cy, 26, lidZ, 4), A.slab({ x: cx - 3, y: cy - 26, w: 6, d: 16, r: 0.6 }, lidZ + 4, 3, {}, 2)], { attrs: ` data-lid="${id}"` });
   }
 
-  // transfer robot: base, two links, a fork
+  // transfer robot: base, shoulder, two links, a fork. The arm is drawn in POSES poses from "waiting over the chill plate"
+  // (pose 0, the one at rest) to "turned toward the tunnel"; the runtime shows one pose at a time, so it swings.
   const [rx, ry] = ROBOT;
-  cyl("track", "track.robot.base", rx, ry, 11, DECK, 12, { tone: "mid" }, { steps: 40, bevel: 0.5, inner: L(k.sideArc(rx, ry, 11, DECK + 4, P, 30), { tone: "faint" }) });
-  cyl("track", "track.robot.shoulder", rx, ry, 7, DECK + 12, 4, { tone: "mid" }, { steps: 28 });
-  const link = (x0, y0, x1, y1, w) => {
-    const dx = x1 - x0;
-    const dy = y1 - y0;
-    const l = Math.hypot(dx, dy);
-    const [nx, ny] = [(-dy / l) * w, (dx / l) * w];
-    return [[x0 + nx, y0 + ny], [x1 + nx, y1 + ny], [x1 - nx, y1 - ny], [x0 - nx, y0 - ny]];
+  cyl("track", "track.robot.base", rx, ry, 11, DECK, RZ.base - DECK, { tone: "mid" }, { steps: 40, bevel: 0.5, inner: L(k.sideArc(rx, ry, 11, DECK + 3, P, 30), { tone: "faint" }) });
+  cyl("track", "track.robot.shoulder", rx, ry, 7, RZ.base, RZ.shoulder - RZ.base, { tone: "mid" }, { steps: 28, extra: Dots([at([rx, ry, RZ.shoulder])], { size: 0.5 }) });
+  ROBOT_POSES.forEach((pose, index) => robotPose(pose, index));
+}
+
+const link = (x0, y0, x1, y1, w) => {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const l = Math.hypot(dx, dy);
+  const [nx, ny] = [(-dy / l) * w, (dx / l) * w];
+  return [[x0 + nx, y0 + ny], [x1 + nx, y1 + ny], [x1 - nx, y1 - ny], [x0 - nx, y0 - ny]];
+};
+// the poses: the wafer centre swings round the robot on a polar path while the fork turns from -y to +x; elbow by two-link IK
+const ROBOT_POSES = (() => {
+  const [bx, by] = ROBOT;
+  const polar = ([x, y]) => [Math.hypot(x - bx, y - by), Math.atan2(y - by, x - bx)];
+  const [r0, a0] = polar(HAND);
+  const [r1, a1] = polar(HAND_OUT);
+  const list = [];
+  for (let i = 0; i < POSES; i++) {
+    const t = i / (POSES - 1);
+    const s = t * t * (3 - 2 * t);
+    const rr = r0 + (r1 - r0) * s;
+    const aa = a0 + (a1 - a0) * s;
+    const theta = rad(-90 + 90 * s);
+    const c = [bx + rr * Math.cos(aa), by + rr * Math.sin(aa)];
+    const dir = [Math.cos(theta), Math.sin(theta)];
+    const wrist = [c[0] - 6 * dir[0], c[1] - 6 * dir[1]];
+    const d = Math.hypot(wrist[0] - bx, wrist[1] - by);
+    const base = Math.atan2(wrist[1] - by, wrist[0] - bx);
+    const off = Math.acos(Math.min(1, d / (2 * ROBOT_L)));
+    const elbow = [bx + ROBOT_L * Math.cos(base - off), by + ROBOT_L * Math.sin(base - off)];
+    list.push({ c, dir, wrist, elbow });
+  }
+  return list;
+})();
+// poses after the first are not recorded: they are drawn into the rest pose's slot, and only one pose is ever shown
+const ALT_POSES = {};
+function robotPose({ dir, wrist, elbow }, index) {
+  const [rx, ry] = ROBOT;
+  const ghost = false;
+  const put = (piece, name, ref, svg, shapes, options) => {
+    if (!index) return putItem(piece, name, ref, svg, shapes, options);
+    const base = name.replace(/\.p\d+$/, "");
+    (ALT_POSES[base] ??= []).push(`<g class="it" data-piece="${piece}" data-name="${name}"${options.attrs}>${svg}</g>`);
   };
-  const elbow = [rx - 20, ry - 18];
-  ringPrism("track", "track.robot.link1", link(rx, ry, elbow[0], elbow[1], 4), DECK + 16, 4, { tone: "mid" }, { extra: Dots([at([rx, ry, DECK + 20])], { size: 0.5 }) });
-  cyl("track", "track.robot.elbow", elbow[0], elbow[1], 4.5, DECK + 20, 3, { tone: "mid" }, { steps: 24, extra: Dots([at([elbow[0], elbow[1], DECK + 23])], { size: 0.5 }) });
-  const wrist = [rx + 4, ry - 30];
-  ringPrism("track", "track.robot.link2", link(elbow[0], elbow[1], wrist[0], wrist[1], 3.2), DECK + 23, 3, { tone: "mid" });
-  ringPrism("track", "track.robot.fork", [[wrist[0] - 3, wrist[1] + 2], [wrist[0] + 3, wrist[1] + 2], [wrist[0] + 3, wrist[1] - 12], [wrist[0] - 3, wrist[1] - 12]], DECK + 26, 1.4, { tone: "hi", crease: "lo" });
+  const attrs = index ? ` data-pose="${index}" data-away` : ` data-pose="0"`;
+  const tag = (name) => (index ? `${name}.p${index}` : name);
+  const ringOf = (points) => points;
+  const l1 = ringOf(link(rx, ry, elbow[0], elbow[1], 4));
+  put("track", tag("track.robot.link1"), [(rx + elbow[0]) / 2, (ry + elbow[1]) / 2, (RZ.shoulder + RZ.link1) / 2], S(k.extrude(l1, RZ.shoulder, RZ.link1 - RZ.shoulder, P, { convex: false }), { tone: "mid" }) + Dots([at([rx, ry, RZ.link1])], { size: 0.5 }), [A.extruded(l1, RZ.shoulder, RZ.link1 - RZ.shoulder)], { ghost, attrs });
+  put("track", tag("track.robot.elbow"), [elbow[0], elbow[1], (RZ.link1 + RZ.elbow) / 2], S(k.cylinder(elbow[0], elbow[1], 4.5, RZ.link1, RZ.elbow - RZ.link1, P, 24), { tone: "mid" }) + Dots([at([elbow[0], elbow[1], RZ.elbow])], { size: 0.5 }), [A.cylinder(elbow[0], elbow[1], 4.5, RZ.link1, RZ.elbow - RZ.link1)], { ghost, attrs });
+  const l2 = link(elbow[0], elbow[1], wrist[0], wrist[1], 3.2);
+  put("track", tag("track.robot.link2"), [(elbow[0] + wrist[0]) / 2, (elbow[1] + wrist[1]) / 2, (RZ.elbow + RZ.link2) / 2], S(k.extrude(l2, RZ.elbow, RZ.link2 - RZ.elbow, P, { convex: false }), { tone: "mid" }), [A.extruded(l2, RZ.elbow, RZ.link2 - RZ.elbow)], { ghost, attrs });
+  const [ux, uy] = dir;
+  const [vx, vy] = [-uy, ux];
+  const pt = (s, t) => [wrist[0] + ux * s + vx * t, wrist[1] + uy * s + vy * t];
+  const fork = [pt(-2, -3), pt(12, -3), pt(12, 3), pt(-2, 3)];
+  put("track", tag("track.robot.fork"), [wrist[0] + ux * 5, wrist[1] + uy * 5, (RZ.link2 + RZ.fork) / 2], S(k.extrude(fork, RZ.link2, RZ.fork - RZ.link2, P, { convex: false }), { tone: "hi", crease: "lo" }), [A.extruded(fork, RZ.link2, RZ.fork - RZ.link2)], { ghost, attrs });
 }
 
 // ---- wafers: one at each station, shown by the step that holds it ----
@@ -409,7 +470,71 @@ function frame() {
       L(k.ring(LL.x + LL.w / 2, LL.y + LL.d / 2, 11, LL_TOP, P, 40) + k.ring(LL.x + LL.w / 2, LL.y + LL.d / 2, 9, LL_TOP, P, 40), { tone: "lo" }) +
       Dots(Array.from({ length: 8 }, (_, i) => at([LL.x + LL.w / 2 + 13.5 * Math.cos((i * Math.PI) / 4), LL.y + LL.d / 2 + 13.5 * Math.sin((i * Math.PI) / 4), LL_TOP])), { size: 0.45 }),
   });
-  box("wstage", "wstage.tunnel", [TRK.x + TRK.w, -12, 24], [LL.x, 12, 40], { tone: "mid" }, { r: 0.6, inner: L(k.sideSeam({ x: TRK.x + TRK.w, y: -12, w: LL.x - TRK.x - TRK.w, d: 24, r: 0.6 }, 32, P, 2), { tone: "faint" }) });
+  const tun = { x: TRK.x + TRK.w, y: -14, w: LL.x - TRK.x - TRK.w, d: 28, r: 0.6 };
+  box("wstage", "wstage.tunnel", [tun.x, tun.y, TUNNEL_Z[0]], [tun.x + tun.w, tun.y + tun.d, TUNNEL_Z[1]], { tone: "mid" }, {
+    r: 0.6,
+    inner: L(k.sideSeam(tun, 32, P, 2) + k.sideSeam(tun, TUNNEL_Z[1] - 6, P, 2), { tone: "faint" }),
+    extra: Dots([at([tun.x + 4, tun.y + tun.d, 50]), at([tun.x + tun.w - 4, tun.y + tun.d, 50])], { size: 0.45 }),
+  });
+  // gate valve between the load lock and the vacuum chamber, its door blade rising out of the top when it opens
+  box("wstage", "wstage.gate", [GATE.x0, -GATE.y, GATE.z0], [GATE.x1, GATE.y, GATE.z1], { tone: "mid" }, {
+    r: 0.8,
+    steps: 2,
+    bevel: 0.4,
+    inner: L(k.sideSeam({ x: GATE.x0, y: -GATE.y, w: GATE.x1 - GATE.x0, d: 2 * GATE.y, r: 0.8 }, GATE.z0 + 4, P, 2), { tone: "faint" }),
+    extra: Dots([at([GATE.x0 + 3, GATE.y, GATE.z1 - 4]), at([GATE.x1 - 3, GATE.y, GATE.z1 - 4]), at([GATE.x0 + 3, GATE.y, GATE.z0 + 8]), at([GATE.x1 - 3, GATE.y, GATE.z0 + 8])], { size: 0.45 }),
+  });
+  box("wstage", "wstage.door", [-26, -13, GATE.z1], [-22, 13, GATE.z1 + 8], { tone: "hi", crease: "lo" }, { r: 0.4, attrs: " data-gate" });
+  // the port in the chamber's end wall, behind the gate valve
+  const ex = LWALL.x + LWALL.w;
+  const port = path3([[ex, -14, 22], [ex, 14, 22], [ex, 14, 48], [ex, -14, 48]], true) + path3([[ex, -11, 25], [ex, 11, 25], [ex, 11, 45], [ex, -11, 45]], true);
+  put("frame", "frame.port", [ex, 0, 35], L(port, { tone: "lo" }) + Dots([[-12, 24], [12, 24], [-12, 46], [12, 46]].map(([y, z]) => at([ex, y, z])), { size: 0.4 }), [A.box([ex - 0.1, -14, 22], [ex, 14, 48])], { bias: 0.5, ghost: true });
+
+  // the vacuum chamber, cut down to a sill at the front and the right so the stages and optics show
+  const sillTop = SILL_Z;
+  box("frame", "frame.chamber.end", [LWALL.x, LWALL.y + LWALL.d, SB_TOP], [LWALL.x + LWALL.w, SB.y + SB.d, sillTop], { tone: "lo" }, { r: 0.6 });
+  const sill = { x: LWALL.x + LWALL.w, y: SB.y + SB.d - 5, w: 197, d: 5, r: 0.6 };
+  box("frame", "frame.chamber.sill", [sill.x, sill.y, SB_TOP], [sill.x + sill.w, sill.y + sill.d, sillTop], { tone: "lo" }, {
+    r: 0.6,
+    extra: k.faceTextSvg(k.topMatrix([sill.x + 100, sill.y + 2.5], sillTop, P, "x"), "VACUUM CHAMBER · CUT AWAY", { size: 3, tone: "mid", anchor: "middle" }) + Dots([20, 60, 140, 180].map((x) => at([sill.x + x, sill.y + 2.5, sillTop])), { size: 0.4 }),
+  });
+  box("frame", "frame.chamber.side", [sill.x + sill.w, WALL_Y[1], SB_TOP], [sill.x + sill.w + 6, SB.y + SB.d, sillTop], { tone: "lo" }, { r: 0.6 });
+
+  // the projection optics box: back panel with two frame rails, a side wall, a side wall cut low, a top plate round the slot
+  const backPanel = { x: POB.x0, y: POB.yb, w: POB.x1 - POB.x0, d: POB.yf - POB.yb, r: 0.6 };
+  const panelBolts = [];
+  for (let x = POB.x0 + 6; x < POB.x1 - 2; x += 10) panelBolts.push(at([x, POB.yf, POB.top[0] - 4]), at([x, POB.yf, POB_Z[1] + 4]));
+  box("optics", "optics.housing.back", [backPanel.x, backPanel.y, POB_Z[1]], [backPanel.x + backPanel.w, POB.yf, POB.top[0]], { tone: "lo" }, {
+    r: 0.6,
+    inner: L([112, 170].map((z) => k.sideSeam(backPanel, z, P, 2)).join(""), { tone: "faint" }),
+    extra: Dots(panelBolts, { size: 0.4, tone: "lo" }),
+    bias: -1,
+  });
+  box("optics", "optics.housing.left", [POB.x0, POB.yf, POB_Z[1]], [POB.x0 + 4, POB.yo, POB.top[0]], { tone: "mid" }, { r: 0.4 });
+  box("optics", "optics.housing.right", [POB.x1 - 6, POB.yf, POB_Z[1]], [POB.x1, POB.yo, POB.rightTop], { tone: "mid" }, {
+    r: 0.4,
+    inner: L(k.sideSeam({ x: POB.x1 - 6, y: POB.yf, w: 6, d: POB.yo - POB.yf, r: 0.4 }, 108, P, 2), { tone: "faint" }),
+    extra: Dots([at([POB.x1, POB.yo - 4, 80]), at([POB.x1, POB.yf + 4, 80]), at([POB.x1, POB.yo - 4, 136]), at([POB.x1, POB.yf + 4, 136])], { size: 0.4 }),
+  });
+  for (const x0 of [38, 56]) box("optics", "optics.rail", [x0, POB.yf, POB_Z[1]], [x0 + 6, POB.yf + 4, POB.top[0]], { tone: "mid" }, { r: 0.4, extra: Dots([90, 130, 170, 210].map((z) => at([x0 + 3, POB.yf + 4, z])), { size: 0.4 }) });
+  const topBars = [
+    [[POB.x0, POB.yb], [34, POB.yo]],
+    [[98, POB.yb], [POB.x1, POB.yo]],
+    [[34, POB.yb], [98, -16]],
+  ];
+  topBars.forEach(([[x0, y0], [x1, y1]], i) => box("optics", "optics.housing.top", [x0, y0, POB.top[0]], [x1, y1, POB.top[1]], { tone: "mid" }, { r: 0.6, bevel: 0.3, extra: i < 2 ? Dots([at([x0 + 3, y1 - 3, POB.top[1]]), at([x1 - 3, y1 - 3, POB.top[1]])], { size: 0.45 }) : "" }));
+  // isolation mounts between the box and the reticle deck
+  for (const [x, y] of byDepth([[2, -12], [104, -12], [2, 4], [104, 4]])) cyl("optics", "optics.isolator", x, y, 3.2, POB.top[1], DECK_Z[0] - POB.top[1], { tone: "mid" }, { steps: 20, inner: L(k.sideArc(x, y, 3.2, POB.top[1] + 5, P, 16), { tone: "faint" }) });
+
+  // illuminator housing under the ceiling: a low part over the stage side, a shorter one over the source
+  for (const [x0, x1, z0] of [[118, 216, 164], [216, 300, 186]]) {
+    const plan = { x: x0, y: ILL_Y[0], w: x1 - x0, d: ILL_Y[1] - ILL_Y[0], r: 0.6 };
+    const bolts = [];
+    for (let x = x0 + 5; x < x1 - 2; x += 10) bolts.push(at([x, ILL_Y[1], z0 + 3]));
+    const vents = [];
+    for (let i = 0; i < Math.floor((x1 - x0 - 20) / 14); i++) vents.push(path3([[x0 + 12 + i * 14, ILL_Y[1], CEIL_Z[0] - 16], [x0 + 16 + i * 14, ILL_Y[1], CEIL_Z[0] - 16], [x0 + 16 + i * 14, ILL_Y[1], CEIL_Z[0] - 6], [x0 + 12 + i * 14, ILL_Y[1], CEIL_Z[0] - 6]], true));
+    box("illuminator", "illuminator.housing", [x0, ILL_Y[0], z0], [x1, ILL_Y[1], CEIL_Z[0]], { tone: "lo" }, { r: 0.6, inner: L(k.sideSeam(plan, z0 + 7, P, 2), { tone: "faint" }), extra: Dots(bolts, { size: 0.4, tone: "lo" }) + L(vents.join(""), { tone: "faint" }), bias: -1 });
+  }
 }
 
 // ---- wafer stage: balance mass, long-stroke block, chuck ----
@@ -430,6 +555,26 @@ function waferStage() {
     attrs: ' data-move="wafer"',
   });
   cyl("wstage", "wstage.chuck", WC[0], WC[1], 24, STAGE_TOP, CHUCK_TOP - STAGE_TOP, { tone: "mid" }, { steps: 64, bevel: 0.5, inner: L(k.sideArc(WC[0], WC[1], 24, STAGE_TOP + 2, P, 40), { tone: "faint" }), attrs: ' data-move="wafer"' });
+  // the second stage, at the measure position: it maps the next wafer while this one is exposed
+  const pads2 = k.corners(STAGE2, 4);
+  box("wstage", "wstage.block2", [STAGE2.x, STAGE2.y, BM_TOP], [STAGE2.x + STAGE2.w, STAGE2.y + STAGE2.d, STAGE_TOP], { tone: "mid" }, {
+    r: 2,
+    steps: 3,
+    bevel: 0.5,
+    inner: L(k.sideSeam(STAGE2, BM_TOP + 3, P, 3), { tone: "faint" }),
+    extra: L(pads2.map(([x, y]) => k.ring(x, y, 1.8, STAGE_TOP, P, 12)).join(""), { tone: "lo" }) + Dots(pads2.map(([x, y]) => at([x, y, STAGE_TOP])), { size: 0.45 }),
+  });
+  cyl("wstage", "wstage.chuck2", WC2[0], WC2[1], 24, STAGE_TOP, CHUCK_TOP - STAGE_TOP, { tone: "mid" }, { steps: 64, bevel: 0.5, inner: L(k.sideArc(WC2[0], WC2[1], 24, STAGE_TOP + 2, P, 40), { tone: "faint" }) });
+  // metrology bridge over it: two posts, a beam, level-sensor projector and detector, alignment sensor with its lens
+  for (const x0 of [124, 170]) box("wstage", "wstage.bridge.post", [x0, -48, BM_TOP], [x0 + 6, -40, 70], { tone: "mid" }, { r: 0.6, inner: L(k.sideSeam({ x: x0, y: -48, w: 6, d: 8, r: 0.6 }, 26, P, 2), { tone: "faint" }) });
+  box("wstage", "wstage.bridge.beam", [124, -48, 70], [176, -34, 78], { tone: "mid" }, { r: 0.6, bevel: 0.3, extra: Dots([128, 138, 162, 172].map((x) => at([x, -34, 74])), { size: 0.4 }) + Dots([at([127, -41, 78]), at([173, -41, 78])], { size: 0.45 }) });
+  for (const [x0, label] of [[128, "LS"], [162, "LS"]]) box("wstage", "wstage.levelsensor", [x0, -34, 62], [x0 + 10, -16, 74], { tone: "mid" }, { r: 0.6, bevel: 0.3, inner: L(k.sideSeam({ x: x0, y: -34, w: 10, d: 18, r: 0.6 }, 66, P, 2), { tone: "faint" }), extra: k.faceTextSvg(k.topMatrix([x0 + 5, -25], 74, P, "x"), label, { size: 2.2, tone: "lo", anchor: "middle" }) });
+  box("wstage", "wstage.align", [144, -34, 60], [156, -12, 74], { tone: "mid" }, { r: 0.6, bevel: 0.3, inner: L(k.sideSeam({ x: 144, y: -34, w: 12, d: 22, r: 0.6 }, 64, P, 2), { tone: "faint" }), extra: Dots([at([147, -15, 74]), at([153, -15, 74])], { size: 0.4 }) });
+  cyl("wstage", "wstage.align.lens", 150, -20, 3, 54, 6, { tone: "hi", crease: "lo" }, { steps: 20, extra: L(k.ring(150, -20, 1.6, 54, P, 14), { tone: "lo" }) });
+  // metrology block on the back wall beside the stage: position sensors that follow the chuck
+  const metro = { x: 10, y: WALL_Y[1], w: 70, d: 5, r: 0.6 };
+  box("wstage", "wstage.metro", [metro.x, metro.y, 32], [metro.x + metro.w, metro.y + metro.d, 52], { tone: "mid" }, { r: 0.6, inner: L(k.sideSeam(metro, 36, P, 2), { tone: "faint" }), extra: Dots([at([14, metro.y + metro.d, 48]), at([76, metro.y + metro.d, 48])], { size: 0.45 }) });
+  for (const x of [25, 45, 65]) box("wstage", "wstage.metro.port", [x - 3, metro.y + metro.d, 39], [x + 3, metro.y + metro.d + 1, 45], { tone: "hi", crease: "lo" }, { r: 0.4, extra: Dots([at([x, metro.y + metro.d + 1, 42])], { size: 0.6, tone: "lo" }) });
 }
 
 // ---- reticle stage: rails on the deck, air-bearing pads, carriage, chuck, reticle ----
@@ -451,7 +596,7 @@ function reticleStage() {
   });
 }
 
-// ---- mirrors: a disc whose face is at the path point, normal bisecting the two legs, held by an arm from the back wall ----
+// ---- mirrors: a disc whose face is at the path point, normal bisecting the two legs, held on a pad bolted to its housing ----
 function mirrorNormal(name) {
   const names = LEGS.flatMap(([a, b]) => [a, b]);
   const p = P3(name);
@@ -461,7 +606,7 @@ function mirrorNormal(name) {
   const dout = G.unit3(G.sub3(P3(after), p));
   return names.length ? G.unit3(G.add3(din, dout)) : null;
 }
-function mirror(piece, name, { faceted = false } = {}) {
+function mirror(piece, name, { faceted = false, backY = POB.yf } = {}) {
   const [x, z, r] = PATH[name];
   const p = [x, 0, z];
   const n = mirrorNormal(name);
@@ -479,15 +624,21 @@ function mirror(piece, name, { faceted = false } = {}) {
   }
   const seam = L(G.arcOf(F, -T + 1.2, r, P), { tone: "faint" });
   put(piece, `${piece}.mirror.${name}`, G.add3(p, G.mul3(n, -T / 2)), S(G.disc(-T, 0, r, F, P, { bevel: 0.4 }), { tone: "hi", crease: "lo", inner: seam }) + extra, [A.disc(F, -T, 0, r)]);
-  // arm: from the back wall face to the mirror's rim, along +y
-  const t = G.cross3(n, [0, 1, 0]);
+  // mount: a pad bolted to the housing face behind it, and a short arm from the pad to the mirror's rim, along +y
   const c = G.add3(p, G.mul3(n, -T / 2));
-  const Fa = G.frameOf([c[0], WALL_Y[1], c[2]], [0, 1, 0], n, t);
+  const t = G.cross3(n, [0, 1, 0]);
+  const pad = 5;
+  box(piece, `${piece}.mount.${name}`, [c[0] - pad, backY, c[2] - pad], [c[0] + pad, backY + 2, c[2] + pad], { tone: "mid" }, {
+    r: 0.6,
+    extra: Dots([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => at([c[0] + i * (pad - 1.6), backY + 2, c[2] + j * (pad - 1.6)])), { size: 0.4 }),
+  });
+  const y0 = backY + 2;
+  const Fa = G.frameOf([c[0], y0, c[2]], [0, 1, 0], n, t);
   const poly = [[-2.2, -2.4], [2.2, -2.4], [2.2, 2.4], [-2.2, 2.4]];
-  const len = -r - WALL_Y[1] + 0.05;
-  const collar = G.disc(0, 2, 4.2, G.frameOf([c[0], WALL_Y[1], c[2]], [0, 1, 0], [1, 0, 0], [0, 0, 1]), P);
+  const len = -r - y0 + 0.05;
+  const Fc = G.frameOf([c[0], y0, c[2]], [0, 1, 0], [1, 0, 0], [0, 0, 1]);
   const owner = `${piece}.arm.${name}`;
-  put(piece, owner, [c[0], (WALL_Y[1] - r) / 2, c[2]], S(collar, { tone: "mid" }) + S(G.prismOf(Fa, poly, 0, len, P), { tone: "mid" }), [A.disc(G.frameOf([c[0], WALL_Y[1], c[2]], [0, 1, 0], [1, 0, 0], [0, 0, 1]), 0, 2, 4.2, { owner }), A.prism(Fa, poly, 0, len, { owner })]);
+  put(piece, owner, [c[0], (y0 - r) / 2, c[2]], S(G.disc(0, 1.2, 3.4, Fc, P), { tone: "mid" }) + S(G.prismOf(Fa, poly, 0, len, P), { tone: "mid" }), [A.disc(Fc, 0, 1.2, 3.4, { owner }), A.prism(Fa, poly, 0, len, { owner })]);
 }
 
 // ---- light: beam legs dot to dot, lit; revealed by the slider ----
@@ -499,7 +650,9 @@ function beams() {
     const z = pb[2] + 0.05;
     const slit = last ? `<path class="euv-slit" d="${path3([[pb[0] - FIELD[0] / 2, -0.7, z], [pb[0] + FIELD[0] / 2, -0.7, z], [pb[0] + FIELD[0] / 2, 0.7, z], [pb[0] - FIELD[0] / 2, 0.7, z]], true)}"/>` : "";
     const svg = `<g class="euv-beam" data-leg="${index}">${slit}${L(path3([pa, pb]), { tone: "lit", className: "euv-ray" })}${Dots([at(pa), at(pb)], { size: 1.1, tone: "lit" })}</g>`;
-    put(piece, `${piece}.beam`, G.lerp3(pa, pb, 0.5), svg, [A.tube([pa, pb], 0.5)], { ghost: true });
+    const mid = G.lerp3(pa, pb, 0.5);
+    // the leg up to the reticle passes under the deck and the optics box top: sort it from behind them
+    put(piece, `${piece}.beam`, b === "RET" ? [mid[0], -60, mid[2]] : mid, svg, [A.tube([pa, pb], 0.5)], { ghost: true });
   });
 }
 
@@ -516,9 +669,16 @@ function source() {
   // lid over the far part, the neck and the IF flange
   const lidRing = [];
   for (let v = 165; v <= 375; v += 30) lidRing.push([vx + (46 / Math.cos(rad(15))) * Math.cos(rad(v)), vy + (46 / Math.cos(rad(15))) * Math.sin(rad(v))]);
-  ringPrism("source", "source.lid", lidRing, V_TOP, LID_TOP - V_TOP, { tone: "mid" }, { extra: Dots(lidRing.slice(1, -1).map(([x, y]) => at([vx + (x - vx) * 0.93, vy + (y - vy) * 0.93, LID_TOP])), { size: 0.45 }) });
-  cyl("source", "source.neck", vx, vy, 9, LID_TOP, IF[2] - 4 - LID_TOP, { tone: "mid" }, { steps: 32, inner: L(k.sideArc(vx, vy, 9, LID_TOP + 6, P, 20), { tone: "faint" }) });
-  cyl("source", "source.ifflange", vx, vy, 13, IF[2] - 4, 4, { tone: "mid" }, { steps: 40, bevel: 0.4, extra: L(k.ring(vx, vy, 3, IF[2], P, 20), { tone: "lo" }) + Dots(Array.from({ length: 8 }, (_, i) => at([vx + 10.5 * Math.cos((i * Math.PI) / 4), vy + 10.5 * Math.sin((i * Math.PI) / 4), IF[2]])), { size: 0.4 }) });
+  // the lid has a slot cut in front of the neck, and neck and flange are cut in half, so the light can be seen converging
+  const chordY = lidRing[lidRing.length - 1][1];
+  const slotted = [...lidRing, [vx + 10, chordY], [vx + 10, vy - 1], [vx - 10, vy - 1], [vx - 10, chordY]];
+  ringPrism("source", "source.lid", slotted, V_TOP, LID_TOP - V_TOP, { tone: "mid" }, { ref: [vx, vy - 20, (V_TOP + LID_TOP) / 2], extra: Dots(lidRing.slice(1, -1).map(([x, y]) => at([vx + (x - vx) * 0.93, vy + (y - vy) * 0.93, LID_TOP])), { size: 0.45 }) });
+  ringPrism("source", "source.neck", arcRing(vx, vy, 7, 9, 180, 360, 16), LID_TOP, IF[2] - 4 - LID_TOP, { tone: "mid" }, { ref: [vx, vy - 6, (LID_TOP + IF[2] - 4) / 2] });
+  const halfArc = (r, z) => path3(Array.from({ length: 17 }, (_, i) => [vx + r * Math.cos(rad(180 + i * 11.25)), vy + r * Math.sin(rad(180 + i * 11.25)), z]));
+  ringPrism("source", "source.ifflange", arcRing(vx, vy, 3, 13, 180, 360, 24), IF[2] - 4, 4, { tone: "mid" }, {
+    ref: [vx, vy - 6, IF[2] - 2],
+    extra: L(halfArc(8, IF[2]), { tone: "faint" }) + Dots([202.5, 247.5, 292.5, 337.5].map((a) => at([vx + 10.5 * Math.cos(rad(a)), vy + 10.5 * Math.sin(rad(a)), IF[2]])), { size: 0.4 }),
+  });
   // collector: a multilayer mirror dish on the floor, with a hole for the laser
   const rings = [10, 16, 22, 27].map((r) => k.ring(vx, vy, r, COL_TOP, P, 56)).join("");
   cyl("source", "source.collector", vx, vy, 30, V_FLOOR[1], COL_TOP - V_FLOOR[1], { tone: "hi", crease: "lo" }, { steps: 64, bevel: 0.5, extra: L(rings, { tone: "faint" }) + L(k.ring(vx, vy, 3, COL_TOP, P, 20), { tone: "lo" }) });
@@ -532,14 +692,22 @@ function source() {
   const d1 = [vx + AP_IN, 0, PL[2]];
   const hole = [vx, 0, COL_TOP];
   // one item for what lives in the vessel's light plane: the converging cone, the droplet stream, the plasma flash
-  const half = (z) => (28 * (IF[2] - z)) / (IF[2] - COL_TOP);
-  const cone = [[vx - 28, 0, COL_TOP], [vx + 28, 0, COL_TOP], [vx + half(V_TOP), 0, V_TOP], [vx - half(V_TOP), 0, V_TOP]];
-  const sheet = A.prism(G.frameOf([0, -0.25, 0], [0, 1, 0], [1, 0, 0], [0, 0, 1]), cone.map(([x, , z]) => [x, z]), 0, 0.5);
-  const conesvg = `<g class="euv-cone"><path class="euv-glow" d="${path3(cone, true)}"/>${L(path3([cone[0], cone[3]]) + path3([cone[1], cone[2]]), { tone: "lit", className: "euv-ray" })}</g>`;
+  // the collector images the plasma onto the intermediate focus: a cone from the mirror's rim ring to a point on the flange
+  // drawn in two parts: inside the vessel (with the droplets and plasma), and from the lid up through the cut neck
+  const half = (z) => (27 * (IF[2] - z)) / (IF[2] - COL_TOP);
+  const sheetOf = (poly) => A.prism(G.frameOf([0, -0.25, 0], [0, 1, 0], [1, 0, 0], [0, 0, 1]), poly.map(([x, , z]) => [x, z]), 0, 0.5);
+  const low = [[vx - 27, 0, COL_TOP], [vx + 27, 0, COL_TOP], [vx + half(V_TOP), 0, V_TOP], [vx - half(V_TOP), 0, V_TOP]];
+  const high = [[vx - half(V_TOP), 0, V_TOP], [vx + half(V_TOP), 0, V_TOP], IF];
+  const sheet = sheetOf(low);
+  const conesvg = `<g class="euv-cone"><path class="euv-glow" d="${path3(low, true)}"/>${L(path3([low[0], low[3]]) + path3([low[1], low[2]]), { tone: "lit", className: "euv-ray" })}</g>`;
+  const neckconesvg = `<g class="euv-cone"><path class="euv-glow" d="${path3(high, true)}"/>${L(path3([high[0], high[2]]) + path3([high[1], high[2]]), { tone: "lit", className: "euv-ray" })}${Dots([at(IF)], { size: 1.1, tone: "lit" })}</g>`;
   const dropsvg = `${L(path3([d0, d1]), { tone: "faint", className: "euv-dropline" })}<g data-drops=""></g>`;
-  const flashsvg = `<g class="euv-plasma"><circle class="euv-flash" cx="${at(PL)[0].toFixed(1)}" cy="${at(PL)[1].toFixed(1)}" r="5"/></g>`;
-  const co2svg = `<g class="euv-co2">${L(path3([hole, PL]), { tone: "hi", className: "euv-co2line" })}${Dots([at(PL)], { size: 0.8, tone: "hi" })}</g>`;
+  const [fx, fy] = at(PL).map((v) => v.toFixed(1));
+  const flashsvg = `<g class="euv-plasma"><ellipse class="euv-pancake" cx="${fx}" cy="${fy}" rx="2.6" ry="0.8"/><circle class="euv-preflash" cx="${fx}" cy="${fy}" r="1.8"/><circle class="euv-flash" cx="${fx}" cy="${fy}" r="5"/></g>`;
+  const beamTo = path3([hole, PL]);
+  const co2svg = `<g class="euv-pre">${L(beamTo, { tone: "hi", className: "euv-preline" })}${Dots([at(hole), at(PL)], { size: 0.6, tone: "hi" })}</g><g class="euv-co2">${L(beamTo, { tone: "hi", className: "euv-co2line" })}${Dots([at(hole), at(PL)], { size: 0.9, tone: "hi" })}</g>`;
   put("source", "source.light", PL, conesvg + dropsvg + co2svg + flashsvg, [sheet, A.tube([d0, d1], 0.9), A.tube([hole, PL], 0.6), A.ball(PL, 5 / KS)], { ghost: true });
+  put("source", "source.cone", [vx, 1, (V_TOP + IF[2]) / 2], neckconesvg, [sheetOf(high)], { ghost: true });
 }
 
 // ---- the CO2 laser, with the beam tube to the vessel floor ----
@@ -572,7 +740,7 @@ function signalTower(piece, name, x, y, z) {
 }
 function details() {
   // stiffener ribs on the back wall
-  for (const x of [150, 232]) box("frame", "frame.rib", [x, WALL_Y[1], SB_TOP], [x + 5, WALL_Y[1] + 4, WALL_TOP], { tone: "lo" }, { r: 0.4, extra: Dots([30, 120, 210].map((z) => at([x + 2.5, WALL_Y[1] + 4, z])), { size: 0.4, tone: "lo" }) });
+  for (const [x, top] of [[178, 164], [232, 186]]) box("frame", "frame.rib", [x, WALL_Y[1], SB_TOP], [x + 5, WALL_Y[1] + 4, top], { tone: "lo" }, { r: 0.4, extra: Dots([30, 90, 150].map((z) => at([x + 2.5, WALL_Y[1] + 4, z])), { size: 0.4, tone: "lo" }) });
   // cable tray along the bottom of the back wall
   box("frame", "frame.tray", [-10, WALL_Y[1], 22], [118, WALL_Y[1] + 5, 28], { tone: "mid" }, { r: 0.4, extra: L(k.lineOnTop([-9, WALL_Y[1] + 2.5], [117, WALL_Y[1] + 2.5], 28, P), { tone: "faint" }) });
   // reticle library box on the deck
@@ -590,22 +758,21 @@ function details() {
     cyl("source", "source.turbo.cap", x, y, 4.5, LID_TOP + 18, 3, { tone: "mid" }, { steps: 24, extra: L(k.ring(x, y, 2, LID_TOP + 21, P, 16), { tone: "lo" }) });
   }
   // hydrogen line from the back wall to the vessel lid (the gas that protects the collector)
-  pipe("source", "source.h2", [[262, WALL_Y[1], 205], [262, -34, 205], [262, -34, LID_TOP]], 1.6, { flange: 3, ft: 1.2 });
+  pipe("source", "source.h2", [[262, -34, 186], [262, -34, LID_TOP]], 1.6, { flange: 3, ft: 1.2 });
   // coolant hose from the laser to the end of the back wall
   pipe("laser", "laser.coolant", [[328, -59, LASER_TOP], [328, -59, 64], [WALL_X[1], -59, 64]], 1.4, { flange: 2.3, ft: 1.2 });
-  // power and control cabinet between the stage and the source
-  const cab = { x: 130, y: -46, w: 60, d: 44, r: 1.2 };
-  const front = cab.y + cab.d;
-  const doors = [k.segment([160, front, SB_TOP + 3], [160, front, 55], P)];
-  const vents = [];
-  for (let i = 0; i < 6; i++) vents.push(k.planOutline({ x: 136 + i * 8, y: cab.y + 8, w: 3, d: 26, r: 1.5 }, 58, P, 3));
-  box("wstage", "wstage.cabinet", [cab.x, cab.y, SB_TOP], [cab.x + cab.w, front, 58], { tone: "mid" }, {
-    r: 1.2,
+  // cable lane: a junction box on the back wall above the metrology bridge, three cables in a clamp up into the illuminator housing
+  const jb = { x: 126, y: WALL_Y[1], w: 30, d: 8, r: 1 };
+  box("frame", "frame.junction", [jb.x, jb.y, 86], [jb.x + jb.w, jb.y + jb.d, 108], { tone: "mid" }, {
+    r: 1,
     steps: 3,
-    bevel: 0.5,
-    inner: L(k.sideSeam(cab, SB_TOP + 3, P, 3) + k.sideSeam(cab, 55, P, 3), { tone: "faint" }),
-    extra: L(doors.join(""), { tone: "faint" }) + L(vents.join(""), { tone: "lo" }) + Dots([at([156, front, 34]), at([164, front, 34])], { size: 0.7, tone: "mid" }) + Dots(k.corners(cab, 3).map(([x, y]) => at([x, y, 58])), { size: 0.45 }),
+    bevel: 0.4,
+    inner: L(k.sideSeam(jb, 92, P, 3), { tone: "faint" }),
+    extra: Dots(k.corners(jb, 2.2).map(([x, y]) => at([x, y, 108])), { size: 0.4 }) + Dots([at([132, jb.y + jb.d, 97]), at([138, jb.y + jb.d, 97])], { size: 0.6, tone: "mid" }) + k.faceTextSvg(k.topMatrix([141, jb.y + 4], 108, P, "x"), "SENSORS", { size: 2, tone: "lo", anchor: "middle" }),
   });
+  for (const x of [132, 141, 150]) pipe("frame", `frame.cable${x}`, [[x, -51, 108], [x, -51, 164]], 1.3, { flange: 2.2, ft: 1, maxLength: 30 });
+  box("frame", "frame.clamp", [128, -48.2, 134], [154, -46, 139], { tone: "mid" }, { r: 0.4, extra: Dots([at([129.2, -46, 136.5]), at([152.8, -46, 136.5])], { size: 0.4 }) });
+  for (const x0 of [126, 154]) box("frame", "frame.clamp.foot", [x0, WALL_Y[1], 134], [x0 + 2, -46, 139], { tone: "mid" }, { r: 0.3 });
   // signal towers on the track and on the scanner
   signalTower("track", "track.tower", -124, -82, DECK);
   signalTower("wstage", "wstage.tower", -94, 52, SB_TOP);
@@ -624,17 +791,18 @@ reticleStage();
 source();
 laser();
 details();
-for (const [name, piece] of [["FF", "illuminator"], ["PF", "illuminator"], ["GM", "illuminator"], ["M1", "optics"], ["M2", "optics"], ["M3", "optics"], ["M4", "optics"], ["M5", "optics"], ["M6", "optics"]]) mirror(piece, name, { faceted: name === "FF" || name === "PF" });
+for (const [name, piece] of [["FF", "illuminator"], ["PF", "illuminator"], ["GM", "illuminator"], ["M1", "optics"], ["M2", "optics"], ["M3", "optics"], ["M4", "optics"], ["M5", "optics"], ["M6", "optics"]]) mirror(piece, name, { faceted: name === "FF" || name === "PF", backY: piece === "illuminator" ? ILL_Y[1] : POB.yf });
 beams();
 wafer("coat", ...CUP.coat, DECK + 9);
 wafer("soft", ...HP.soft, DECK + 13);
 wafer("stage", WC[0], WC[1], CHUCK_TOP, { grid: true });
 wafer("peb", ...HP.peb, DECK + 13, { grid: true });
 wafer("dev", ...CUP.dev, DECK + 9, { grid: true });
+wafer("next", WC2[0], WC2[1], CHUCK_TOP);
 
 if (!process.argv.includes("--fast")) A.settle(R, P);
 R.items.sort((a, b) => a.key - b.key);
-const groups = R.items.map((item) => `<g class="it" data-piece="${item.piece}" data-name="${item.name}"${item.attrs ?? ""}>${item.svg}</g>`);
+const groups = R.items.map((item) => `<g class="it" data-piece="${item.piece}" data-name="${item.name}"${item.attrs ?? ""}>${item.svg}</g>` + (ALT_POSES[item.name] ?? []).join(""));
 
 const ORDER = ["track", "laser", "source", "illuminator", "reticle", "optics", "wstage"];
 const PIECES = {
@@ -644,9 +812,9 @@ const PIECES = {
   illuminator: { name: "Illuminator", say: "facet mirrors make an even slit of light" },
   reticle: { name: "Reticle stage", say: `mask face down · scans ${M.OPTICS.reduction}× faster than wafer` },
   optics: { name: "Projection optics", say: `${M.OPTICS.pobMirrors} mirrors · NA ${M.OPTICS.na} · ≈${Math.round(M.POB_PASS * 100)}% of light gets through` },
-  wstage: { name: "Wafer stage", say: `${M.SCANNER.fields} fields · ${M.SCANNER.overlayNm} nm overlay · ${M.SCANNER.wph} wafers/h` },
+  wstage: { name: "Wafer stages", say: `two stages: one exposes, one measures · ${M.SCANNER.fields} fields · ${M.SCANNER.wph} wafers/h` },
 };
-const LABEL = "An EUV lithography scanner cut open beside its coat and develop track. On the left, the track: two spin cups with nozzle arms, two hot plates with lids, a chill plate and a transfer robot. A tunnel leads to the scanner's load lock. In the scanner, from the right: a CO2 laser whose beam tube rises into a cut-open source vessel, where a droplet generator fires tin droplets across a collector mirror toward a catcher; a neck carries the light up to the intermediate focus. Above, three illuminator mirrors on arms from the back wall send the light up to a reticle held face down on a scanning stage. Below the reticle, six projection mirrors zig-zag the light down onto a wafer on the wafer stage.";
+const LABEL = "An EUV lithography scanner cut open beside its coat and develop track. On the left, the track: two spin cups with nozzle arms, two hot plates with lids, a chill plate and a transfer robot. A tunnel leads to the scanner's load lock, and a gate valve opens from it into the vacuum chamber, whose walls are cut down to a sill. In the scanner, from the right: a CO2 laser whose beam tube rises into a cut-open source vessel, where a droplet generator fires tin droplets across a collector mirror toward a catcher; a cut-open neck carries the converging light up to the intermediate focus. Above, three illuminator mirrors bolted to the illuminator housing send the light up to a reticle held face down on a scanning stage. Below the reticle, a cut-open projection optics box holds six mirrors on its back panel; they zig-zag the light down onto a wafer on the wafer stage. Beside it, a second stage sits under a metrology bridge with level and alignment sensors.";
 const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="euv-layers">${groups.join("")}</g>`], className: "euv-svg" });
 
 const unit = (vector) => {
@@ -654,7 +822,7 @@ const unit = (vector) => {
   const p = at(vector);
   return [p[0] - o[0], p[1] - o[1]];
 };
-const STEP_SECONDS = { coat: 5, softbake: 3.5, load: 3, droplet: 4.5, illuminate: 4, project: 3.5, scan: 9, peb: 3.5, develop: 5 };
+const STEP_SECONDS = { coat: 5, softbake: 5, load: 7.5, droplet: 6, illuminate: 4, project: 3.5, scan: 9, peb: 8, develop: 7 };
 const DATA = {
   EX: unit([1, 0, 0]),
   EY: unit([0, 1, 0]),
@@ -671,6 +839,17 @@ const DATA = {
   fieldCount: M.SCANNER.fields,
   drops: { from: at([VC[0] - AP_IN, 0, PL[2]]), to: at([VC[0] + AP_IN, 0, PL[2]]), hit: at(PL) },
   armTravel: 36,
+  // wafer trips between stations, in world units: each wafer's own rest (centre, bottom z), the robot's hand positions
+  rest: { coat: [...CUP.coat, DECK + 9], soft: [...HP.soft, DECK + 13], stage: [WC[0], WC[1], CHUCK_TOP], peb: [...HP.peb, DECK + 13], dev: [...CUP.dev, DECK + 9] },
+  cups: { coat: CUP.coat, dev: CUP.dev },
+  lids: { soft: HP.soft, peb: HP.peb },
+  transit: TRANSIT,
+  forkTop: FORK_TOP,
+  poses: ROBOT_POSES.map((pose) => pose.c),
+  tunnelIn: 26,
+  gateSlide: 30,
+  gateLift: 14,
+  wavelength: M.LIGHT.wavelengthNm,
   lidDrop: 13,
   reticleGain: M.OPTICS.reduction,
   legs: LEGS.length,
@@ -681,7 +860,7 @@ const PARTS = ORDER.map((id, index) => `<button type="button" class="euv-part" d
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">EUV scanner · cutaway</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="euv-controls"><span class="euv-hint">Hover a module · Space plays the wafer through</span><span class="euv-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="euv-stage" tabindex="0" role="group" aria-label="EUV scanner and coat/develop track. Hover, or use the arrow keys, to pick a module; Space plays or pauses the wafer's trip through the machines; Escape resets; the slider below steps through the process.">${svg}</div>`;
-const caption = `An ${M.SCANNER.name}-class EUV scanner, cut open, beside its coat/develop track. A ${M.LIGHT.laserKw} kW CO2 laser hits ${M.LIGHT.dropletsPerS.toLocaleString("en-US")} tin droplets a second (${M.LIGHT.dropletUm} µm, ${M.LIGHT.dropletSpeedMs} m/s, so ${M.DROPLET_GAP_MM.toFixed(1)} mm apart): a pre-pulse flattens each one and the main pulse turns it into plasma at about ${M.LIGHT.plasmaC.toLocaleString("en-US")} °C that glows at ${M.LIGHT.wavelengthNm} nm. Air and glass absorb that light, so everything runs in vacuum and every optic is a multilayer mirror reflecting at most ${Math.round(M.OPTICS.reflectance * 100)}%: after the six projection mirrors alone about ${Math.round(M.POB_PASS * 100)}% is left. The projection optics (NA ${M.OPTICS.na}) shrink the reticle's ${M.RETICLE_FIELD_MM[0]} × ${M.RETICLE_FIELD_MM[1]} mm pattern ${M.OPTICS.reduction}× onto a ${M.OPTICS.fieldMm[0]} × ${M.OPTICS.fieldMm[1]} mm field, scanning reticle and wafer in opposite directions, ${M.SCANNER.fields} fields a wafer, ${M.SCANNER.wph} wafers an hour at ${M.SCANNER.doseMjCm2} mJ/cm². Layout, sizes and mirror angles are illustrative (the real laser sits in the sub-fab below, and the real light path folds in three dimensions); the wafer is shown at each station it visits. Ruler ticks are 10 mm at wafer scale.`;
+const caption = `An ${M.SCANNER.name}-class EUV scanner, cut open, beside its coat/develop track. A ${M.LIGHT.laserKw} kW CO2 laser hits ${M.LIGHT.dropletsPerS.toLocaleString("en-US")} tin droplets a second (${M.LIGHT.dropletUm} µm, ${M.LIGHT.dropletSpeedMs} m/s, so ${M.DROPLET_GAP_MM.toFixed(1)} mm apart): a pre-pulse flattens each one and the main pulse turns it into plasma at about ${M.LIGHT.plasmaC.toLocaleString("en-US")} °C that glows at ${M.LIGHT.wavelengthNm} nm. Air and glass absorb that light, so everything runs in vacuum and every optic is a multilayer mirror reflecting at most ${Math.round(M.OPTICS.reflectance * 100)}%: after the six projection mirrors alone about ${Math.round(M.POB_PASS * 100)}% is left. The projection optics (NA ${M.OPTICS.na}) shrink the reticle's ${M.RETICLE_FIELD_MM[0]} × ${M.RETICLE_FIELD_MM[1]} mm pattern ${M.OPTICS.reduction}× onto a ${M.OPTICS.fieldMm[0]} × ${M.OPTICS.fieldMm[1]} mm field, scanning reticle and wafer in opposite directions, ${M.SCANNER.fields} fields a wafer, ${M.SCANNER.wph} wafers an hour at ${M.SCANNER.doseMjCm2} mJ/cm². Layout, sizes and mirror angles are illustrative (the real laser sits in the sub-fab below, and the real light path folds in three dimensions); between the hot plates the wafer glides on its own, where a real track's robots carry it the whole way. The NXE is a TWINSCAN: a second stage on the right measures the next wafer while this one is exposed. Ruler ticks are 10 mm at wafer scale.`;
 const scrub = `<span class="euv-scrub"><button type="button" class="euv-play" data-play aria-label="Play the process"><span class="euv-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="euv-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process step: 0 is the start of coating, 1000 is the end of develop"><span class="euv-step" data-step>01 · Coat resist</span></span>`;
 const body = `<figure class="iso-figure euv"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="euv-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 
@@ -690,4 +869,6 @@ const LIVE = readFileSync(join(HERE, "live.js"), "utf8").replace("__DATA__", JSO
 const out = writeChapter({ slug: "lithography-euv", figure: body, css: CSS, script: LIVE, lesson: LESSON });
 console.log("wrote", out.file, `${out.kb} KB`, `${R.items.length} items`, `${R.solids.length} solids`, `${FIELDS.length} fields`);
 
-A.auditOrExit(R, P);
+// the leg up to the reticle passes under the deck's edge and the optics box top: a sliver of under 3 px² where the
+// one-piece beam sorts after them (checked at 4x)
+A.auditOrExit(R, P, { allow: [["reticle.deck#2", "illuminator.beam#4"], ["optics.housing.top#2", "illuminator.beam#4"]] });

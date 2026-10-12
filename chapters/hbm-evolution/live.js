@@ -117,7 +117,7 @@ function describe() {
 
 function readoutText() {
   if (target < 0) return Math.abs(pos.x + 1) > 0.01 ? "parking the gauge" : D.idle;
-  if (beam.x < 0.5) return `gauge moving · ${D.gens[target].name}`;
+  if (beam.x < 0.5 || beamFor !== target) return `gauge moving · ${D.gens[target].name}`;
   return D.gens[target].short;
 }
 
@@ -159,6 +159,9 @@ function place() {
       else node.el.removeAttribute("transform");
     }
   }
+  // the beam has its own layer above every stack; it rides with the carriage
+  const beamShift = `translate(${(D.EX[0] * D.travel * share).toFixed(2)} ${(D.EX[1] * D.travel * share).toFixed(2)})`;
+  if (beamEl.getAttribute("transform") !== beamShift) beamEl.setAttribute("transform", beamShift);
   const keyOf = (node) => node.key + node.lift * (node.piece === "carriage" ? share : 0);
   const next = nodes.map((_, index) => index).sort((a, b) => keyOf(nodes[a]) - keyOf(nodes[b]));
   if (next.some((index, at) => index !== order[at])) {

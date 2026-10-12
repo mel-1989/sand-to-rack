@@ -24,6 +24,7 @@ const ionBox = root.querySelector("[data-ions]");
 const trace = root.querySelector("[data-trace]");
 const head = root.querySelector("[data-head]");
 const arText = root.querySelector("[data-ar]");
+const passLabel = root.querySelector("[data-pass-label]");
 
 const N = D.steps.length;
 const SECONDS = 4.2; // per step while playing
@@ -92,8 +93,9 @@ function phases(v) {
 
 function pressureText(u) {
   if (u < 1) {
-    const torr = D.atm * Math.pow(10, -6.4 * u);
-    return torr >= 1 ? `${torr.toFixed(torr >= 100 ? 0 : 1)} Torr` : `${(torr * 1000).toFixed(torr * 1000 >= 10 ? 0 : 1)} mTorr`;
+    // illustrative: from transfer-module pressure down to base, log-linear, settling in the last fifth of the step
+    const mt = D.transfer * Math.pow(D.base / D.transfer, Math.min(1, u / 0.8));
+    return `${mt.toFixed(mt >= 10 ? 0 : mt >= 1 ? 1 : 2)} mTorr`;
   }
   return `${D.setpoint} mTorr`;
 }
@@ -196,16 +198,17 @@ function drawInset(ph) {
   else pass.setAttribute("d", xs.map((x) => `M${x - hw} 60h${pw.toFixed(2)}v${ph2.toFixed(1)}h${(-pw).toFixed(2)}ZM${x + hw} 60h${(-pw).toFixed(2)}v${ph2.toFixed(1)}h${pw.toFixed(2)}Z`).join(""));
   const ar = d / (2 * hw);
   arText.textContent = d > 0.5 ? `depth : width ${ar.toFixed(1)} : 1` : "";
+  passLabel.setAttribute("opacity", pw >= 0.1 && ph2 >= 6 ? "1" : "0");
   // ions into the openings
   insetIons.forEach((ion) => {
     if (still.matches || ph.bias <= 0.01) return ion.el.setAttribute("opacity", "0");
     const p = (ion.p + clock * 0.9) % 1;
-    const y = 18 + p * (42 + d);
+    const y = 41 + p * (19 + d);
     ion.el.setAttribute("cx", String(ion.x));
     ion.el.setAttribute("cy", y.toFixed(1));
     ion.el.setAttribute("opacity", (ph.bias * Math.min(1, (1 - p) * 5)).toFixed(2));
   });
-  // OES trace: the CO line, recorded from plasma-on to the end of the etch
+  // OES trace: the product line (Si), recorded from plasma-on to the end of the etch
   const level = (u) => 0.18 * smooth(2, 2.3, u) + 0.72 * smooth(3.1, 3.5, u) * (1 - smooth(5, 5.3, u));
   const xOf = (u) => 18 + ((u - 2) / 4) * 186;
   const yOf = (u) => 186 - level(u) * 34;
@@ -238,7 +241,7 @@ function draw() {
   let text;
   if (selected) text = D.parts[selected].say;
   else if (s <= 0.0005 && !playing && !touring) text = D.idle;
-  else if (step.id === "pump") text = `pumping down · ${pressureText(ph.u)}`;
+  else if (step.id === "pump") text = `pumping to base · ${pressureText(ph.u)}`;
   else if (done) text = "resist stripped · wafer ready to leave";
   else text = step.say;
   say(text);

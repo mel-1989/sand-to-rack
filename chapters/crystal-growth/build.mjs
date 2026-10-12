@@ -672,39 +672,79 @@ function ports() {
 }
 
 // ===================== the charge: polysilicon chunks, in layers that melt from the bottom up =====================
-function charge() {
-  let seed = 7;
-  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  const layers = [
-    [CRU_FLOOR, 13, 57],
-    [CRU_FLOOR + 13, 13, 57],
-    [CRU_FLOOR + 26, 13, 55],
-    [CRU_FLOOR + 39, 12, 36],
-    [CRU_FLOOR + 51, 10, 26],
-  ];
-  layers.forEach(([z0, h, rMax], index) => {
-    const chunks = [];
-    const count = Math.round(rMax * 0.42);
-    for (let i = 0; i < count; i++) {
-      const deg = 98 + rand() * 254;
-      const rr = Math.sqrt(rand()) * (rMax - 6);
-      const [cx, cy] = ptc(rr, deg, 0);
-      const size = 4.2 + rand() * 3;
-      const sides = 5 + Math.floor(rand() * 2);
-      const turn = rand() * 360;
-      const ring = Array.from({ length: sides }, (_, j) => {
-        const a = turn + (j * 360) / sides + rand() * 20;
-        const rad = size * (0.75 + rand() * 0.35);
-        return [cx + rad * Math.cos(a * DEG), cy + rad * Math.sin(a * DEG)];
-      });
-      const zc = z0 + rand() * (h - 5);
-      chunks.push({ ring, z: zc, h: 3 + rand() * 2.5, c: [cx, cy] });
-    }
-    chunks.sort((a, b) => k.depthOf([a.c[0], a.c[1], a.z], P) - k.depthOf([b.c[0], b.c[1], b.z], P));
-    const svg = chunks.map((c) => S(k.extrude(c.ring, c.z, c.h, P), { tone: "hi", crease: "lo" })).join("");
-    const shape = A.body(AXIS, [[z0, 0], [z0, rMax], [z0 + h, rMax], [z0 + h, 0]], { cut: [A.box([0, 0, -BIG], [BIG, BIG, BIG])] });
-    put("crucible", [0, 0, z0 + h / 2], `<g class="cz-chunks" data-chunk="${(z0 + h / 2).toFixed(1)}">${svg}</g>`, [shape], { piece: "charge", name: `crucible.charge${index}` });
+// Chunks are placed on a jittered grid, one layer per CHUNK_PITCH, and kept wholly inside the quartz: every corner sits
+// at least one unit in from the inner wall, back from both cut planes, below the rim, and inside the shield cone where
+// the heap rises past its lower edge. Interior chunks no line of sight reaches are left out of the drawing; each layer
+// records an envelope built from the extents of the chunks it holds, and the build stops if any chunk breaks a rule.
+const CHUNK_PITCH = 5;
+const coneInAt = (z) => SHIELD.r0 + 1 + ((SHIELD.r1 - SHIELD.r0) * (z - SHIELD.z0)) / (SHIELD.z1 - SHIELD.z0);
+const heapTop = (r) => CRU_FLOOR + 41 + 13 * Math.max(0, 1 - (r / 58) ** 2); // illustrative mound, peak below the rim
+const cutDist = (x, y) => Math.hypot(Math.min(x, 0), Math.min(y, 0)); // distance to the removed quarter
+function chunkFits(ring, z, h) {
+  const top = z + CHUNK_PITCH; // judged by the layer's full height, so the layer's envelope clears the cone too
+  if (z < CRU_FLOOR - 1e-6 || z + h > top + 1e-6 || top > CRU_RIM - 1) return false;
+  return ring.every(([x, y]) => {
+    const r = Math.hypot(x, y);
+    if (r > CRU_IN - 1) return false;
+    if (cutDist(x, y) < 0.6) return false;
+    if (top > SHIELD.z0 - 0.5 && r > coneInAt(Math.max(SHIELD.z0, z)) - 1) return false;
+    return true;
   });
+}
+function charge() {
+  let seed = 11;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const SP = 8.2; // grid spacing
+  const layers = [];
+  for (let n = 0; CRU_FLOOR + n * CHUNK_PITCH + 3 <= CRU_RIM - 1; n++) {
+    const z0 = CRU_FLOOR + n * CHUNK_PITCH;
+    const chunks = [];
+    const ox = (n % 2) * (SP / 2);
+    const oy = (n % 3) * (SP / 3);
+    for (let gy = -9; gy <= 9; gy++) {
+      for (let gx = -9; gx <= 9; gx++) {
+        const cx = (gx + (gy % 2 ? 0.5 : 0)) * SP + ox + (rand() - 0.5) * 2.2 - 0.6;
+        const cy = gy * SP * 0.866 + oy + (rand() - 0.5) * 2.2 - 0.6;
+        const rr = Math.hypot(cx, cy);
+        const size = 3.7 + rand() * 1.3;
+        const sides = 5 + Math.floor(rand() * 2);
+        const turn = rand() * 360;
+        const ring = Array.from({ length: sides }, (_, j) => {
+          const a = turn + (j * 360) / sides + (rand() - 0.5) * 16;
+          const rad = size * (0.82 + rand() * 0.22);
+          return [cx + rad * Math.cos(a * DEG), cy + rad * Math.sin(a * DEG)];
+        });
+        const h = CHUNK_PITCH - 1.4 + rand() * 1.4;
+        if (z0 + h > heapTop(rr)) continue;
+        if (!chunkFits(ring, z0, h)) continue;
+        const rad = Math.max(...ring.map(([x, y]) => Math.hypot(x - cx, y - cy)));
+        chunks.push({ ring, z: z0, h, c: [cx, cy], rr, rad });
+      }
+    }
+    layers.push({ z0, chunks });
+  }
+  // a chunk is drawn if a reader can see it: within two layers of the top of its column, or near a cut plane
+  const has = (n, x, y) => (layers[n] ? layers[n].chunks.some((c) => Math.hypot(c.c[0] - x, c.c[1] - y) < SP * 0.75) : false);
+  let drawn = 0;
+  layers.forEach(({ z0, chunks }, index) => {
+    if (!chunks.length) return;
+    const seen = chunks.filter((c) => cutDist(...c.c) < c.rad + SP * 1.1 || !has(index + 1, ...c.c) || !has(index + 2, ...c.c) || !has(index + 1, c.c[0] + SP * 0.5, c.c[1] + SP * 0.5));
+    seen.sort((a, b) => k.depthOf([a.c[0], a.c[1], a.z], P) - k.depthOf([b.c[0], b.c[1], b.z], P));
+    drawn += seen.length;
+    const svg = seen.map((c) => S(k.extrude(c.ring, c.z, c.h, P), { tone: "hi", crease: "lo" })).join("");
+    // the layer's envelope, from the chunks it holds: their farthest corner, their tallest top, set back from the cut
+    const rEnv = Math.max(...chunks.map((c) => c.rr + c.rad));
+    const hEnv = Math.max(...chunks.map((c) => c.h));
+    const shape = A.body(AXIS, [[z0, 0], [z0, rEnv], [z0 + hEnv, rEnv], [z0 + hEnv, 0]], { cut: [A.box([-0.6, -0.6, -BIG], [BIG, BIG, BIG])] });
+    put("crucible", [0, 0, z0 + hEnv / 2], `<g class="cz-chunks" data-chunk="${(z0 + CHUNK_PITCH / 2).toFixed(1)}">${svg}</g>`, [shape], { piece: "charge", name: `crucible.charge${index}` });
+  });
+  // hard check: no chunk may leave the crucible, cross a cut plane, rise past the rim or into the shield cone
+  const bad = layers.flatMap((l) => l.chunks).filter((c) => !chunkFits(c.ring, c.z, c.h));
+  if (bad.length) {
+    console.error(`charge: ${bad.length} chunks outside the crucible`);
+    process.exit(1);
+  }
+  console.log(`charge: ${layers.reduce((s, l) => s + l.chunks.length, 0)} chunks in ${layers.filter((l) => l.chunks.length).length} layers, ${drawn} drawn`);
 }
 
 stand();
@@ -742,7 +782,7 @@ const groups = R.items.map((item, index) => {
 });
 
 const LABEL = `A Czochralski crystal puller with the front quarter cut away. From the bottom: a base plate on feet with a ruler and a label plate; the crucible drive, its bellows and motor; a vacuum pump and exhaust duct; the water-cooled furnace chamber on three legs, with two cusp-magnet coils around it; inside, graphite felt, a slotted graphite heater on two electrodes, a heat shield cone, and a quartz crucible in a graphite susceptor on a rising shaft; above, the dome, the gate valve with its bonnet and actuator, the long pull chamber held by a mast, and the pull head with its winch and rotation motors. The silicon crystal hangs from a cable and grows from the melt.`;
-const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="cz-layers">${groups.join("")}</g>`], className: "cz-svg" });
+const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="cz-layers">${groups.join("")}</g><g class="cz-flow" data-flow aria-hidden="true"></g>`], className: "cz-svg" });
 
 // ---- data for the page ----
 const cam = k.cameraOf(P);
@@ -797,6 +837,7 @@ const DATA = {
   massTable: Array.from({ length: 101 }, (_, i) => Math.round(M.grownKg((M.GROWN_MM * i) / 100) * 10) / 10),
   scale: cam.k,
   meltC: M.SI.meltC,
+  flow: { cone: SHIELD.z1 - 6, gap: (SUS_OUT + HEATER.rIn) / 2, end: HEATER.z0 - 14, rimOver: CRU_RIM - CRU_FLOOR },
 };
 void cam;
 

@@ -19,7 +19,7 @@ export const RIG = {
   PIN_UP: 8, // how far the lift pins rise above the pedestal
   WAFER_R: 30,
   WAFER_T: 1, // drawn thickness (exaggerated)
-  FILM_PER: 0.5, // drawn film per ALD cycle (hugely exaggerated)
+  FILM_PER: 0.75, // drawn film per ALD cycle (hugely exaggerated)
   LL_X: -156,
   GAP_TOP: 64, // showerhead underside
 };

@@ -46,7 +46,9 @@ const el = {
   stockTop: find("[data-stocktop]"),
   bgtape: find("[data-bgtape]"),
   gwafers: [...layers.querySelectorAll("[data-gwafer]")],
-  sawload: [...layers.querySelectorAll("[data-sawload]")],
+  sawframe: [...layers.querySelectorAll("[data-sawframe]")],
+  sawwafer: [...layers.querySelectorAll("[data-sawwafer]")],
+  over: stage.querySelector("[data-over]"),
   theta: find("[data-theta]"),
   clamps: [...layers.querySelectorAll("[data-clamp]")],
   grid: find("[data-grid]"),
@@ -81,14 +83,17 @@ function cutting(u, from, to) {
   const startX = -(halfAt(STREETS[0]) + 6);
   if (u <= 0) return { t: from.t, y: from.y, lift: from.lift, done: 0, cur: -1, prog: 0 };
   if (u < lead) {
-    const e = ease(u / lead);
-    return { t: lerp(from.t, tableFor(startX), e), y: lerp(from.y, yFor(STREETS[0]), e), lift: lerp(from.lift, 0, e), done: 0, cur: -1, prog: 0 };
+    // travel to the start of the first street with the blade up, then lower it off the wafer's edge
+    const e = ease((u / lead) / 0.65);
+    return { t: lerp(from.t, tableFor(startX), e), y: lerp(from.y, yFor(STREETS[0]), e), lift: lerp(from.lift, 0, ease((u / lead - 0.65) / 0.35)), done: 0, cur: -1, prog: 0 };
   }
   if (u >= 1 - tail) {
-    const e = ease((u - (1 - tail)) / tail);
+    // lift clear first, off the wafer's edge, then travel to the park
+    const f = (u - (1 - tail)) / tail;
+    const e = ease((f - 0.35) / 0.65);
     const lastDir = (N - 1) % 2 ? -1 : 1;
     const endX = lastDir * (halfAt(STREETS[N - 1]) + 6);
-    return { t: lerp(tableFor(endX), to.t, e), y: lerp(yFor(STREETS[N - 1]), to.y, e), lift: lerp(0, to.lift, e), done: N, cur: -1, prog: 0 };
+    return { t: lerp(tableFor(endX), to.t, e), y: lerp(yFor(STREETS[N - 1]), to.y, e), lift: lerp(0, to.lift, ease(f / 0.35)), done: N, cur: -1, prog: 0 };
   }
   const v = ((u - lead) / (1 - lead - tail)) * N;
   const i = Math.min(N - 1, Math.floor(v));
@@ -129,10 +134,14 @@ function poseAt(s) {
   const g = s >= PH[2].t0 ? 1 : clamp((GG.thick - wb) / GG.stock);
   const spin = ease((grind - 0.04) / 0.1) * (1 - ease(mount / 0.3));
   const tapeA = ease(tape / 0.7);
-  const gOut = 1 - ease((mount - 0.25) / 0.4);
-  const sIn = ease((mount - 0.45) / 0.45);
+  // mount: the ring frame and its tape come down onto the saw chuck first, then the thin wafer
+  // leaves the grinder and is laid on the tape; the two wafers cross-fade so one is always in view
+  const gOut = 1 - ease((mount - 0.3) / 0.35);
+  const fIn = ease(mount / 0.35);
+  const sIn = ease((mount - 0.28) / 0.37);
   // saw
-  let st = { t: PARK.t, y: PARK.y, lift: PARK.lift };
+  // while the grinder works the spindle waits at the front of the beam; it backs off to the park at spark-out
+  let st = s < PH[2].t0 ? { t: PARK.t, y: lerp(SS.restY, PARK.y, ease((grind - 0.8) / 0.2)), lift: PARK.lift } : { t: PARK.t, y: PARK.y, lift: PARK.lift };
   let theta = 0;
   let xs = { done: 0, cur: -1, prog: 0 };
   let ys = { done: 0, cur: -1, prog: 0 };
@@ -162,6 +171,7 @@ function poseAt(s) {
     spin,
     tapeA,
     gOut,
+    fIn,
     sIn,
     st,
     theta,
@@ -170,9 +180,11 @@ function poseAt(s) {
     cuttingNow,
     bladeSpin: s < PH[3].t0 ? 0 : uv < 0 ? ease((align - 0.5) / 0.5) : 1 - ease(uv / 0.5),
     camOn: align >= 0 && align < 1 ? Math.sin(Math.PI * clamp(align)) : 0,
-    uv: uv < 0 ? 0 : uv < 1 ? Math.sin((Math.PI * uv) / 1) * 0.9 : 0,
+    uv: uv < 0 ? 0 : clamp(uv),
+    uvLamp: uv < 0 || uv >= 1 ? 0 : ease(uv / 0.12) * (1 - ease((uv - 0.88) / 0.12)),
     uvDone: uv >= 0.5 || pick >= 0,
     pick: clamp(pick),
+    bladeLit: cx >= 0 && uv < 0,
   };
 }
 
@@ -294,49 +306,186 @@ function gridSvg(pose) {
       if (Math.abs(x - from) > 0.3) liveLines.push(draw(from, x));
     }
   });
-  if (lines.length) out += `<path class="iso-line" data-tone="mid" d="${lines.join("")}"/>`;
-  if (liveLines.length) out += `<path class="iso-line" data-tone="lit" d="${liveLines.join("")}"/>`;
-  // inked dies from wafer probe, shown once the wafer is on the saw
+  // the street pattern is there before the first cut: the camera aligns to it and the blade follows it
+  const lanes = [];
+  STREETS.forEach((c) => {
+    const h = halfAt(c);
+    lanes.push(kerfPath(c, -h, h, th));
+    const a = (th * Math.PI) / 180;
+    const p = (y) => iso([SS.tcx + c * Math.cos(a) - y * Math.sin(a), SS.y + c * Math.sin(a) + y * Math.cos(a), SS.waferTop], P);
+    lanes.push(pathOf2([p(-h), p(h)], false));
+  });
+  out += `<path class="iso-line dc-lane" data-tone="faint" d="${lanes.join("")}"/>`;
+  if (lines.length) out += `<path class="iso-line dc-kerf" data-tone="hi" d="${lines.join("")}"/>`;
+  if (liveLines.length) out += `<path class="iso-line dc-kerf-live" data-tone="lit" d="${liveLines.join("")}"/>`;
+  // dies flagged bad in the probe map, marked with a dot (illustrative), shown once the wafer is on the saw
   const a = (th * Math.PI) / 180;
   const inks = BAD.map(([i, j]) => [(i + 0.5) * SS.die, (j + 0.5) * SS.die]).map(([x, y]) => iso([SS.tcx + x * Math.cos(a) - y * Math.sin(a), SS.y + x * Math.sin(a) + y * Math.cos(a), SS.waferTop], P));
   out += dotsSvg(inks, { size: 1.1, tone: "lo" });
-  // picked dies: each lifts off in turn and is carried away, leaving its cell of bare tape
+  // the cured band under the UV lamp, on the wafer's face
+  if (pose.uvLamp > 0.01) out += uvBand(pose.uv, SS.waferR - 0.3, SS.waferTop + 0.02, 0.32 * pose.uvLamp);
+  // picked dies: the collet takes them one at a time; each leaves its cell of bare tape
   if (pose.pick > 0) {
-    const n = PICK.length;
+    const k = pickAt(pose.pick);
     let holes = "";
-    let lifted = "";
     PICK.forEach(([i, j], index) => {
-      const t0 = (index / n) * 0.85;
-      const u = clamp((pose.pick - t0) / 0.22);
-      if (u <= 0) return;
-      if (u > 0.12) holes += cellPath(i, j, th);
-      const rise = ease(u / 0.45) * 9;
-      const gone = ease((u - 0.55) / 0.45);
-      if (gone >= 0.999) return;
-      lifted += `<g opacity="${(1 - gone).toFixed(2)}">${dieAt(i, j, th, SS.waferTop + rise + gone * 8, u < 0.6)}</g>`;
+      if (index < k.index || (index === k.index && k.u > 0.6)) holes += cellPath(i, j, th);
     });
     if (holes) out += `<path class="dc-hole" d="${holes}"/><path class="iso-line" data-tone="lo" d="${holes}"/>`;
-    out += lifted;
+    if (k.carry > 0 && k.fade < 0.999) {
+      const [i, j] = PICK[k.index];
+      out += `<g opacity="${(1 - k.fade).toFixed(2)}">${dieAt(i, j, th, SS.waferTop + k.carry, true)}</g>`;
+    }
   }
   return out;
 }
+// a cooling-water fan from each nozzle's tip to the blade where it meets the wafer, with a little spray there
 function jetAt(i, alpha, by) {
   if (alpha < 0.01) return "";
-  const y = i ? by + 2.7 : by - 2.7;
-  const tip = iso([SS.x + 6, y, 29], P);
-  const a = iso([SS.x + 6, y, 30.6], P);
-  const b = iso([SS.x + 2.5, y > by ? by + 0.8 : by - 0.8, SS.waferTop + 0.1], P);
-  const c = iso([SS.x - 2, y > by ? by + 0.8 : by - 0.8, SS.waferTop + 0.1], P);
-  return `<path class="dc-jet" opacity="${(0.55 * alpha).toFixed(2)}" d="${pathOf2([a, tip, b, c], true)}"/>`;
-}
-function uvSvg(alpha) {
-  if (alpha < 0.01) return "";
-  const pts = [];
-  for (let i = 0; i < 96; i++) {
-    const a = (i / 96) * TAU;
-    pts.push(iso([SS.tcx + (SS.frameIn - 0.5) * Math.cos(a), SS.y + (SS.frameIn - 0.5) * Math.sin(a), 22], P));
+  const side = i ? 1 : -1;
+  const y = by + side * 2.4;
+  const yb = by + side * 0.9;
+  // a fan of water from the nozzle head's orifice down onto the blade where it enters the wafer
+  const t0 = iso([SS.x + 1.4, y, 25], P);
+  const t1 = iso([SS.x + 4.6, y, 25], P);
+  const e0 = iso([SS.x + 7, yb, SS.waferTop + 0.3], P);
+  const e1 = iso([SS.x + 1, yb, SS.waferTop + 0.2], P);
+  const e2 = iso([SS.x - 5, yb, SS.waferTop + 0.4], P);
+  const out = `<path class="dc-jet" opacity="${alpha.toFixed(2)}" d="${pathOf2([t0, t1, e0, e1, e2], true)}"/>`;
+  if (!i) return out;
+  // spray thrown off where the blade leaves the cut
+  const drops = [];
+  const now = ang.blade;
+  for (let n = 0; n < 12; n++) {
+    const ph = (now * 0.35 + n * 0.37) % 1;
+    const x = SS.x - 4 - ph * 9 - (n % 3) * 1.5;
+    const yy = by + 1.2 + ((n * 0.61) % 1) * 3.4;
+    const z = SS.waferTop + 0.6 + Math.sin(ph * Math.PI) * (2.4 + (n % 2) * 1.4);
+    drops.push(iso([x, yy, z], P));
   }
-  return `<path class="dc-uv" opacity="${(0.24 * alpha).toFixed(2)}" d="${pathOf2(pts, true)}"/>`;
+  const dots = drops.map(([x, yy]) => `<circle class="dc-spray" cx="${f1(x)}" cy="${f1(yy)}" r="0.95"/>`).join("");
+  return out + `<g opacity="${(0.9 * alpha).toFixed(2)}">${dots}</g>`;
+}
+// the strip of the plane at height z under the lamp (x within lx ± w), cut to a circle of radius r, centred on the chuck
+function stripIn(x0, x1, r, z) {
+  const a = Math.max(-r, x0);
+  const b = Math.min(r, x1);
+  if (b - a < 0.2) return null;
+  const pts = [];
+  const n = Math.max(6, Math.round((b - a) / 2));
+  for (let q = 0; q <= n; q++) {
+    const x = a + ((b - a) * q) / n;
+    pts.push(iso([SS.tcx + x, SS.y - halfR(r, x), z], P));
+  }
+  for (let q = n; q >= 0; q--) {
+    const x = a + ((b - a) * q) / n;
+    pts.push(iso([SS.tcx + x, SS.y + halfR(r, x), z], P));
+  }
+  return pathOf2(pts, true);
+}
+const halfR = (r, x) => Math.sqrt(Math.max(0, r * r - x * x));
+const LAMP = { x0: -96, x1: 96, w: 6, y0: -34, y1: 104, z: 36, h: 5 };
+const lampX = (u) => lerp(LAMP.x0, LAMP.x1, ease((u - 0.08) / 0.84));
+function uvBand(u, r, z, alpha) {
+  const lx = lampX(u);
+  const d = stripIn(lx - 9, lx + 9, r, z);
+  return d ? `<path class="dc-uv" opacity="${alpha.toFixed(2)}" d="${d}"/>` : "";
+}
+// on the tape: the part the lamp has passed is cured (a lasting violet tint), the band under it glows
+function uvSvg(pose) {
+  if (pose.uv <= 0) return "";
+  const lx = pose.uv >= 1 ? LAMP.x1 + 20 : lampX(pose.uv);
+  const done = stripIn(-SS.frameIn, lx, SS.frameIn - 0.5, 22);
+  let out = done ? `<path class="dc-uv" opacity="0.2" d="${done}"/>` : "";
+  if (pose.uvLamp > 0.01) out += uvBand(pose.uv, SS.frameIn - 0.5, 22.01, 0.4 * pose.uvLamp);
+  return out;
+}
+// convex hull of screen points, for the lamp's beam
+function hull(pts) {
+  const p = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower = [];
+  for (const q of p) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop();
+    lower.push(q);
+  }
+  const upper = [];
+  for (const q of p.reverse()) {
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop();
+    upper.push(q);
+  }
+  return lower.slice(0, -1).concat(upper.slice(0, -1));
+}
+// a carriage on the handling rail at x and a post rising from it to z (the post sits inside plan py0..py1)
+function railPost(x, z, py0, py1) {
+  const R = SS.prail;
+  const car = { x: x - 7, y: R.y - 2.5, w: 14, d: R.d + 5, r: 1.2 };
+  const carSvg = solidSvg(slabOf(car, R.top, 5, P, 2, 0.3), { tone: "mid" });
+  const bolts = dotsSvg([iso([x - 4.5, R.y + R.d / 2, R.top + 5], P), iso([x + 4.5, R.y + R.d / 2, R.top + 5], P)], { size: 0.45 });
+  const post = { x: x - 2.5, y: py0, w: 5, d: py1 - py0, r: 0.8 };
+  const postSvg = solidSvg(slabOf(post, R.top + 5, z - R.top - 5, P, 2, 0.3), { tone: "mid" });
+  return carSvg + bolts + postSvg;
+}
+// the UV lamp bar passing over the frame, carried on a post from the handling rail, and its light falling on the wafer
+function lampSvg(pose) {
+  const a = pose.uvLamp;
+  if (a < 0.01) return "";
+  const lx = SS.tcx + lampX(pose.uv);
+  const plan = { x: lx - LAMP.w, y: SS.y + LAMP.y0, w: LAMP.w * 2, d: LAMP.y1 - LAMP.y0, r: 1.2 };
+  const foot = [];
+  const top = [];
+  for (const y of [SS.y + LAMP.y0 + 6, SS.y + LAMP.y1 - 6]) {
+    for (const dx of [-4, 4]) top.push(iso([lx + dx, y, LAMP.z], P));
+    for (const dx of [-9, 9]) foot.push(iso([lx + dx, y, SS.waferTop], P));
+  }
+  const beam = `<path class="dc-uv-beam" opacity="${(0.22 * a).toFixed(2)}" d="${pathOf2(hull([...top, ...foot]), true)}"/>`;
+  const body = solidSvg(slabOf(plan, LAMP.z, LAMP.h, P, 3, 0.4), { tone: "mid" });
+  const cap0 = solidSvg(slabOf({ x: lx - LAMP.w - 1, y: SS.y + LAMP.y0 - 3, w: LAMP.w * 2 + 2, d: 4, r: 1 }, LAMP.z - 1, LAMP.h + 2, P, 2, 0.3), { tone: "mid" });
+  const cap1 = solidSvg(slabOf({ x: lx - LAMP.w - 1, y: SS.y + LAMP.y1 - 1, w: LAMP.w * 2 + 2, d: 4, r: 1 }, LAMP.z - 1, LAMP.h + 2, P, 2, 0.3), { tone: "mid" });
+  const hold = railPost(lx, LAMP.z - 1, SS.y + LAMP.y1, SS.y + LAMP.y1 + 2.4);
+  return `<g opacity="${a.toFixed(2)}">${beam}${hold}${cap0}${body}${cap1}</g>`;
+}
+// pick: one die at a time. u runs 0..1 for each die: travel over it, come down, grip, lift, hand it off
+function pickAt(pick) {
+  const n = PICK.length;
+  const v = clamp(pick) * n;
+  const index = Math.min(n - 1, Math.floor(v));
+  const u = v >= n ? 1 : v - index;
+  const descend = ease((u - 0.3) / 0.15) * (1 - ease((u - 0.55) / 0.25));
+  const carry = u > 0.55 ? ease((u - 0.55) / 0.25) * 14 : 0;
+  const fade = ease((u - 0.84) / 0.14);
+  return { index, u, descend, carry, fade, travel: ease(u / 0.3) };
+}
+function dieCentre(i, j, th) {
+  const a = (th * Math.PI) / 180;
+  const x = (i + 0.5) * SS.die;
+  const y = (j + 0.5) * SS.die;
+  return [SS.tcx + x * Math.cos(a) - y * Math.sin(a), SS.y + x * Math.sin(a) + y * Math.cos(a)];
+}
+// the vacuum collet on its arm (illustrative: a die sorter's pick head, drawn over the saw's chuck)
+function colletSvg(pose) {
+  if (pose.pick <= 0) return "";
+  const k = pickAt(pose.pick);
+  const th = pose.theta;
+  const home = dieCentre(PICK[0][0] + 2, PICK[0][1] + 1, th);
+  const from = k.index ? dieCentre(...PICK[k.index - 1], th) : home;
+  const to = dieCentre(...PICK[k.index], th);
+  const cx = lerp(from[0], to[0], k.travel);
+  const cy = lerp(from[1], to[1], k.travel);
+  const zTip = SS.waferTop + 0.4 + (k.u <= 0.55 ? 14 * (1 - k.descend) : k.carry);
+  const show = k.index ? 1 : ease(k.u / 0.12);
+  // the arm runs in Y from a post on the handling rail; the head slides along it and drives the collet in Z
+  const AZ = SS.waferTop + 32;
+  const tip = solidSvg(cylinder(cx, cy, 2.4, zTip, 2.2, P, 20, 0.2), { tone: "hi", crease: "lo", lit: k.u > 0.3 && k.u < 0.84 });
+  const shank = solidSvg(cylinder(cx, cy, 1.5, zTip + 2.2, AZ - 7 - zTip - 2.2, P, 16), { tone: "mid" });
+  const block = { x: cx - 4, y: cy - 4, w: 8, d: 8, r: 1 };
+  const body = solidSvg(slabOf(block, AZ - 7, 7, P, 2, 0.4), { tone: "mid" });
+  const R = SS.prail;
+  const arm = { x: cx - 2.5, y: SS.y + 18, w: 5, d: R.y + 2.4 - (SS.y + 18), r: 1 };
+  const armSvg = solidSvg(slabOf(arm, AZ, 4, P, 2, 0.3), { tone: "mid" });
+  const endCap = solidSvg(slabOf({ x: cx - 3.5, y: SS.y + 15, w: 7, d: 3, r: 0.8 }, AZ - 0.5, 5, P, 2, 0.2), { tone: "mid" });
+  const hold = railPost(cx, AZ, R.y - 0.6, R.y + 2.4);
+  return `<g opacity="${show.toFixed(2)}">${endCap}${tip}${shank}${body}${hold}${armSvg}</g>`;
 }
 function camLight(alpha, by) {
   if (alpha < 0.01) return "";
@@ -432,7 +581,14 @@ function draw(pose) {
   el.stockTop.innerHTML = grindMarks(ang.chuck, pose.g > 0 && pose.g < 1 ? 1 : pose.g >= 1 ? 0.6 : 0);
   el.bgtape.style.opacity = pose.tapeA.toFixed(2);
   el.gwafers.forEach((g) => (g.style.opacity = pose.gOut.toFixed(2)));
-  el.sawload.forEach((g) => (g.style.opacity = pose.sIn.toFixed(2)));
+  const drop = (g, a, dz) => {
+    g.style.opacity = a.toFixed(2);
+    const z = (1 - a) * dz;
+    const t = z < 0.01 ? "" : `translate(${f1(D.EZ[0] * z)} ${f1(D.EZ[1] * z)})`;
+    if (g.getAttribute("transform") !== (t || null)) t ? g.setAttribute("transform", t) : g.removeAttribute("transform");
+  };
+  el.sawframe.forEach((g) => drop(g, pose.fIn, 18));
+  el.sawwafer.forEach((g) => drop(g, pose.sIn, 12));
   if (lastTheta !== pose.theta) {
     lastTheta = pose.theta;
     const ticks = radialTicks(SS.tcx, SS.y, SS.thetaR, 72, 6, SS.thetaTop, [1.4, 3], P, (pose.theta * Math.PI) / 180);
@@ -444,14 +600,16 @@ function draw(pose) {
     lastGrid = grid;
     el.grid.innerHTML = grid;
   }
-  el.uv.innerHTML = uvSvg(pose.uv);
+  el.uv.innerHTML = uvSvg(pose);
+  el.over.innerHTML = lampSvg(pose) + colletSvg(pose) + jetAt(1, pose.cuttingNow ? 1 : 0, BY0 + SS.yTravel * pose.st.y);
   const jet = pose.cuttingNow ? 1 : 0;
-  el.jets.forEach((j) => (j.innerHTML = jetAt(Number(j.dataset.jet), jet, BY0)));
+  // the back jet sits behind the blade, in its nozzle's layer; the front one and the spray are drawn over everything
+  el.jets.forEach((j) => (j.innerHTML = Number(j.dataset.jet) ? "" : jetAt(0, jet, BY0)));
   el.bspin.innerHTML = bladeSpokes(BY0, ang.blade);
   el.cam.innerHTML = camLight(pose.camOn, BY0);
   const grinding = pose.h > 0.02 && pose.g < 1 && local("grind", s) >= 0;
   litStock.forEach((n) => n.toggleAttribute("data-lit", grinding || (!pose.sIn && pose.g < 1)));
-  litBlade.forEach((n) => n.toggleAttribute("data-lit", pose.sIn > 0.5));
+  litBlade.forEach((n) => n.toggleAttribute("data-lit", pose.bladeLit));
 }
 
 const um = (pose) => Math.round(D.um.start - pose.g * (D.um.start - D.um.target));

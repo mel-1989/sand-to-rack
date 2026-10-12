@@ -11,26 +11,31 @@ export const POWERVIA_TEST = {
 };
 // IEEE Spectrum on the same chip: some areas up to 95% filled; "30 percent less power loss".
 // https://spectrum.ieee.org/backside-power-delivery
-export const SPECTRUM = { utilPeakPct: 95 };
+export const SPECTRUM = { utilPeakPct: 95, m0RelaxNm: 6 }; // M0 lines "could be six nanometers further apart"
 
 // Intel 18A, PowerVia in production: https://www.intel.com/content/www/us/en/foundry/process/18a.html
+// Intel 18A technology brief (June 2026), Figure 4 and the PowerVia list:
+// https://www.intel.com/content/dam/www/central-libraries/us/en/documents/2026-06/foundry-18a-technology-brief.pdf
 export const INTEL_18A = {
   node: "Intel 18A",
-  droopX: 10, // "reduces worst-case dynamic voltage droop by as much as 10x"
-  areaPct: 11, // "up to 11% block-level area compaction in routed designs"
-  perfWattPct: 15, // RibbonFET + PowerVia together, vs Intel 3, "up to 15 percent better performance per watt"
-  densityPct: 30, // RibbonFET + PowerVia together, vs Intel 3, "up to 30 percent better chip density"
-  product: "Panther Lake", // Core Ultra series 3, the first 18A product
+  droopX: 10, // brief: "~10x reduction in worst-case dynamic voltage droop compared to frontside power delivery"
+  areaPct: 11, // brief: "6–11% block-level area compaction, depending on power-grid assumptions"
+  perfWattPct: 18, // brief, Fig. 4: RibbonFET + PowerVia, "18% performance per watt increase (at same power) vs. Intel 3"
+  densityX: 1.3, // brief, Fig. 4: "1.3x chip density improvement vs. Intel 3"
 };
 
-// TSMC A16 with Super Power Rail, projections vs N2P, production planned for H2 2026.
+// TSMC A16 with Super Power Rail, projections vs N2P. The 2024 release planned production for H2 2026.
+// TSMC's 2026 symposium release gives no A16 date (only A12, 2029, also with Super Power Rail): https://pr.tsmc.com/english/news/3302
+// Coverage of that symposium reports A16 volume production slipped to 2027:
+// https://www.trendforce.com/news/2026/04/23/news-tsmc-unveils-latest-roadmap-a12-a13-set-for-2029-without-high-na-euv-a16-volume-production-delayed-to-2027/
 // https://pr.tsmc.com/english/news/3136 ; contact to source/drain: https://semiengineering.com/tsmc-uncorks-a16-with-super-power-rail
 export const A16 = {
   node: "TSMC A16",
   speedPct: [8, 10], // at the same Vdd
   powerPct: [15, 20], // lower power at the same speed
   densityX: 1.1, // "up to 1.10X chip density" for data-centre products
-  when: "H2 2026",
+  when: "originally H2 2026; volume production reported as 2027 after TSMC's April 2026 symposium",
+  volumeYear: 2027, // TrendForce, 2026-04-23 (above)
 };
 
 // imec: how backside power is made, and what it buys. https://www.imec-int.com/en/articles/how-power-chips-backside
@@ -45,41 +50,34 @@ export const IMEC = {
   irDropX: 7, // Arm simulation: backside delivery with BPRs cuts IR drop 7x vs conventional frontside
 };
 
-// A standard 300 mm wafer starts about 775 um thick (SEMI M1); the device silicon left after thinning is a few hundred nm.
-// https://www.imec-int.com/en/articles/how-power-chips-backside (thinning) ; 775 um is the SEMI M1 nominal for 300 mm.
+// A 300 mm wafer starts at a nominal 775 um (SEMI 3D10 describes 300 mm wafers "with nominal thickness of 775 µm").
+// https://store-us.semi.org/products/3d01000-semi-3d10-guide-to-describing-materials-properties-for-intermediate-wafers-for-use-in-a-300-mm-3ds-ic-wafer-stack-1
 export const WAFER_UM = 775;
-
-// ---- the drawing (illustrative: a sawn block of a chip, heights compressed, layer counts reduced) ----
-export const DRAWN = {
-  frontLayers: 9, // front-side block: signal and power share these
-  signalLayers: 6, // backside block: signal only on the front
-  backLayers: 3, // backside power layers
-  bumps: 12,
-};
 
 const range = ([a, b]) => `${a}–${b}`;
 
 export const STEPS = [
-  { id: "front", name: "Transistors and signal wiring", say: `front end as usual · transistors, then fine signal layers · ${WAFER_UM} µm wafer` },
-  { id: "bond", name: "Bond a carrier wafer", say: `carrier wafer bonded face to face · SiCN fusion bond, ${IMEC.bondAnnealC} °C anneal` },
-  { id: "flip", name: "Flip", say: "flip the pair · the carrier now holds the chip" },
-  { id: "thin", name: "Thin the silicon", say: `grind and polish ${WAFER_UM} µm down to ${IMEC.thinNm} nm · TTV < ${IMEC.ttvNm} nm` },
-  { id: "tsv", name: "Nano-TSVs", say: `nano-TSVs etched and filled · ${IMEC.ntsvDepthNm} nm deep, ${IMEC.ntsvPitchNm} nm pitch (imec)` },
-  { id: "metal", name: "Backside power metal", say: "thick, wide power layers on the back · power off the signal stack" },
-  { id: "bumps", name: "Bumps on the back", say: `bumps on the back · power in, ${POWERVIA_TEST.droopPct}%+ less droop (Intel test chip)` },
+  { id: "front", name: "Transistors and signal wiring", say: "transistors, then fine signal wiring" },
+  { id: "bond", name: "Bond a carrier wafer", say: `carrier bonded face to face · ${IMEC.bondAnnealC} °C anneal` },
+  { id: "flip", name: "Flip", say: "flipped · the carrier now holds the chip" },
+  { id: "thin", name: "Thin the silicon", say: `grinding · TTV < ${IMEC.ttvNm} nm` },
+  { id: "tsv", name: "Nano-TSVs", say: `nano-TSVs · ${IMEC.ntsvDepthNm} nm deep, ${IMEC.ntsvPitchNm} nm pitch` },
+  { id: "metal", name: "Backside power metal", say: "thick power layers built on the back" },
+  { id: "bumps", name: "Bumps on the back", say: `bumps on the back · >${POWERVIA_TEST.droopPct}% less droop (Intel)` },
 ];
 
 export const PIECES = {
-  fs: { name: "Front-side chip", say: `front-side power · power climbs down ${range(IMEC.beolLayers)} layers shared with signals · ≥${IMEC.powerRoutingPct}% of routing` },
-  carrier: { name: "Carrier wafer", say: "carrier wafer · a blank wafer bonded on, holds the chip once its silicon is gone" },
-  signal: { name: "Signal wiring", say: "front: signals only · freed of power, cells pack to >90% (Intel)" },
-  devices: { name: "Transistors", say: `transistor layer · ${IMEC.thinNm} nm of silicon left under it` },
-  ntsv: { name: "Nano-TSVs", say: `nano-TSVs · ${IMEC.ntsvPitchNm} nm pitch · Intel PowerVia: one in every cell; TSMC A16: contact straight to source` },
-  bspdn: { name: "Backside power", say: `backside power network · IR drop ÷${IMEC.irDropX} (imec/Arm sim) · droop ÷${INTEL_18A.droopX} worst case (Intel 18A)` },
-  bumps: { name: "Bumps", say: "bumps on the back · power arrives a few layers from the transistors" },
-  tools: { name: "Flip fixture and grinder", say: "rotary flip fixture and cup-wheel grinder · stand-ins for the bonder, flipper and back-grinder" },
+  fs: { name: "Front-side chip", say: `front-side power · down ${range(IMEC.beolLayers)} layers with signals` },
+  carrier: { name: "Carrier wafer", say: "carrier wafer · holds the chip once thinned" },
+  signal: { name: "Signal wiring", say: `signals only · cells pack >${POWERVIA_TEST.utilPct}% (Intel)` },
+  devices: { name: "Transistors", say: `transistors on ${IMEC.thinNm} nm of silicon` },
+  ntsv: { name: "Nano-TSVs", say: "nano-TSVs · Intel: per cell · TSMC: S/D" },
+  bspdn: { name: "Backside power", say: `backside power · IR drop ÷${IMEC.irDropX} (imec/Arm sim)` },
+  bumps: { name: "Bumps", say: "bumps on the back · power enters here" },
+  tools: { name: "Flip fixture and grinder", say: "flip fixture and back-grinder (stand-ins)" },
 };
 export const ORDER = ["fs", "carrier", "signal", "devices", "ntsv", "bspdn", "bumps", "tools"];
 
 export const IDLE = `${INTEL_18A.node} PowerVia · ${A16.node} Super Power Rail`;
-export const DONE = `A16 vs N2P: +${range(A16.speedPct)}% speed or −${range(A16.powerPct)}% power`;
+// at rest the readout quotes Intel, whose nano-TSV scheme is the one the right block shows
+export const DONE = `${INTEL_18A.node} PowerVia: up to ${INTEL_18A.droopX}× less droop`;

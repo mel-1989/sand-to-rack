@@ -68,6 +68,15 @@
   stroke: var(--anatomy-lit-top);
 }
 
+/* the readout shares the bottom edge with the hint: keep it to the hint's right and let it wrap upward */
+.dc .iso-plate-corner[data-corner="readout"] {
+  left: 232px;
+  max-width: calc(100% - 232px);
+  text-align: right;
+  line-height: 1.4;
+  white-space: normal;
+}
+
 .dc-controls {
   position: absolute;
   left: 24px;
@@ -131,14 +140,16 @@
 
 @media (max-width: 640px) {
   .dc .iso-plate {
-    padding: 48px 8px 84px;
+    padding: 48px 8px 112px;
   }
 
+  /* its own band between the stage frame and the hint: up to three lines fit under the frame */
   .dc .iso-plate-corner[data-corner="readout"] {
-    bottom: 44px;
-    right: 0;
+    top: auto;
+    bottom: 20px;
+    right: 16px;
     left: 16px;
-    max-width: calc(100% - 32px);
+    max-width: none;
     text-align: right;
     line-height: 1.4;
     white-space: normal;
@@ -246,24 +257,62 @@
 
 /* water, kerfs, UV tint and the lifted dies: tints of the figure's own inks */
 .dc-jet {
-  fill: var(--anatomy-mid);
-  stroke: none;
+  fill: var(--anatomy-blue);
+  fill-opacity: 0.45;
+  stroke: var(--anatomy-blue);
+  stroke-width: 0.5;
+  stroke-opacity: 0.85;
+  stroke-linejoin: round;
 }
 
-.dc-kerf {
-  fill: none;
-  stroke: var(--anatomy-lo);
-  stroke-width: 0.7;
+.dc-spray {
+  fill: var(--anatomy-blue);
+}
+
+.dc-svg .dc-lane {
+  stroke-dasharray: 1.2 1.6;
+  stroke-opacity: 0.7;
+}
+
+/* a finished kerf: a clean, persistent cut, heavier than the printed street it follows */
+.dc-svg .dc-kerf {
+  stroke: var(--anatomy-strong);
+  stroke-width: 1.15;
   stroke-linecap: round;
 }
 
-.dc-kerf-live {
-  stroke: var(--anatomy-lit);
+.dc-svg .dc-kerf-live {
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+.dc {
+  --dc-uv: #a98bff;
+}
+
+[data-theme="light"] .dc {
+  --dc-uv: #6b3fe0;
 }
 
 .dc-uv {
-  fill: var(--anatomy-lit);
+  fill: var(--dc-uv);
   stroke: none;
+}
+
+.dc-uv-beam {
+  fill: var(--dc-uv);
+  stroke: var(--dc-uv);
+  stroke-width: 0.4;
+  stroke-opacity: 0.6;
+}
+
+.dc-uv-lens {
+  fill: var(--dc-uv);
+  stroke: none;
+}
+
+.dc-street {
+  fill: none;
 }
 
 .dc-hole {
@@ -353,9 +402,10 @@
 }
 
 @media (max-width: 640px) {
-  .dc-stage > svg {
-    width: 118%;
-    margin: -4% -9% -2%;
+  .dc .dc-stage > svg.dc-svg {
+    width: 109%;
+    max-width: none;
+    margin: -3% 0 -2% -4.5%;
   }
 }
 

@@ -131,11 +131,11 @@
 
 @media (max-width: 640px) {
   .cz .iso-plate {
-    padding: 48px 8px 84px;
+    padding: 48px 8px 112px;
   }
 
   .cz .iso-plate-corner[data-corner="readout"] {
-    bottom: 44px;
+    bottom: 42px;
     right: 0;
     left: 16px;
     max-width: calc(100% - 32px);
@@ -208,7 +208,7 @@
 
 .cz-step {
   flex: none;
-  width: 150px;
+  width: 184px;
   font: 10.5px/1.2 var(--anatomy-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -240,6 +240,8 @@
   opacity: 0.55;
 }
 
+/* Exception to the token rule, on purpose: molten silicon and its glow are the subject, and the kit has no warm
+   token, so these four colours are set here per theme (they still switch at runtime with body[data-theme]). */
 .cz {
   --cz-glow: #ff7a3d;
   --cz-melt-top: #5c3e2a;
@@ -302,4 +304,42 @@
   .cz .iso-plate-corner[data-corner="readout"] {
     max-width: calc(100% - 32px);
   }
+}
+
+/* argon: faint moving dashes on the cut planes, in the kit's blue */
+.cz-flow {
+  pointer-events: none;
+}
+
+.cz-flow-line,
+.cz-flow-head {
+  fill: none;
+  stroke: var(--anatomy-blue);
+  stroke-width: 0.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.75;
+}
+
+.cz-flow-line {
+  stroke-dasharray: 2.2 3;
+}
+
+.cz-stage[data-focus] .cz-flow {
+  visibility: hidden;
+}
+
+/* dark: the crystal is the lit subject, so its shade steps sit one notch above the chamber's */
+.cz {
+  --cz-s3: var(--anatomy-shade-3);
+  --cz-ls: var(--anatomy-lit-shade);
+  --cz-lt: var(--anatomy-lit-top);
+}
+
+body:not([data-theme="light"]) .cz .cz-ingot {
+  --anatomy-shade-0: var(--cz-s3);
+  --anatomy-shade-1: var(--cz-ls);
+  --anatomy-shade-2: var(--cz-lt);
+  --anatomy-shade-3: var(--cz-lt);
+  --anatomy-top: var(--cz-lt);
 }

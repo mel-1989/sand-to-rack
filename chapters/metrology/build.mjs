@@ -46,7 +46,7 @@ const MS = [LX - MX, 0, 0];
 const K = { rho: MS[0] / MW[0], opt: (OX - MARK - MX) / MS[0] };
 
 const P = k.fitProjection(
-  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [AX, AY, 240], [-155, -61, 240], [CH.x1, CH.y1, CH.lid], [-186, -32, 132], [LL.x1, LL.y1, LL.lid]],
+  [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [AX, AY, 240], [-92, -14, 238], [CH.x1, CH.y1, CH.lid], [-186, -32, 132], [LL.x1, LL.y1, LL.lid]],
   W,
   H,
   { pad: 26, azimuth: AZIMUTH, elevation: ELEVATION },
@@ -265,6 +265,9 @@ function stage() {
   put("wafer", "stage", [MX, AY, WZ + 0.6], svg, [cylShape(MX, AY, WR, WZ, WT)], { piece: "wafer" });
 }
 
+// the high-voltage tank and its cable gland
+const HV = { x0: -182, x1: -152, y0: 16, y1: 44, h: 22, cy: 30, cz: 9, gapX: -92, down: -14 }; // the cable runs down the gap at (gapX, down), then along the floor to the tank's side
+
 // ---- the column, sectioned: pole piece, objective, scan coils, condensers, gun, HV insulator ----
 // the beam's half-width along the column: spreading from the tip, two condenser crossovers, focused by the objective
 const KNOTS = [[186, 0], [164, 2.2], [149, 0], [135, 1.6], [127, 0], [103, 1.8], [89, 2.0], [WZ + WT, 0]];
@@ -324,11 +327,14 @@ function column() {
   const cells = [];
   for (let i = 0; i < 3; i++) for (let j = 0; j < 4; j++) cells.push(cutRect(AX + 26.6 + i * 4.2, AX + 29.8 + i * 4.2, 172 + j * 5, 176 + j * 5));
   block("col.ion-pump", "gun", pump, 170, 22, { extra: L(cells.join(""), { tone: "lo" }) });
-  // high-voltage supply on the console desk, behind the monitor
-  const tank = box(-182, -128, -72, -50, 1);
+  // high-voltage supply: an oil-filled tank on the base plate in front of the console
+  const tank = box(HV.x0, HV.x1, HV.y0, HV.y1, 1);
   const fins = [];
-  for (let z = 70; z <= 78; z += 4) fins.push(k.sideSeam(tank, z, P, 3));
-  block("col.hv-tank", "gun", tank, 66, 16, { steps: 3, bevel: 0.6, extra: L(fins.join(""), { tone: "faint" }) });
+  for (let z = 6; z <= 18; z += 4) fins.push(k.sideSeam(tank, z, P, 3));
+  const tankScrews = k.corners(tank, 2.6);
+  block("col.hv-tank", "gun", tank, 0, HV.h, { steps: 3, bevel: 0.6, extra: L(fins.join(""), { tone: "faint" }) + Dots(tankScrews.map(([x, y]) => at([x, y, HV.h])), { size: 0.45 }) });
+  const FG = G.frameAlong([HV.x1, HV.cy, HV.cz], [1, 0, 0]);
+  put("col.hv-gland", "gun", [HV.x1 + 1.5, HV.cy, HV.cz], S(G.disc(0, 3, 4, FG, P, { bevel: 0.3 }), { tone: "mid" }), [A.disc(FG, 0, 3, 4, {})]);
 }
 
 // ---- secondary electron detector on the objective, sectioned: collector, scintillator, light guide, preamp ----
@@ -402,7 +408,7 @@ function console_() {
   const m = planeMatrix([SCREEN.x0, SCREEN.y + 0.02, SCREEN.z1], [1, 0, 0], [0, 0, -1]);
   const bezel = k.pathOf([[SCREEN.x0 - 1.6, SCREEN.z0 - 1.6], [SCREEN.x1 + 1.6, SCREEN.z0 - 1.6], [SCREEN.x1 + 1.6, SCREEN.z1 + 1.6], [SCREEN.x0 - 1.6, SCREEN.z1 + 1.6]].map(([x, z]) => at([x, SCREEN.y, z])), true);
   const lamp = Dots([at([SCREEN.x1 - 2, SCREEN.y, SCREEN.z0 - 2.4])], { size: 0.6, tone: "mid" });
-  const screen = `<g transform="${m}"><clipPath id="mt-clip-screen"><rect x="0" y="0" width="${SW}" height="${SH}"/></clipPath><g clip-path="url(#mt-clip-screen)" class="mt-screen">${screenContent()}</g></g>`;
+  const screen = `<g transform="${m}"><clipPath id="mt-clip-screen"><rect x="0" y="0" width="${SW}" height="${SH}"/></clipPath><g clip-path="url(#mt-clip-screen)" class="mt-screen" id="mt-screen-live">${screenContent()}</g></g>`;
   put("console.monitor", "console", centreOf(caseP, 105), S(k.slabOf(caseP, 80, 50, P, 3, 0.6), { tone: "mid" }) + L(bezel, { tone: "lo" }) + screen + lamp, [slabShape(caseP, 80, 50, 3)]);
 }
 
@@ -451,6 +457,7 @@ function screenContent() {
   const markU = mc[0] + MARK * mapScale;
   out.push(`<g data-mode="map"><circle class="mt-ink" cx="${f(mc[0])}" cy="${f(mc[1])}" r="${mapR}"/><path class="mt-ink mt-thin" d="${dies.join("")}"/>`);
   out.push(`<rect class="mt-ink" x="${f(siteU - 1.2)}" y="${f(mc[1] - 1.2)}" width="2.4" height="2.4"/><rect class="mt-ink" x="${f(markU - 1.2)}" y="${f(mc[1] - 1.2)}" width="2.4" height="2.4"/>`);
+  out.push(`<g data-mode="defects">${M.DEFECTS.map(([u, v]) => `<circle class="mt-defect" data-part="defect" cx="${f(mc[0] + u)}" cy="${f(mc[1] + v)}" r="0.9"/>`).join("")}</g>`);
   out.push(`<g data-part="cross" transform="translate(${f(markU)} ${f(mc[1])})"><path class="mt-cursor" d="M-4 0H-1.6M1.6 0H4M0 -4V-1.6M0 1.6V4"/><circle class="mt-cursor" r="1.6"/></g></g>`);
   // optical image of the overlay mark: outer box from layer 1, inner box from layer 2, offset by the overlay error
   const oc = [IMG.u + IMG.w / 2, IMG.v + IMG.h / 2];
@@ -479,8 +486,9 @@ function screenContent() {
   out.push(`<g data-part="edges" style="opacity:0"><path class="mt-cursor" d="M${f(IMG.u)} ${f(mv)}H${f(IMG.u + IMG.w)}"/><path class="mt-mark" d="M${f(ea)} ${f(mv - 4)}V${f(mv + 4)}M${f(eb)} ${f(mv - 4)}V${f(mv + 4)}M${f(ea)} ${f(mv + 3)}H${f(eb)}"/></g></g>`);
   // right panel: status words
   const label = (mode, text) => `<text class="mt-text" data-mode="${mode}" x="${PLOT.u}" y="${PLOT.v + 5}" style="display:none">${text}</text>`;
-  out.push(label("t-load", "LOAD"), label("t-align", "ALIGN"), label("t-scan", "SCAN"), label("t-image", "IMAGE"));
-  out.push(`<text class="mt-text mt-small" data-mode="t-ovl" x="${PLOT.u}" y="${PLOT.v + 12}" style="display:none">dx ${M.RUN.ovlXNm.toFixed(1)}</text><text class="mt-text mt-small" data-mode="t-ovl" x="${PLOT.u}" y="${PLOT.v + 18}" style="display:none">dy ${M.RUN.ovlYNm.toFixed(1)}</text>`);
+  out.push(label("t-load", "LOAD"), label("t-align", "ALIGN"), label("t-inspect", "INSPECT"), label("t-ovlh", "OVERLAY"), label("t-scan", "SCAN"), label("t-image", "IMAGE"));
+  out.push(`<text class="mt-text mt-small" data-mode="t-ovl" x="${PLOT.u}" y="${PLOT.v + 12}" style="display:none">dx ${M.RUN.ovlXNm.toFixed(1)}</text><text class="mt-text mt-small" data-mode="t-ovl" x="${PLOT.u}" y="${PLOT.v + 18}" style="display:none">dy ${M.RUN.ovlYNm.toFixed(1)}</text><text class="mt-text mt-small" data-mode="t-ovl" x="${PLOT.u}" y="${PLOT.v + 24}" style="display:none">nm</text>`);
+  out.push(`<text class="mt-text mt-small" data-mode="t-defects" data-part="defcount" x="${PLOT.u}" y="${PLOT.v + 12}" style="display:none">0 DEFECTS</text>`);
   out.push(`<text class="mt-text mt-small" data-mode="t-rows" data-part="rowcount" x="${PLOT.u}" y="${PLOT.v + 12}" style="display:none">0/${M.RUN.rows}</text>`);
   // right panel: the line profile with its threshold and the two edges
   const pts = [];
@@ -495,7 +503,7 @@ function screenContent() {
   const lo = M.RUN.targetNm - 2 * M.RUN.specNm;
   const hi = M.RUN.targetNm + 2 * M.RUN.specNm;
   const gx = (nm) => PLOT.u + ((nm - lo) / (hi - lo)) * PLOT.w;
-  out.push(`<g data-mode="result" style="display:none"><text class="mt-text mt-big" x="${PLOT.u}" y="${PLOT.v + 11}">${M.RUN.cdNm.toFixed(1)}</text><text class="mt-text mt-small" x="${PLOT.u + 15.5}" y="${PLOT.v + 11}">nm</text>`);
+  out.push(`<g data-mode="result" style="display:none"><text class="mt-text mt-big" data-part="cd" x="${PLOT.u}" y="${PLOT.v + 8}">${M.RUN.cdNm.toFixed(1)}</text><text class="mt-text mt-small" x="${PLOT.u}" y="${PLOT.v + 13}">CD · nm</text>`);
   out.push(`<rect class="mt-frame" x="${PLOT.u}" y="${PLOT.v + 16}" width="${PLOT.w}" height="4"/><rect class="mt-fill-lo" x="${f(gx(M.RUN.targetNm - M.RUN.specNm))}" y="${PLOT.v + 16}" width="${f(gx(M.RUN.targetNm + M.RUN.specNm) - gx(M.RUN.targetNm - M.RUN.specNm))}" height="4"/><path class="mt-mark" d="M${f(gx(M.RUN.cdNm))} ${PLOT.v + 14.5}V${PLOT.v + 21.5}"/>`);
   out.push(`<text class="mt-text mt-small" x="${PLOT.u}" y="${PLOT.v + 28}">${M.passes ? "PASS" : "FAIL"}</text></g>`);
   // right panel: SPC chart, history and the new point
@@ -534,8 +542,8 @@ function pipe(name, part, points, r, { limp = true, shells = [false, false], ben
 const tubeSvgOf = (piece, tone) => Tube.tubeSvg(piece, { tone });
 
 function cables() {
-  // high voltage from the gun's connector to the tank on the lid
-  pipe("cable.hv", "gun", [[AX, AY - 3, 226], [AX, AY - 3, 236], [-155, -61, 236], [-155, -61, 82]], 1.3, { shells: [false, true], bend: 7 });
+  // high voltage from the gun's connector, down the gap beside the chamber and along the base plate to the tank's gland
+  pipe("cable.hv", "gun", [[AX, AY - 3, 226], [AX, AY - 3, 234], [HV.gapX, HV.down, 234], [HV.gapX, HV.down, HV.cz], [HV.gapX, HV.cy, HV.cz], [HV.x1 + 3, HV.cy, HV.cz]], 1.3, { shells: [false, true], bend: 7 });
   // detector signal from the preamp to the monitor case
   pipe("cable.signal", "detector", [[AX - 64, AY - 4.5, 89], [-98, AY - 4.5, 89], [-106, -36, 104], [-114, -36, 104]], 0.9, { shells: [true, true], bend: 6 });
 }
@@ -597,7 +605,7 @@ const DATA = {
   K,
   parts: M.PARTS,
   order: ORDER,
-  steps: M.STEPS.map(({ id, name, seconds, say }) => ({ id, name, seconds, say })),
+  steps: M.STEPS.map(({ id, name, seconds, say, inspect }) => ({ id, name, seconds, say, inspect })),
   rows: M.RUN.rows,
   idle: M.IDLE,
   spot: { at: at([AX, AY, WZ + WT]), tip: at([AX, AY, 34]), u: unit([1, 0, 0]), v: unit([0, 1, 0]) },
@@ -605,16 +613,18 @@ const DATA = {
   map: { from: 4 * (15 / WR), to: SITE * (15 / WR) },
 };
 
-const LABEL = `A CD-SEM cut away along the column's axis. On a base plate on isolators: the vacuum chamber with its front panel and the front of its lid removed, an x-y stage carrying the wafer on its chuck, a laser interferometer, a gate valve and a load lock with three lift pins, and a turbo pump. Above the lid, the sectioned electron column: field-emission gun with its ion pump and high-voltage insulator, two condenser lenses, scan coils, the objective lens and pole piece, the secondary electron detector, and beside it an optical head for alignment and overlay marks. At left, the operator console whose monitor shows the image forming.`;
+const LABEL = `A CD-SEM cut away along the column's axis. On a base plate on isolators: the vacuum chamber with its front panel and the front of its lid removed, an x-y stage carrying the wafer on its chuck, a laser interferometer, a gate valve and a load lock with three lift pins, and a turbo pump. Above the lid, the sectioned electron column: field-emission gun with its ion pump and high-voltage insulator, two condenser lenses, scan coils, the objective lens and pole piece, the secondary electron detector, and beside it an optical head that finds alignment marks and makes a defect-inspection pass. On the base plate between console and chamber, the high-voltage tank, cabled to the gun. At left, the operator console whose monitor shows the image forming.`;
 const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="mt-layers">${groups.join("")}</g>`], className: "mt-svg" });
 
 const PARTS = ORDER.map((id, index) => `<button type="button" class="mt-part" data-part="${id}"><span class="mt-num">${String(index + 1).padStart(2, "0")}</span>${M.PARTS[id].name}</button>`).join("");
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">CD-SEM · cut away</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="mt-controls"><span class="mt-hint">Hover a part · Space plays the measurement</span><span class="mt-live" aria-live="polite" data-live></span></div>`;
 const stageEl = `<div class="mt-stage" tabindex="0" role="slider" aria-label="CD-SEM, cut away. Hover, or use the arrow keys, to pick a part; Space plays or pauses the measurement; Escape returns the wafer to the load lock; the slider below steps through the measurement." aria-valuemin="0" aria-valuemax="${ORDER.length}" aria-valuenow="0" aria-valuetext="${M.IDLE}">${svg}</div>`;
-const caption = `A critical-dimension SEM measures the width of printed lines by scanning a low-energy electron beam across them and counting the secondary electrons that come back. The wafer enters through a load lock and gate valve so the chamber never loses its vacuum, an optical head finds the alignment and overlay marks, and the stage, read by a laser interferometer, brings the measured site under the column. The beam is kept at low energy so the resist neither charges nor shrinks: about ${M.FIRST.kev} kV acceleration on the first CD-SEM in ${M.FIRST.year}, ${M.NIST.landingEv} eV landing energy in the NIST study cited below, and down to ${M.GT2000.volts} V on Hitachi's ${M.GT2000.year} GT2000. The monitor plays one illustrative measurement: lines of ${M.RUN.targetNm.toFixed(0)} nm target width, a result of ${M.RUN.cdNm.toFixed(1)} nm against a ±${M.RUN.specNm.toFixed(1)} nm spec, and an overlay reading of ${M.RUN.ovlXNm.toFixed(1)} and ${M.RUN.ovlYNm.toFixed(1)} nm; those values, the wafer's die grid, the enlarged site and box-in-box mark, and all sizes and proportions are illustrative, not to scale.`;
-const scrub = `<span class="mt-scrub"><button type="button" class="mt-play" data-play aria-label="Play the measurement"><span class="mt-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="mt-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Measurement progress: 0 is the wafer in the load lock, 1000 is the SPC point plotted"><span class="mt-step" data-step>01 · ${M.STEPS[0].name}</span></span>`;
-const body = `<figure class="iso-figure mt"><div class="iso-plate">${corners}${stageEl}${controls}</div><figcaption class="iso-legend">${scrub}<span class="mt-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
+const caption = `A critical-dimension SEM measures the width of printed lines by scanning a low-energy electron beam across them and counting the secondary electrons that come back. The wafer enters through a load lock and gate valve so the chamber never loses its vacuum, an optical head finds the alignment marks, and the stage, read by a laser interferometer, brings the measured site under the column. The beam is kept at low energy so the resist neither charges nor shrinks: about ${M.FIRST.kev} kV acceleration on the first CD-SEM in ${M.FIRST.year}, ${M.NIST.landingEv} eV landing energy in the NIST study cited below, and down to ${M.GT2000.volts} V on Hitachi's ${M.GT2000.year} GT2000. The monitor plays one illustrative measurement: lines of ${M.RUN.targetNm.toFixed(0)} nm target width, a result of ${M.RUN.cdNm.toFixed(1)} nm against a ±${M.RUN.specNm.toFixed(1)} nm spec, an overlay reading of ${M.RUN.ovlXNm.toFixed(1)} and ${M.RUN.ovlYNm.toFixed(1)} nm and a defect map of ${M.DEFECTS.length} dots. In a fab, defect inspection and overlay run on their own dedicated tools; the one optical head stands in for both here. Those values, the wafer's die grid, the enlarged site and box-in-box mark, and all sizes and proportions are illustrative, not to scale.`;
+const scrub = `<span class="mt-scrub"><button type="button" class="mt-play" data-play aria-label="Play the measurement"><span class="mt-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="mt-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Measurement progress, in ${M.STEPS.length} steps: the arrow keys move one step, Shift with an arrow a tenth of a step"><span class="mt-step" data-step>01 · ${M.STEPS[0].name}</span></span>`;
+const inset = `<svg class="mt-inset" viewBox="-1.5 -1.5 ${SW + 3} ${SH + 3}" aria-hidden="true" focusable="false"><rect class="mt-inset-frame" x="-0.75" y="-0.75" width="${SW + 1.5}" height="${SH + 1.5}" rx="1"/><use href="#mt-screen-live"/></svg>`;
+const insetTag = `<span class="mt-inset-tag" aria-hidden="true">Monitor · enlarged</span>`;
+const body = `<figure class="iso-figure mt"><div class="iso-plate">${corners}${stageEl}${insetTag}${inset}${controls}</div><figcaption class="iso-legend">${scrub}<span class="mt-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 
 const CSS = readFileSync(join(HERE, "metrology.css"), "utf8");
 const LIVE = `const sharesAt = ${sharesAt.toString()};\n` + readFileSync(join(HERE, "live.js"), "utf8").replace("__DATA__", JSON.stringify(DATA));

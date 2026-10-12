@@ -1,0 +1,402 @@
+.gs {
+  --gs-part-ring: #ffffff10;
+  --gs-part-hover: #ffffff0a;
+}
+
+[data-theme="light"] .gs {
+  --gs-part-ring: #00000014;
+  --gs-part-hover: #0000000a;
+}
+
+.gs .iso-plate {
+  padding: 52px 24px 60px;
+  overflow: hidden;
+}
+
+.gs-stage {
+  position: relative;
+  border-radius: 10px;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.gs-stage:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 6px;
+}
+
+.gs-stage > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.gs-svg .it {
+  pointer-events: visiblePainted;
+}
+
+.gs-stage[data-focus] .gs-it:not([data-on]) {
+  --anatomy-hi: var(--anatomy-mid);
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.gs-it[data-on] {
+  --anatomy-hi: var(--anatomy-lit);
+  --anatomy-mid: var(--anatomy-hi);
+}
+
+.gs-it[data-on] .iso-top {
+  fill: var(--anatomy-lit-top);
+}
+
+.gs-it[data-on] .iso-shade {
+  fill: var(--anatomy-lit-shade);
+}
+
+.gs-it[data-on] [data-seamless] > .iso-shade {
+  stroke: var(--anatomy-lit-shade);
+}
+
+.gs-it[data-on] [data-seamless] > .iso-top {
+  stroke: var(--anatomy-lit-top);
+}
+
+.gs-controls {
+  position: absolute;
+  left: 24px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.gs-hint {
+  font: 10.5px/1 var(--anatomy-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+}
+
+.gs-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.gs-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.gs-part {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--anatomy-muted);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--gs-part-ring);
+  transition: color 160ms var(--anatomy-ease), background 160ms var(--anatomy-ease);
+}
+
+.gs-part:hover,
+.gs-part:focus-visible,
+.gs-part[data-on] {
+  color: var(--anatomy-strong);
+  background: var(--gs-part-hover);
+  outline: none;
+}
+
+.gs-num {
+  font-family: var(--anatomy-mono);
+  font-size: 10px;
+  color: var(--anatomy-muted);
+}
+
+.gs .iso-plate-corner[data-corner="readout"] {
+  max-width: 58%;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .gs .iso-plate {
+    padding: 48px 8px 104px;
+  }
+
+  .gs .iso-plate-corner[data-corner="readout"] {
+    bottom: 44px;
+    right: 0;
+    left: 16px;
+    max-width: calc(100% - 32px);
+    text-align: right;
+    line-height: 1.4;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  .gs-controls {
+    left: 14px;
+    bottom: 14px;
+  }
+
+  .gs-hint {
+    font-size: 9.5px;
+  }
+}
+
+.gs-scrub {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.gs-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-width: 112px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gs-part-hover);
+  color: var(--anatomy-strong);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--gs-part-ring);
+}
+
+.gs-play:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 2px;
+}
+
+.gs-play-icon {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent currentColor;
+}
+
+.gs-play[data-playing] .gs-play-icon {
+  width: 8px;
+  height: 10px;
+  border: 0;
+  border-left: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+}
+
+.gs-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--anatomy-lit);
+  cursor: pointer;
+}
+
+.gs-step {
+  flex: none;
+  min-width: 150px;
+  font: 10.5px/1.2 var(--anatomy-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 480px) {
+  .gs-scrub {
+    flex-wrap: wrap;
+  }
+
+  .gs-step {
+    width: auto;
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+/* ---- glass substrate process marks ---- */
+.gs-via {
+  display: none;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.gs-via[data-s="1"] {
+  display: inline;
+  fill: var(--anatomy-mid);
+  transform: scale(0.7);
+}
+.gs-via[data-s="4"] {
+  display: inline;
+  fill: var(--anatomy-lit);
+  transform: scale(0.95);
+}
+.gs-via[data-s="5"] {
+  display: inline;
+  fill: var(--anatomy-hi);
+  transform: scale(0.8);
+}
+.gs-via[data-s="2"] {
+  display: inline;
+  fill: var(--anatomy-shade-0);
+  stroke: var(--anatomy-mid);
+  stroke-width: var(--anatomy-weight);
+}
+.gs-via[data-s="3"] {
+  display: inline;
+  fill: var(--anatomy-mid);
+  stroke: var(--anatomy-hi);
+  stroke-width: var(--anatomy-weight);
+}
+.gs-film {
+  display: none;
+}
+.gs-film[data-on] {
+  display: inline;
+}
+.gs-film-fill {
+  fill: var(--anatomy-shade-1);
+  opacity: 0.94;
+}
+.gs-rdl,
+.gs-bumps {
+  display: none;
+}
+.gs-rdl[data-on],
+.gs-bumps[data-on] {
+  display: inline;
+}
+.gs-kerf {
+  display: none;
+}
+.gs-kerf[data-on] {
+  display: inline;
+}
+.gs-wet {
+  fill: var(--anatomy-lit);
+  opacity: 0.1;
+}
+.gs-beam {
+  display: none;
+}
+.gs-beam[data-on] {
+  display: inline;
+}
+.gs-chips {
+  display: none;
+}
+.gs-chips[data-on] {
+  display: inline;
+}
+.gs-cu {
+  fill: var(--anatomy-mid);
+}
+.gs-plug {
+  fill: var(--anatomy-shade-2);
+}
+.gs-hole {
+  fill: var(--anatomy-shade-0);
+}
+.gs-datum {
+  fill: var(--anatomy-hi);
+}
+.gs-film-sec {
+  fill: var(--anatomy-shade-1);
+}
+.gs-core-org {
+  fill: var(--anatomy-shade-2);
+}
+.gs-core-gl {
+  fill: var(--anatomy-shade-0);
+}
+.gs-gap {
+  fill: var(--anatomy-lit);
+}
+
+@media (max-width: 520px) {
+  .gs-stage > svg {
+    width: 104%;
+    margin-left: -3%;
+  }
+}
+
+.gs-screen {
+  fill: var(--anatomy-shade-0);
+}
+.gs-screw {
+  fill: var(--anatomy-dot);
+}
+
+/* ---- the flat section pair under the machine ---- */
+.gs-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 220px));
+  justify-content: center;
+  gap: 28px;
+  margin-top: -34px;
+  position: relative;
+}
+.gs-sec {
+  min-width: 0;
+  padding: 8px 8px 6px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--gs-part-ring);
+  transition: background 160ms var(--anatomy-ease);
+}
+.gs-sections:hover .gs-sec,
+.gs[data-coupons] .gs-sec {
+  background: var(--gs-part-hover);
+}
+.gs-sec-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  --anatomy-weight: 0.5;
+}
+.gs-sec-cap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+  font: 10px/1.35 var(--anatomy-mono);
+  letter-spacing: 0.04em;
+  color: var(--anatomy-muted);
+}
+.gs-sec-title {
+  color: var(--anatomy-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+@media (max-width: 640px) {
+  .gs-sections {
+    margin-top: 4px;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0 6px;
+  }
+  .gs-sec-cap {
+    font-size: 9.5px;
+  }
+}
+
+/* the readout grows from one line to two at the bottom of the plate; keep the browser from anchoring scroll to it (the page jumped 14 px on each selection at 390 px) */
+.gs .iso-plate-corner,
+.gs [data-readout] {
+  overflow-anchor: none;
+}

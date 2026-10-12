@@ -37,6 +37,8 @@ const sweep = q("sweep");
 const pedges = q("pedges");
 const newpoint = q("newpoint");
 const rowcount = q("rowcount");
+const defcount = q("defcount");
+const defects = [...screen.querySelectorAll('[data-part="defect"]')];
 const crossY = cross.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/);
 const crossV = Number(crossY[2]);
 const crossU0 = Number(crossY[1]);
@@ -134,15 +136,29 @@ function render() {
     cross.setAttribute("transform", `translate(${crossU0} ${crossV})`);
     text = id === "rest" ? D.idle : STEPS[0].say;
   } else if (id === "navigate") {
-    if (shares.hold > 0.5) {
-      setMode(["overlay", "t-align", "t-ovl"]);
+    if (p < 0.4) {
+      // inspection pass on the way to the mark: defects appear on the map as the head finds them
+      setMode(["map", "defects", "t-inspect", "t-defects"]);
+      cross.setAttribute("transform", `translate(${crossU0} ${crossV})`);
+      let found = 0;
+      defects.forEach((dot, index) => {
+        const on = p >= 0.04 + index * 0.06;
+        if (on) found += 1;
+        dot.style.opacity = on ? "1" : "0";
+      });
+      const noun = found === 1 ? "defect" : "defects";
+      defcount.textContent = found === 0 ? "SCANNING" : `${found} ${noun.toUpperCase()}`;
+      text = found === 0 ? `${STEPS[1].inspect} · scanning` : `${STEPS[1].inspect} · ${found} ${noun} found`;
+    } else if (shares.hold > 0.5) {
+      setMode(["overlay", "t-ovlh", "t-ovl"]);
       text = STEPS[1].say;
     } else {
-      setMode(["map", "t-align"]);
+      setMode(["map", "defects", "t-align"]);
+      defects.forEach((dot) => (dot.style.opacity = "1"));
       const toSite = clamp((p - 0.65) / 0.35);
       const u = crossU0 + (D.map.to - D.map.from) * ease(toSite);
       cross.setAttribute("transform", `translate(${u.toFixed(2)} ${crossV})`);
-      text = p < 0.4 ? "stage to the overlay mark" : "stage to the measurement site";
+      text = "stage to the measurement site";
     }
   } else if (id === "scan") {
     setMode(["sem", "t-scan"]);
@@ -390,6 +406,23 @@ document.addEventListener("keydown", (event) => {
   event.preventDefault();
   takeOver();
   select(D.order[next]);
+});
+
+// keys on the slider move a whole step (Shift: a tenth of one); pointer drags keep fine control
+scrubInput.addEventListener("keydown", (event) => {
+  const dir = { ArrowRight: 1, ArrowUp: 1, PageUp: 1, ArrowLeft: -1, ArrowDown: -1, PageDown: -1 }[event.key];
+  if (dir === undefined) return;
+  event.preventDefault();
+  takeOver();
+  playing = false;
+  select(null);
+  const unit = event.shiftKey && event.key.startsWith("Arrow") ? 0.1 : 1;
+  const steps = T / unit;
+  const snapped = dir > 0 ? Math.floor(steps + 1e-6) + 1 : Math.ceil(steps - 1e-6) - 1;
+  T = Math.min(END, Math.max(0, snapped * unit));
+  scrubInput.value = String(Math.round((T / END) * 1000));
+  paint();
+  run();
 });
 
 scrubInput.addEventListener("input", () => {

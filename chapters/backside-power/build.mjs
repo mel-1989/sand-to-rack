@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import * as M from "./model.mjs";
 import * as ST from "./stack.mjs";
 
-import { k, G, A, Tube, kitScript } from "../../site/kit.mjs";
+import { k, G, A, Tube } from "../../site/kit.mjs";
 import { writeChapter } from "../../site/shell.mjs";
 import { LESSON } from "./lesson.mjs";
 
@@ -52,7 +52,7 @@ const FACE = { y0: BOSS.y1, y1: BLK.y0 };
 // grinder: column at the back, a carriage, an arm over the block, spindle and cup wheel
 const COL = { x: XR - 7, y: -70, w: 14, d: 14, r: 1.5 };
 const COL_BASE = { x: XR - 13, y: -75, w: 26, d: 24, r: 2 };
-const COL_TOP = 146;
+const COL_TOP = 169; // tall enough for the head's lift during the flip
 const WHEEL_Z = WHEEL.rest;
 const HUB = { z0: WHEEL_Z + WHEEL.h, z1: WHEEL_Z + WHEEL.h + 4, r: 9 };
 const SPINDLE = { z0: HUB.z1, z1: HUB.z1 + 20, r: 7 };
@@ -144,11 +144,11 @@ function bench() {
   out.push(Ln(ticks.minor, { tone: "lo" }), Ln(ticks.major, { tone: "mid" }));
   out.push(Dots([at([strip.x + 2, strip.y + 4, 0.6]), at([strip.x + strip.w - 2, strip.y + 4, 0.6])], { size: 0.45 }));
   // label plate at the near left corner
-  const label = { x: -104, y: PLATE.y + 14, w: 30, d: 30, r: 1.5 };
+  const label = { x: 48, y: PLATE.y + PLATE.d - 20, w: 26, d: 12, r: 1.5 };
   out.push(S(k.slabOf(label, 0, 0.8, P, 4), { tone: "lo", crease: "none" }));
   out.push(Ln(k.planOutline(k.insetPlan(label, 1.8), 0.8, P, 4), { tone: "faint" }));
-  out.push(Ln([0, 1, 2, 3].map((i) => k.lineOnTop([label.x + 5 + i * 5, label.y + 5], [label.x + 5 + i * 5, label.y + 25 - i * 4], 0.8, P)).join(""), { tone: "lo", free: true }));
-  out.push(Dots([at([label.x + label.w / 2, label.y + 2.6, 0.8]), at([label.x + label.w / 2, label.y + label.d - 2.6, 0.8])], { size: 0.45 }));
+  out.push(Ln([0, 1, 2].map((i) => k.lineOnTop([label.x + 6, label.y + 3.4 + i * 2.6], [label.x + 20 - i * 4, label.y + 3.4 + i * 2.6], 0.8, P)).join(""), { tone: "lo", free: true }));
+  out.push(Dots([at([label.x + 2.8, label.y + label.d / 2, 0.8]), at([label.x + label.w - 2.8, label.y + label.d / 2, 0.8])], { size: 0.45 }));
   put("stand", [0, 0, -2], out.join(""), shapes, { name: "stand.bench", bias: -800 });
 }
 
@@ -199,7 +199,8 @@ function tray() {
 
 function rightBlock() {
   const svg = `<g class="bp-block" data-block>${ST.rightSvg(FINAL, P, V, L)}</g>`;
-  put("block", centreOf(RIGHT, RIGHT_Z0), svg, [slabShape(RIGHT, RIGHT_Z0, RIGHT_TOP - RIGHT_Z0, {}, 2)], { name: "block.right" });
+  const jaws = [-1, 1].map((side) => slabShape({ x: side < 0 ? RIGHT.x - ST.JAW.w : RIGHT.x + RIGHT.w, y: BLK.y0, w: ST.JAW.w, d: ST.JAW.d, r: 0 }, ZC - ST.JAW.h / 2, ST.JAW.h, {}, 2));
+  put("block", centreOf(RIGHT, RIGHT_Z0), svg, [slabShape(RIGHT, RIGHT_Z0, RIGHT_TOP - RIGHT_Z0, {}, 2), ...jaws], { name: "block.right" });
 }
 
 function fixture() {
@@ -227,7 +228,7 @@ function fixture() {
 function grinder() {
   const base = S(k.slabOf(COL_BASE, 0, 5, P, 4, 0.5), { tone: "mid" }) + Dots(k.corners(COL_BASE, 3).map(([x, y]) => at([x, y, 5])), { size: 0.45 });
   put("tools", centreOf(COL_BASE, 0), base, [slabShape(COL_BASE, 0, 5, {}, 4)], { name: "tools.colbase" });
-  const seams = [50, 100, 140].map((z) => k.sideSeam(COL, z, P, 3)).join("");
+  const seams = [50, 100, 150].map((z) => k.sideSeam(COL, z, P, 3)).join("");
   const post = S(k.slabOf(COL, 5, COL_TOP - 5, P, 3, 0.5), { tone: "mid", inner: Ln(seams, { tone: "faint" }) });
   // the lead-screw slot the carriage rides in, on the front face, closed
   const fy = COL.y + COL.d;
@@ -335,8 +336,8 @@ const PARTS = M.ORDER.map((id, index) => `<button type="button" class="bp-part" 
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">Front-side vs backside power</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.DONE}</span></div>`;
 const controls = `<div class="bp-controls"><span class="bp-hint">Hover a layer · Space plays the build</span><span class="bp-live" aria-live="polite" data-live></span></div>`;
 const stageEl = `<div class="bp-stage" tabindex="0" role="slider" aria-label="Two chip blocks: front-side power on the left, backside power on the right on a flip fixture under a grinder. Hover, or use the arrow keys, to pick a part; Space plays or pauses the backside-power build; Escape stops it and shows the finished chip; the slider below steps through the build." aria-valuemin="0" aria-valuemax="${M.ORDER.length}" aria-valuenow="0" aria-valuetext="${M.DONE}">${svg}</div>`;
-const caption = `Left, the usual chip: current enters at the bumps on top and has to climb down through every wiring layer, ${M.IMEC.beolLayers[0]} to ${M.IMEC.beolLayers[1]} of them on a modern chip, where power lines take at least ${M.IMEC.powerRoutingPct}% of the routing (imec). Right, backside power as Intel builds it for ${M.INTEL_18A.node} (PowerVia) and TSMC for ${M.A16.node} (Super Power Rail): the front keeps only signal wiring, a carrier wafer is bonded on and the stack flipped, the original silicon is ground from ${M.WAFER_UM} µm to ${M.IMEC.thinNm} nanometres, and nano-TSVs carry current from thick power layers on the back straight to the transistors. Lighter copper is power, darker is signal. The blocks are illustrative: hugely magnified, heights compressed, layer and wire counts reduced, and the flip fixture and grinder stand in for the separate bonding, flipping and back-grinding tools a fab uses on whole 300 mm wafers.`;
-const scrub = `<span class="bp-scrub"><button type="button" class="bp-play" data-play aria-label="Play the backside-power build"><span class="bp-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="bp-range" data-scrub min="0" max="1000" step="1" value="1000" aria-label="Build: 0 is a wafer with transistors starting, 1000 is the finished backside-power chip"><span class="bp-step" data-step>07 · Bumps on the back</span></span>`;
+const caption = `Left, the usual chip: current enters at the bumps on top and has to climb down through every wiring layer, ${M.IMEC.beolLayers[0]} to ${M.IMEC.beolLayers[1]} of them on a modern chip, where power lines take at least ${M.IMEC.powerRoutingPct}% of the routing (imec). Right, backside power, as in Intel's PowerVia (${M.INTEL_18A.node}) and TSMC's Super Power Rail (${M.A16.node}): the front keeps only signal wiring, a carrier wafer is bonded on and the stack flipped, the original silicon is ground from ${M.WAFER_UM} µm to ${M.IMEC.thinNm} nanometres, and nano-TSVs carry current from thick power layers on the back straight to the transistors. Power copper is drawn in the strongest tone and signal copper in a paler one; the moving dashes show the path current takes from the bumps to the transistors. The blocks are illustrative: hugely magnified, heights compressed, layer and wire counts reduced, and the flip fixture and grinder stand in for the separate bonding, flipping and back-grinding tools a fab uses on whole 300 mm wafers.`;
+const scrub = `<span class="bp-scrub"><button type="button" class="bp-play" data-play aria-label="Play the backside-power build"><span class="bp-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="bp-range" data-scrub min="0" max="1000" step="1" value="1000" aria-label="Build: 0 is a bare wafer, 1000 is the finished backside-power chip"><span class="bp-step" data-step>07 · Bumps on the back</span></span>`;
 const body = `<figure class="iso-figure bp"><div class="iso-plate">${corners}${stageEl}${controls}</div><figcaption class="iso-legend">${scrub}<span class="bp-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 
 const CSS = readFileSync(join(HERE, "backside-power.css"), "utf8");

@@ -165,8 +165,10 @@ function render(T, calm) {
     fade(ray.dots, p >= 0.999 ? 1 : 0);
   });
   // the exit cones: the 0.55 cone forms as the last leg lands; the 0.33 cone appears for comparison
-  fade(cones.high, T < t0("project") ? 0 : ramp(u("project"), 0.8, 1));
-  const lowOn = T < t0("cone") ? 0 : ramp(u("cone"), 0.1, 0.4);
+  // in the stitch step the light dims so the stitched die under the cone's tip can be seen
+  const dim = T >= t0("stitch") ? ramp(u("stitch"), 0.08, 0.22) : 0;
+  fade(cones.high, (T < t0("project") ? 0 : ramp(u("project"), 0.8, 1)) * (1 - 0.8 * dim));
+  const lowOn = (T < t0("cone") ? 0 : ramp(u("cone"), 0.1, 0.4)) * (1 - dim);
   fade(cones.low, lowOn);
   cones.low?.toggleAttribute("data-near", T >= t0("cone") && T < t1("cone"));
 
@@ -187,14 +189,14 @@ function render(T, calm) {
   fade(masks.B, ramp(sw, 0.55, 0.7));
 
   // the fields: half A fills as it scans, then half B, then the seam and the die outline light; the rest of the wafer follows
-  for (const cell of cellA) fade(cell, pose.a * 0.6);
-  for (const cell of cellB) fade(cell, pose.b * 0.6);
+  for (const cell of cellA) fade(cell, pose.a * 0.9);
+  for (const cell of cellB) fade(cell, pose.b * 0.9);
   const st = T >= t0("stitch") ? u("stitch") : 0;
   fade(seam, T >= t0("stitch") ? ramp(st, 0.15, 0.3) * (1 - ramp(st, 0.55, 0.7)) : 0);
   fade(dieLine, T >= t0("stitch") ? ramp(st, 0.25, 0.4) : 0);
   const done = T >= t0("stitch") ? clamp((st - 0.45) / 0.5) * rest.length : 0;
   rest.forEach((group, i) => {
-    const v = clamp(done - i) * 0.32;
+    const v = clamp(done - i) * 0.45;
     for (const cell of group) fade(cell, v);
   });
   return { pose, stitched: Math.min(rest.length + 1, 1 + Math.floor(done)) };

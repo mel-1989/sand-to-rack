@@ -14,9 +14,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ---- world layout: x across the tray, y front (+) to back (−), z up; 1 unit = 2 mm on the tray ----
 const W = 760;
-const H = 700;
+const H = 650;
 const AZIMUTH = 52;
-const ELEVATION = 36;
+const ELEVATION = 38;
 
 const BASE = { x: -208, y: -228, w: 360, d: 486, r: 10 };
 const BASE_H = 10;
@@ -76,7 +76,7 @@ const MINI_SLOTS = [];
 M.RACK.layout.forEach((count, block) => {
   for (let i = 0; i < count; i++) MINI_SLOTS.push(block === 0 || block === 4 ? "power" : block === 2 ? "switch" : "compute");
 });
-const OURS = M.RACK.layout[0] + M.RACK.layout[1] + M.RACK.layout[2] + 4; // 5th tray of the lower compute block, counted from the bottom
+const OURS = M.RACK.layout[4] + M.RACK.layout[3] + M.RACK.layout[2] + 6; // slot index from the bottom: the 7th tray of the upper compute block
 MINI_SLOTS.reverse(); // the list runs top to bottom; slots count from the bottom
 const MINI_TOP = MINI_Z + MINI_SLOTS.length * MINI_U;
 const MINI_SLIDE = [0, 30, 0];
@@ -387,28 +387,34 @@ function plates() {
   for (const side of [-1, 1]) {
     const fx = (x) => (side < 0 ? x : -x);
     const list = [...GPU_C.map(([cx, cy]) => ({ cx: fx(cx), cy, hw: 20, hd: 22 })), { cx: fx(GRACE_C[0]), cy: GRACE_C[1], hw: 13, hd: 13 }];
-    list.forEach(({ cx, cy, hw, hd }, index) => {
-      const plate = { x: cx - hw, y: cy - hd, w: 2 * hw, d: 2 * hd, r: 1.6 };
-      const barX = side < 0 ? [BAR.x, BAR.x + BAR.w] : [-BAR.x - BAR.w, -BAR.x];
-      const screws = k.corners(plate, hw < 15 ? 2.6 : 3.6).filter(([sx]) => sx + 2.4 < barX[0] || sx - 2.4 > barX[1]);
-      let svg = box(plate, CHIP_TOP, PLATE_TOP - CHIP_TOP, "hi", { bevel: 0.5, steps: 3, crease: "lo", inner: L(k.sideSeam(plate, CHIP_TOP + 2.2, P, 3), { tone: "faint" }) });
-      svg += L(k.planOutline(k.insetPlan(plate, 6.5), PLATE_TOP, P, 3), { tone: "faint" });
-      const shapes = [slab(plate, CHIP_TOP, PLATE_TOP - CHIP_TOP, 3)];
-      for (const [x, y] of byDepth(screws)) {
-        svg += S(k.cylinder(x, y, 2.3, PLATE_TOP, 1.2, P, 18), { tone: "mid" }) + S(k.cylinder(x, y, 1.6, PLATE_TOP + 1.2, 2, P, 16), { tone: "mid" }) + L(k.ring(x, y, 0.8, PLATE_TOP + 3.2, P, 8), { tone: "lo" });
-        shapes.push(cyl(x, y, 2.3, PLATE_TOP, 1.2), cyl(x, y, 1.6, PLATE_TOP + 1.2, 2));
-      }
-      put("plates", "plates", [cx, cy, 15], svg, shapes, { name: `plates.plate${side}_${index}`, slide: true });
-    });
-    // distribution bar across the three plates, with the hose fittings at its rear end
     const bar = side < 0 ? BAR : mirror(BAR);
+    const barX = [bar.x, bar.x + bar.w];
+    // one rigid assembly per board: three plates, their spring screws, and the distribution bar that ties them
+    const shapes = [];
+    let plateSvg = "";
+    const near = [];
+    const far = [];
+    for (const { cx, cy, hw, hd } of [...list].sort((a, b) => k.depthOf([a.cx, a.cy, 0], P) - k.depthOf([b.cx, b.cy, 0], P))) {
+      const plate = { x: cx - hw, y: cy - hd, w: 2 * hw, d: 2 * hd, r: 1.6 };
+      plateSvg += box(plate, CHIP_TOP, PLATE_TOP - CHIP_TOP, "hi", { bevel: 0.5, steps: 3, crease: "lo", inner: L(k.sideSeam(plate, CHIP_TOP + 2.2, P, 3), { tone: "faint" }) });
+      plateSvg += L(k.planOutline(k.insetPlan(plate, 6.5), PLATE_TOP, P, 3), { tone: "faint" });
+      shapes.push(slab(plate, CHIP_TOP, PLATE_TOP - CHIP_TOP, 3));
+      for (const [x, y] of k.corners(plate, hw < 15 ? 2.6 : 3.6)) {
+        if (x + 2.3 > barX[0] - 0.05 && x - 2.3 < barX[1] + 0.05) continue;
+        (x > barX[1] ? near : far).push([x, y]);
+      }
+    }
+    const screwSvg = (list) => byDepth(list).map(([x, y]) => S(k.cylinder(x, y, 2.3, PLATE_TOP, 1.2, P, 18), { tone: "mid" }) + S(k.cylinder(x, y, 1.6, PLATE_TOP + 1.2, 2, P, 16), { tone: "mid" }) + L(k.ring(x, y, 0.8, PLATE_TOP + 3.2, P, 8), { tone: "lo" })).join("");
+    for (const [x, y] of [...near, ...far]) shapes.push(cyl(x, y, 2.3, PLATE_TOP, 1.2), cyl(x, y, 1.6, PLATE_TOP + 1.2, 2));
     const portX = [fx(-59), fx(-51)];
-    let svg = box(bar, PLATE_TOP, BAR_TOP - PLATE_TOP, "mid", { bevel: 0.4, steps: 2, inner: L(k.sideSeam(bar, PLATE_TOP + 2.5, P, 2), { tone: "faint" }) });
+    let svg = plateSvg + screwSvg(far) + box(bar, PLATE_TOP, BAR_TOP - PLATE_TOP, "mid", { bevel: 0.4, steps: 2, inner: L(k.sideSeam(bar, PLATE_TOP + 2.5, P, 2), { tone: "faint" }) });
     const bolts = [-110, -64, -30].map((y) => [fx(-55), y]);
     svg += L(bolts.map(([x, y]) => k.ring(x, y, 1.4, BAR_TOP, P, 12)).join(""), { tone: "lo" }) + Dots(bolts.map(([x, y]) => at([x, y, BAR_TOP])), { size: 0.4 });
     const fits = byDepth(portX.map((x) => [x, -116]));
     svg += fits.map(([x, y]) => S(k.cylinder(x, y, 2.9, BAR_TOP, FIT_TOP - BAR_TOP, P, 20), { tone: "mid" })).join("");
-    put("plates", "plates", centreOf(bar, 20), svg, [slab(bar, PLATE_TOP, BAR_TOP - PLATE_TOP, 2), ...portX.map((x) => cyl(x, -116, 2.9, BAR_TOP, FIT_TOP - BAR_TOP))], { name: `plates.bar${side}`, slide: true });
+    svg += screwSvg(near);
+    shapes.push(slab(bar, PLATE_TOP, BAR_TOP - PLATE_TOP, 2), ...portX.map((x) => cyl(x, -116, 2.9, BAR_TOP, FIT_TOP - BAR_TOP)));
+    put("plates", "plates", [fx(-55), -70, 18], svg, shapes, { name: `plates.loop${side}`, slide: true });
     // hoses: supply runs high and far, return low and near, so they never cross
     const supply = [[side * 8, -143, TMAN_TOP + 2], [side * 8, -143, 42], [portX[0], -143, 42], [portX[0], -116, 42], [portX[0], -116, FIT_TOP]];
     const ret = [[side * 18, -136, TMAN_TOP + 2], [side * 18, -136, 33], [portX[1], -136, 33], [portX[1], -116, 33], [portX[1], -116, FIT_TOP]];

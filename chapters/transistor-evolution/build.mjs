@@ -15,7 +15,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const U = M.UNIT;
 
 const W = 720;
-const H = 360;
+const H = 272;
 const AZIMUTH = 45;
 const ELEVATION = 30;
 
@@ -84,7 +84,7 @@ const P = k.fitProjection(
   ],
   W,
   H,
-  { pad: 22, azimuth: AZIMUTH, elevation: ELEVATION },
+  { pad: 10, azimuth: AZIMUTH, elevation: ELEVATION },
 );
 const at = (point) => k.iso(point, P);
 const S = (paths, style) => k.solidSvg(paths, style);
@@ -95,10 +95,11 @@ const centreOf = (plan, z) => [plan.x + plan.w / 2, plan.y + plan.d / 2, z];
 
 const R = A.recorder(P, { order: STAGGER, spring: SPRING });
 const MOVE = [SLIDE, 0, 0];
+let HOST = false; // set while drawing a specimen's stage: hover finds the specimen, but only the specimen lights
 function put(piece, gen, ref, svg, shapes, { bias = 0, name } = {}) {
   const id = name ?? R.nameFor(`${piece === "stand" ? "stand" : piece}.item`);
   shapes.forEach((shape) => (shape.name = shape.name ?? id));
-  R.put({ piece, gen, at: ref, bias, svg, move: piece === "stand" ? [0, 0, 0] : MOVE, shapes: shapes.map(R.solid), name: id });
+  R.put({ piece, gen, host: HOST, at: ref, bias, svg, move: piece === "stand" ? [0, 0, 0] : MOVE, shapes: shapes.map(R.solid), name: id });
 }
 const slabShape = (plan, z, h, steps = 2) => A.slab(plan, z, h, {}, steps);
 
@@ -133,7 +134,7 @@ function finPts(yc, z0, z1, w0, w1, round = 2.4, grow = 0) {
   return pts;
 }
 // material classes: tr-si silicon channel, tr-ox gate dielectric, tr-iso isolation dielectric, tr-sd doped silicon
-const mat = (cls, d, tone) => `<path class="tr-mat ${cls}" d="${d}"/><path class="iso-line tr-edge ${cls}-edge" data-tone="${tone}" d="${d}"/>`;
+const mat = (cls, d, tone, sub) => `<path class="tr-mat ${cls}" data-sub="${sub}" d="${d}"/><path class="iso-line tr-edge ${cls}-edge" data-tone="${tone}" d="${d}"/>`;
 
 // ---- the bench: plate, feet, ruler, label plate ----
 function bench() {
@@ -258,20 +259,25 @@ function specimen(id) {
     const base = box(...xr, Y - HW, Y + HW);
     let baseFace = "";
     if (id === "planar") {
-      for (const [a, b] of [[-HW, -32], [32, HW]]) baseFace += mat("tr-iso", pathYZ(face, rrect(Y + a, Y + b, z(11), z(s.base))), "lo");
-      if (side < 0) baseFace += mat("tr-si", pathYZ(face, rrect(Y - 30, Y + 30, z(s.base - 1.6), z(s.base))), "hi");
-      else baseFace += mat("tr-sd", pathYZ(face, rrect(Y - 30, Y + 30, z(s.base - 6), z(s.base), 0)), "mid");
+      for (const [a, b] of [[-HW, -32], [32, HW]]) baseFace += mat("tr-iso", pathYZ(face, rrect(Y + a, Y + b, z(11), z(s.base))), "lo", "trench");
+      // source half, cut through the gate: the channel strip under the oxide, the doped well around it;
+      // drain half, its outer end cut through the drain: the doped drain region under the raised drain
+      if (side < 0) {
+        baseFace += mat("tr-sd", pathYZ(face, rrect(Y - 31, Y + 31, z(s.base - 8), z(s.base), 0)), "lo", "body");
+        baseFace += mat("tr-si", pathYZ(face, rrect(Y - 30, Y + 30, z(s.base - 3.4), z(s.base))), "hi", "channel");
+      } else baseFace += mat("tr-sd", pathYZ(face, rrect(Y - 30, Y + 30, z(s.base - 7), z(s.base), 0)), "hi", "well");
     }
-    put(piece, id, centreOf(base, z(baseFrom)), S(k.slabOf(base, z(baseFrom), s.base - baseFrom, P, 2, 0.3), { tone: "mid" }) + baseFace, [slabShape(base, z(baseFrom), s.base - baseFrom)], { name: `${tag}.base` });
+    const well = L(k.sideSeam(base, z(s.base - (id === "planar" ? 11 : 7)), P, 2), { tone: "faint" });
+    put(piece, id, centreOf(base, z(baseFrom)), S(k.slabOf(base, z(baseFrom), s.base - baseFrom, P, 2, 0.3), { tone: "mid", inner: well }) + baseFace, [slabShape(base, z(baseFrom), s.base - baseFrom)], { name: `${tag}.base` });
 
     // shallow trench isolation with the fin roots in it
     if (s.sti) {
       const plan = box(...xr, Y - HW, Y + HW);
       let roots = "";
-      if (id === "finfet") for (const yc of [-30, 30]) roots += mat("tr-si", pathYZ(face, [[Y + yc - 5, z(s.base)], [Y + yc + 5, z(s.base)], [Y + yc + 4.7, z(sti)], [Y + yc - 4.7, z(sti)]]), "mid");
+      if (id === "finfet") for (const yc of [-30, 30]) roots += mat("tr-si", pathYZ(face, [[Y + yc - 5, z(s.base)], [Y + yc + 5, z(s.base)], [Y + yc + 4.7, z(sti)], [Y + yc - 4.7, z(sti)]]), "mid", "root");
       else {
         const stacks = id === "gaa" ? [[-22, 13], [22, 13]] : [[0, 14]];
-        for (const [yc, hw] of stacks) roots += mat("tr-si", pathYZ(face, rrect(Y + yc - hw, Y + yc + hw, z(s.base), z(sti))), "mid");
+        for (const [yc, hw] of stacks) roots += mat("tr-si", pathYZ(face, rrect(Y + yc - hw, Y + yc + hw, z(s.base), z(sti))), "mid", "root");
       }
       put(piece, id, centreOf(plan, z(s.base)), S(k.slabOf(plan, z(s.base), sti - s.base, P, 2), { tone: "lo" }) + roots, [slabShape(plan, z(s.base), sti - s.base)], { name: `${tag}.sti` });
     }
@@ -291,22 +297,25 @@ function specimen(id) {
       const ox = 1.6;
       if (id === "finfet") {
         for (const yc of [-30, 30]) {
-          cut += mat("tr-ox", pathYZ(X, finPts(Y + yc, z(sti), z(s.finTop), 9.4, 6, 3, ox)), "lo");
-          cut += mat("tr-si", pathYZ(X, finPts(Y + yc, z(sti), z(s.finTop), 9.4, 6, 3)), "hi");
+          cut += L(pathYZ(X, finPts(Y + yc, z(sti), z(s.finTop), 9.4, 6, 3, ox + 2.2)), { tone: "faint" });
+          cut += mat("tr-ox", pathYZ(X, finPts(Y + yc, z(sti), z(s.finTop), 9.4, 6, 3, ox)), "lo", "gox");
+          cut += mat("tr-si", pathYZ(X, finPts(Y + yc, z(sti), z(s.finTop), 9.4, 6, 3)), "hi", "channel");
         }
       } else if (s.sheets) {
         const stacks = id === "gaa" ? [[-22, 13], [22, 13]] : [[0, 14]];
         for (const [yc, hw] of stacks) {
-          cut += mat("tr-ox", pathYZ(X, rrect(Y + yc - hw, Y + yc + hw, z(sti), z(sti + ox))), "lo");
-          if (s.mdi) cut += mat("tr-iso", pathYZ(X, rrect(Y + yc - hw - 2, Y + yc + hw + 2, z(s.mdi[0]), z(s.mdi[1]), 1)), "lo");
+          cut += mat("tr-ox", pathYZ(X, rrect(Y + yc - hw, Y + yc + hw, z(sti), z(sti + ox))), "lo", "gox");
+          if (s.mdi) cut += mat("tr-iso", pathYZ(X, rrect(Y + yc - hw - 2, Y + yc + hw + 2, z(s.mdi[0]), z(s.mdi[1]), 1)), "lo", "mdi");
           for (const z0 of s.sheets) {
-            cut += mat("tr-ox", pathYZ(X, rrect(Y + yc - hw - ox, Y + yc + hw + ox, z(z0 - ox), z(z0 + s.sheetH + ox), 2.4)), "lo");
-            cut += mat("tr-si", pathYZ(X, rrect(Y + yc - hw, Y + yc + hw, z(z0), z(z0 + s.sheetH), 1.6)), "hi");
+            cut += L(pathYZ(X, rrect(Y + yc - hw - ox - 1.6, Y + yc + hw + ox + 1.6, z(z0 - ox - 1.6), z(z0 + s.sheetH + ox + 1.6), 3.4)), { tone: "faint" });
+            cut += mat("tr-ox", pathYZ(X, rrect(Y + yc - hw - ox, Y + yc + hw + ox, z(z0 - ox), z(z0 + s.sheetH + ox), 2.4)), "lo", "gox");
+            cut += mat("tr-si", pathYZ(X, rrect(Y + yc - hw, Y + yc + hw, z(z0), z(z0 + s.sheetH), 1.6)), "hi", "channel");
           }
         }
       }
     }
-    put(piece, id, centreOf(gate, z(gateBottom)), S(k.slabOf(gate, z(gateBottom), s.gateTop - gateBottom, P, 2, 0.3), { tone: "mid" }) + cut, [slabShape(gate, z(gateBottom), s.gateTop - gateBottom)], { name: `${tag}.gate` });
+    const gateSeams = L([gateBottom + 3, s.gateTop - 4].map((h) => k.sideSeam(gate, z(h), P, 2)).join(""), { tone: "faint" });
+    put(piece, id, centreOf(gate, z(gateBottom)), S(k.slabOf(gate, z(gateBottom), s.gateTop - gateBottom, P, 2, 0.3), { tone: "mid", inner: gateSeams }) + cut, [slabShape(gate, z(gateBottom), s.gateTop - gateBottom)], { name: `${tag}.gate` });
     if (s.cap) put(piece, id, centreOf(gate, z(s.gateTop)), S(k.slabOf(gate, z(s.gateTop), s.cap, P, 2), { tone: "lo" }), [slabShape(gate, z(s.gateTop), s.cap)], { name: `${tag}.cap` });
 
     // spacer beside the gate
@@ -327,14 +336,14 @@ function specimen(id) {
       for (const yc of [-30, 30]) {
         const F = G.frameOf([Math.min(...ex), Y + yc, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]);
         const len = Math.abs(ex[1] - ex[0]);
-        const core = side > 0 ? mat("tr-si", pathYZ(face, finPts(Y + yc, z(sti), z(46), 9.4, 7, 3)), "mid") : "";
+        const core = side > 0 ? mat("tr-si", pathYZ(face, finPts(Y + yc, z(sti), z(46), 9.4, 7, 3)), "mid", "core") : "";
         put(piece, id, [Math.min(...ex) + len / 2, Y + yc, z(40)], S(G.prismOf(F, poly, 0, len, P), { tone: "hi", crease: "lo" }) + core, [A.prism(F, poly, 0, len)], { name: `${tag}.epi${yc < 0 ? "L" : "R"}` });
       }
     } else if (id === "gaa") {
       epiTop = 60;
       for (const yc of [-22, 22]) {
         const epi = box(...ex, Y + yc - 15, Y + yc + 15, 1.5);
-        put(piece, id, centreOf(epi, z(sti)), S(k.slabOf(epi, z(sti), epiTop - sti, P, 3, 0.4), { tone: "hi", crease: "lo" }), [slabShape(epi, z(sti), epiTop - sti, 3)], { name: `${tag}.epi${yc < 0 ? "L" : "R"}` });
+        put(piece, id, centreOf(epi, z(sti)), S(k.slabOf(epi, z(sti), epiTop - sti, P, 3, 0.4), { tone: "hi", crease: "lo" }) + L(k.planOutline(k.insetPlan(epi, 3), z(epiTop), P, 3), { tone: "faint" }), [slabShape(epi, z(sti), epiTop - sti, 3)], { name: `${tag}.epi${yc < 0 ? "L" : "R"}` });
       }
     } else {
       const pe = box(...ex, Y - 17, Y + 17, 1.5);
@@ -351,7 +360,7 @@ function specimen(id) {
     const cw = id === "cfet" ? 13 : id === "planar" ? 22 : 36;
     const ct = box(...xs(cx0, s.half), Y - cw, Y + cw, 0.6);
     const pad = box(...xs(cx0 + 1, s.half), Y - cw + 1, Y + cw - 1, 0.6);
-    const ctSvg = S(k.slabOf(ct, z(epiTop), s.ct - epiTop, P, 2, 0.3), { tone: "hi", crease: "lo" }) + S(k.slabOf(pad, z(s.ct), 3, P, 2, 0.3), { tone: "mid" });
+    const ctSvg = S(k.slabOf(ct, z(epiTop), s.ct - epiTop, P, 2, 0.3), { tone: "hi", crease: "lo", inner: L(k.sideSeam(ct, z(epiTop + 3), P, 2), { tone: "faint" }) }) + S(k.slabOf(pad, z(s.ct), 3, P, 2, 0.3), { tone: "mid" });
     put(piece, id, centreOf(ct, z(epiTop)), ctSvg, [slabShape(ct, z(epiTop), s.ct - epiTop), slabShape(pad, z(s.ct), 3)], { name: `${tag}.contact` });
 
     // gate contact on the source half, over the isolation
@@ -367,15 +376,26 @@ function specimen(id) {
 
 bench();
 for (const id of IDS) {
+  HOST = true;
   stage(id);
+  HOST = false;
   specimen(id);
 }
 
 if (!process.argv.includes("--fast")) A.settle(R, P);
 R.items.sort((a, b) => a.key - b.key);
+// part key for the hover readout: "stand.finfet.src.gate" -> gate (source half), "planar.bearing#2" -> bearing
+function roleOf(item) {
+  if (!item.gen) return { role: "bench", half: "" };
+  const bits = item.name.replace(/#\d+$/, "").split(".");
+  const half = bits.includes("src") ? "source" : bits.includes("drn") ? "drain" : "";
+  return { role: bits[bits.length - 1].replace(/^(epi|rail|stop)[LR]$/, "$1"), half };
+}
 const groups = R.items.map((item, index) => {
   const [mx, my, mz] = item.move;
-  return `<g class="it" data-piece="${item.piece}"${item.gen ? ` data-gen="${item.gen}"` : ""} data-k="${item.key.toFixed(2)}" data-m="${mx.toFixed(1)},${my.toFixed(1)},${mz.toFixed(1)}" data-i="${index}">${item.svg}</g>`;
+  const { role, half } = roleOf(item);
+  if (!(role in M.PART_TEXT)) throw new Error(`no part text for ${item.name}`);
+  return `<g class="it" data-piece="${item.piece}"${item.gen ? ` data-gen="${item.gen}"` : ""}${item.host ? " data-host" : ""} data-k="${item.key.toFixed(2)}" data-m="${mx.toFixed(1)},${my.toFixed(1)},${mz.toFixed(1)}" data-i="${index}" data-role="${role}"${half ? ` data-half="${half}"` : ""}>${item.svg}</g>`;
 });
 
 const g = M.GENS;
@@ -392,8 +412,11 @@ const DATA = {
   EX: unit([1, 0, 0]),
   EY: unit([0, 1, 0]),
   EZ: unit([0, 0, 1]),
-  gens: Object.fromEntries(g.map((gen) => [gen.id, { name: gen.name, short: gen.short, say: M.readoutOf(gen), grip: gen.grip, note: gen.note }])),
+  gens: Object.fromEntries(g.map((gen) => [gen.id, { name: gen.name, short: gen.short, say: M.readoutOf(gen), sayShort: M.readoutShort(gen), grip: gen.grip, note: gen.note }])),
+  parts: M.PART_TEXT,
+  idleShort: M.IDLE_SHORT,
   order: IDS,
+  centres: Object.fromEntries(IDS.map((id) => [id, at([SPEC[id].X + SLIDE / 2, SPEC[id].Y, Z0 + 40])[0] / W])),
   stagger: STAGGER,
   spring: SPRING,
   idle: M.IDLE,
@@ -402,7 +425,7 @@ const DATA = {
 
 const PARTS = g.map((gen, index) => `<button type="button" class="tr-part" data-part="${gen.id}"><span class="tr-num">${String(index + 1).padStart(2, "0")}</span>${gen.short}</button>`).join("");
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">Four gates, cut open</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
-const controls = `<div class="tr-controls"><span class="tr-hint">Hover a specimen · Space plays</span><span class="tr-live" aria-live="polite" data-live></span></div>`;
+const controls = `<div class="tr-controls"><span class="tr-hint">Hover a part · Space plays</span><span class="tr-live" aria-live="polite" data-live></span></div>`;
 const stage2 = `<div class="tr-stage" tabindex="0" role="slider" aria-label="Four transistor generations on a sectioning bench. Hover, or use the arrow keys, to pick a generation; Space plays the sectioning; Escape closes every specimen again; the slider below cuts them open one by one." aria-valuemin="0" aria-valuemax="${g.length}" aria-valuenow="0" aria-valuetext="${M.IDLE}">${svg}</div>`;
 const caption = `The same switch, four ways. A gate voltage turns the channel under the gate on or off; the more sides of the channel the gate touches, the better it can shut off leakage. Planar (${g[0].node}, ${g[0].year}): gate on one side of a flat channel, ${g[0].lgNm} nm long, on a high-k dielectric. FinFET (${g[1].node}, ${g[1].year}): the channel is a fin ${g[1].finWidthNm} nm wide and ${g[1].finHeightNm} nm tall, gated on three sides. Nanosheet (${g[2].node}, ${g[2].year}; Samsung was first in ${M.SAMSUNG_GAA}): stacked sheets with the gate all around each. CFET (lab demos since ${g[3].year}, roadmap about ${M.ROADMAP_CFET}): the n-type stack sits on the p-type stack, under one gate, so the pair takes the footprint of one, with power and some contacts from the back side. Specimen lengths are one contacted gate pitch (${g.map((gen) => gen.cppNm).join(", ")} nm) on the ruler's 10 nm ticks; heights, widths, sheet counts and all but the planar gate length are illustrative. Densities: ${g[0].density} and ${g[1].density} MTr/mm² are Intel's figures, ${g[2].density} is an analyst estimate for dense cells, so compare only orders of magnitude.`;
 const scrub = `<span class="tr-scrub"><button type="button" class="tr-play" data-play aria-label="Play the sectioning"><span class="tr-play-icon" aria-hidden="true"></span><span data-play-text>Cut open</span></button><input type="range" class="tr-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Sectioning: 0 is every specimen closed, 1000 is all four cut open"><span class="tr-step" data-step>closed</span></span>`;

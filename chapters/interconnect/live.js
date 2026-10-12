@@ -70,6 +70,7 @@ let playing = false;
 let tookOver = false;
 let headShare = 0;
 let shown = null;
+let scrubbing = false;
 
 function say(text) {
   if (readout.textContent !== text) readout.textContent = text;
@@ -247,7 +248,7 @@ function showPlay() {
   const text = stepLabel();
   if (stepText.textContent !== text) stepText.textContent = text;
   const value = String(Math.round(s * 1000));
-  if (scrubInput.value !== value && document.activeElement !== scrubInput) scrubInput.value = value;
+  if (scrubInput.value !== value && !scrubbing) scrubInput.value = value;
 }
 
 function render() {
@@ -422,6 +423,15 @@ document.addEventListener("keydown", (event) => {
   select(D.order[next]);
   render();
 });
+
+// only hold the thumb still while the reader is dragging or keying it, not merely while it has focus
+const scrubKeys = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"]);
+scrubInput.addEventListener("pointerdown", () => (scrubbing = true));
+scrubInput.addEventListener("keydown", (event) => {
+  if (scrubKeys.has(event.key)) scrubbing = true;
+});
+for (const type of ["pointerup", "pointercancel", "change", "keyup", "blur"]) scrubInput.addEventListener(type, () => (scrubbing = false));
+window.addEventListener("pointerup", () => (scrubbing = false));
 
 scrubInput.addEventListener("input", () => {
   quietTour();

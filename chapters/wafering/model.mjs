@@ -33,9 +33,6 @@ export const SAW = {
   massKg: 14700, // machine weight
   sizeMm: [2000, 3550, 3500], // machine size W × D × H
 };
-// Takatori MWS-612SD, a downcut multi-wire saw: 700 m/min wire speed, 300 mm ingot length.
-// https://takatori-g.co.jp/english/products/products_mws/detail/mws-612sd.html
-export const TAKATORI = { wireSpeedMMin: 700, workLenMm: 300 };
 
 // Derived: wire speed in m/s, and the shortest possible cut through a 300 mm ingot at the top feed rate.
 export const wireSpeedMs = SAW.wireSpeedMMin / 60; // ≈ 16.7 m/s
@@ -48,9 +45,17 @@ export const minCutMin = SAW.workDiaMm / SAW.feedMmMin[1]; // 120 min: a lower b
 // alkaline or acid solutions, and 300 mm wafers "polished on both sides".
 // https://www.siltronic.com/en/products.html
 export const LINE = {
-  lapUmPerSide: 10,
+  lapUmPerSide: 10, // the page also says wafers are "lapped (or alternatively ground)"
   asCutMm: 1, // "roughly 1 millimeter thick"
 };
+
+// Slurry vs diamond wire. Lapmaster Wolters (wire-saw maker): slurry grit moves at most half the wire speed,
+// diamond grit at wire speed; slurry gives "lower subsurface damage" and a "smoother surface".
+// https://www.precision-surface.com/what-is-wafering-/-slicing/
+// Review (Micromachines 2023): the dominant method of cutting silicon wafers has shifted from free-abrasive slurry
+// sawing to fixed-abrasive diamond wire sawing (driven by solar wafers). https://www.ncbi.nlm.nih.gov/pmc/articles/PMC10456952/
+// Shin-Etsu Handotai, US10043673B2: double-side polishing is the primary polish; "In the final polishing process,
+// single-side polishing is often employed". https://patents.google.com/patent/US10043673
 
 // ---- drawing scale ----
 // World units per mm for the ingot, wafers and ruler. Machine parts around them are illustrative in size.
@@ -107,13 +112,13 @@ export const STEPS = [
     id: "polish",
     name: "Double-side polish",
     part: "dsp",
-    say: "both faces polished at once · carriers turn like planet gears",
+    say: "both faces polished at once · the carriers turn like planet gears",
   },
   {
     id: "inspect",
     name: "Clean and inspect",
     part: "wafers",
-    say: `${WAFER.diameterMm} mm · ${WAFER.thicknessUm} ± ${WAFER.thicknessTolUm} µm · ≤ ${WAFER.particlesMax} particles ≥ ${WAFER.particleSizeUm} µm`,
+    say: `${WAFER.diameterMm} mm · ${WAFER.thicknessUm} ± ${WAFER.thicknessTolUm} µm · measured and scanned for particles`,
   },
 ];
 

@@ -9,8 +9,8 @@ export const GPU = {
   node: "TSMC N3P",
   link: "NV-HBI", // die-to-die interface
   packaging: "CoWoS-L",
-  nvfp4Sparse: 50, // PFLOPS, with sparsity
-  nvfp4Dense: 35, // PFLOPS
+  nvfp4Inference: 50, // PFLOPS, "Transformer Engine compute" (adaptive compression), NVIDIA Table 2: https://developer.nvidia.com/blog/inside-the-nvidia-rubin-platform-six-new-chips-one-ai-supercomputer/
+  nvfp4Dense: 35, // PFLOPS, "Dense compute" (training), same table
   nvlinkTBs: 3.6, // NVLink 6, per GPU
 };
 

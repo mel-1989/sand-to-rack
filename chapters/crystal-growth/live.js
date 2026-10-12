@@ -55,7 +55,10 @@ let order = nodes.map((_, i) => i);
 const share = { fixed: 0, crucible: 0, gate: 0 };
 let meltFirst = false; // while the charge melts, the pool lies under the chunks
 const chunkKey = Math.min(...[...layers.querySelectorAll(".cz-chunks")].map((g) => Number(g.closest(".it").dataset.k)));
-const keyOf = (node) => (node.melt && meltFirst ? chunkKey - 0.05 : node.key + node.lift * (share[node.piece] || 0));
+// while melting, the pool sits just under the first chunk layer and above everything drawn before it (the crucible floor)
+const belowChunks = Math.max(...nodes.filter((node) => !node.melt && node.key < chunkKey).map((node) => node.key));
+const meltKey = (belowChunks + chunkKey) / 2;
+const keyOf = (node) => (node.melt && meltFirst ? meltKey : node.key + node.lift * (share[node.piece] || 0));
 
 function place() {
   for (const node of nodes) {
@@ -368,6 +371,49 @@ function drawCrystal(s) {
   return s.out > 0 ? 0 : bottom.r;
 }
 
+// ---- argon: drawn on the two cut planes, down the shield cone, out over the melt, over the rim and down past the heater ----
+const flowLayer = stage.querySelector("[data-flow]");
+const flowPaths = [90, 0].map(() => {
+  const line = el("path", { class: "cz-flow-line", "data-free": "" });
+  const head = el("path", { class: "cz-flow-head", "data-free": "" });
+  flowLayer.appendChild(line);
+  flowLayer.appendChild(head);
+  return { line, head };
+});
+let flowShift = 0;
+function drawFlow(s) {
+  let show = 0;
+  if (s.phase >= 1 && s.phase <= 5) show = s.phase === 1 ? ease(clamp(s.t / 0.3)) : 1;
+  else if (s.phase === 6) show = 1 - ease(clamp(s.t / 0.25));
+  flowLayer.style.opacity = show.toFixed(2);
+  flowLayer.style.display = show < 0.01 ? "none" : "";
+  if (show < 0.01) return;
+  const F = D.flow;
+  const rim = D.cruFloor + s.lift * D.lift + F.rimOver;
+  const rIn = 35;
+  const rOver = D.cruIn - 3;
+  const pts = [
+    [rIn, F.cone], [rIn, D.melt + 12], [rIn + 3, D.melt + 4], [rIn + 8, D.melt + 3], [rOver - 3, D.melt + 3], [rOver, D.melt + 6],
+    [rOver, rim + 1], [rOver + 2, rim + 4], [F.gap - 2, rim + 4], [F.gap, rim + 1], [F.gap, F.end],
+  ];
+  flowPaths.forEach(({ line, head }, index) => {
+    const deg = index ? 0 : 90;
+    line.setAttribute("d", pathOf(pts.map(([r, z]) => isoAt(r, deg, z))));
+    line.style.strokeDashoffset = (-flowShift).toFixed(2);
+    // chevrons in the cut plane: down the cone, out over the melt, down past the heater
+    const chevron = ([r, z], [dr, dz]) => {
+      const l = Math.hypot(dr, dz);
+      const u = [dr / l, dz / l];
+      const n = [-u[1], u[0]];
+      const tip = isoAt(r, deg, z);
+      const a = isoAt(r - u[0] * 2 + n[0] * 1.5, deg, z - u[1] * 2 + n[1] * 1.5);
+      const b = isoAt(r - u[0] * 2 - n[0] * 1.5, deg, z - u[1] * 2 - n[1] * 1.5);
+      return pathOf([a, tip, b]);
+    };
+    head.setAttribute("d", chevron([rIn, (F.cone + D.melt) / 2], [0, -1]) + chevron([(rIn + rOver) / 2 + 2, D.melt + 3], [1, 0]) + chevron([F.gap, F.end - 1], [0, -1]));
+  });
+}
+
 // ---- readout and step label ----
 const fmt = (v, d = 0) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 function processText(s) {
@@ -397,7 +443,16 @@ let tourClock = 0;
 const TOUR = { run: 26, hold: 3 };
 const PLAY_SECONDS = 26;
 
-function say(text) {
+// numbers keep their units, and short phrases stay together, so a wrapped readout never leaves a unit alone on a line
+const nb = (text) =>
+  text
+    .replace(/(\d) (?=(mm|kg|rpm|°C|ppma|m)(\b|$| ))/g, "$1\u00a0")
+    .replace(/kg (charge|grown|crystal|polysilicon)/g, "kg\u00a0$1")
+    .replace(/mm (pulled|bore|crystals?)/g, "mm\u00a0$1")
+    .replace(/crucible up /g, "crucible\u00a0up\u00a0")
+    .replace(/pull chamber/g, "pull\u00a0chamber");
+function say(raw) {
+  const text = nb(raw);
   if (readout.textContent !== text) readout.textContent = text;
 }
 function describe(text) {
@@ -429,6 +484,7 @@ function render() {
   share.gate = s.gate;
   place();
   const r = drawCrystal(s);
+  drawFlow(s);
   drawMelt(s, s.phase >= 2 && s.phase <= 5 ? r : s.phase === 1 && s.dip < 0.02 ? r : 0);
   root.style.setProperty("--cz-heat", s.heat.toFixed(3));
   const top = D.cruFloor + D.depth0 * s.melted;
@@ -473,6 +529,7 @@ function tick(now) {
   if (!still.matches && (spinning(s) || s.phase === 0)) {
     spinCrucible += (D.rpm[1] * 360 * dt) / 60;
     if (spinning(s)) spinCrystal -= (D.rpm[0] * 360 * dt) / 60;
+    if (spinning(s)) flowShift = (flowShift + dt * 9) % 1000;
   }
   render();
   const moving = touring || playing || (!still.matches && (spinning(s) || s.phase === 0));

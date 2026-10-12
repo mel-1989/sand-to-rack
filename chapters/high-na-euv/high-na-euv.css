@@ -264,8 +264,8 @@
   }
 
   .hna-stage > svg {
-    width: 104%;
-    margin-left: -2%;
+    width: 112%;
+    margin-left: -6%;
   }
 
   .hna .iso-plate-corner[data-corner="readout"] {
@@ -332,3 +332,22 @@
   stroke: var(--anatomy-lit);
   stroke-width: 0.8;
 }
+
+/* the side-by-side under the lesson */
+.hna-cmp svg {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  margin: 4px 0 10px;
+}
+.hna-cmp-glow { fill: var(--anatomy-lit); fill-opacity: 0.1; stroke: none; }
+.hna-cmp-ray { fill: none; stroke: var(--anatomy-strong); stroke-width: 1.2; stroke-linejoin: round; }
+.hna-cmp-mirror { fill: none; stroke: var(--anatomy-hi); stroke-width: 3; stroke-linecap: round; }
+.hna-cmp-axis { fill: none; stroke: var(--anatomy-muted); stroke-width: 0.8; }
+.hna-cmp-dot { fill: var(--anatomy-strong); }
+.hna-cmp-field { fill: var(--anatomy-lit); fill-opacity: 0.12; stroke: var(--anatomy-text); stroke-width: 1; }
+.hna-cmp-b { fill-opacity: 0.22; }
+.hna-cmp-seam { stroke: var(--anatomy-strong); stroke-width: 1.6; }
+.hna-cmp-t { font: 12px/1 var(--anatomy-mono); fill: var(--anatomy-strong); text-anchor: middle; letter-spacing: 0.04em; }
+.hna-cmp-s { font: 11px/1 var(--anatomy-mono); fill: var(--anatomy-muted); }

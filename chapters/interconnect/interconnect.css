@@ -9,7 +9,7 @@
 }
 
 .ic .iso-plate {
-  padding: 52px 24px 60px;
+  padding: 52px 24px 46px;
   overflow: hidden;
 }
 
@@ -142,6 +142,7 @@
     text-align: right;
     line-height: 1.4;
     white-space: normal;
+    text-wrap: balance;
     overflow: visible;
   }
 
@@ -208,7 +209,7 @@
 
 .ic-step {
   flex: none;
-  width: 150px;
+  width: 184px;
   font: 10.5px/1.2 var(--anatomy-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -230,8 +231,12 @@
   }
 }
 
+/* copper is the one lit accent: a restrained red-green mix of the kit's own hues, so it follows the theme */
 .ic {
-  --ic-cu: color-mix(in srgb, var(--anatomy-hi) 34%, var(--anatomy-paper));
+  --ic-copper: color-mix(in srgb, var(--anatomy-red) 62%, var(--anatomy-green));
+  --ic-cu: color-mix(in srgb, var(--ic-copper) 64%, var(--anatomy-paper));
+  --ic-cu-side: color-mix(in srgb, var(--ic-copper) 46%, var(--anatomy-paper));
+  --ic-al: color-mix(in srgb, var(--anatomy-hi) 34%, var(--anatomy-paper));
   --ic-void: color-mix(in srgb, var(--anatomy-halo) 45%, var(--anatomy-paper));
   --ic-sec: color-mix(in srgb, var(--anatomy-mid) 22%, var(--anatomy-paper));
   --ic-bath: color-mix(in srgb, var(--anatomy-mid) 26%, var(--anatomy-paper));
@@ -269,10 +274,16 @@
   fill: var(--ic-bath);
 }
 
-.ic-cu-solid > .iso-top,
-.ic-cu-solid > .iso-shade,
-.ic-pad > .iso-top {
+.ic-cu-solid > .iso-top {
   fill: var(--ic-cu);
+}
+
+.ic-cu-solid > .iso-shade {
+  fill: var(--ic-cu-side);
+}
+
+.ic-pad > .iso-top {
+  fill: var(--ic-al);
 }
 
 .ic-stage[data-active="liner"] .ic-active .ic-liner,
@@ -310,8 +321,8 @@
 
 @media (max-width: 520px) {
   .ic .ic-stage > svg {
-    width: 132%;
-    margin: -6% -16% -4%;
+    width: 112%;
+    margin: -2% -6% -2%;
   }
 }
 
@@ -327,4 +338,10 @@
 .ic-stage[data-focus] .it:not([data-on]) [data-lit] > .iso-top,
 .ic-stage[data-focus] .it:not([data-on]) [data-lit] > .iso-shade {
   fill: var(--anatomy-top);
+}
+
+/* when another part is picked, the copper steps back with everything else */
+.ic-stage[data-focus] .it:not([data-on]) {
+  --ic-cu: color-mix(in srgb, var(--ic-copper) 26%, var(--anatomy-paper));
+  --ic-cu-side: color-mix(in srgb, var(--ic-copper) 20%, var(--anatomy-paper));
 }

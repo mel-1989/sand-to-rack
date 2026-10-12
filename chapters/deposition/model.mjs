@@ -22,7 +22,7 @@ export const cyclesFor10nm = Math.round(10 / ALD.gpcNm); // derived
 export const CYCLES = 8; // cycles shown on the slider (illustrative count; a real recipe runs tens to hundreds)
 // Step weights are illustrative proportions of slider travel, not seconds.
 export const TRANSFER = [
-  { id: "vent", label: "Load lock pumped · slit opens", say: "load lock pumped down · slit valve opens" },
+  { id: "vent", label: "Load lock pumped", say: "load lock pumped down · slit valve opens" },
   { id: "pick", label: "Robot picks wafer", say: "vacuum robot reaches into the load lock" },
   { id: "swing", label: "Robot turns 180°", say: "arm retracts · robot turns to the ALD chamber" },
   { id: "place", label: "Into the ALD chamber", say: "blade carries the wafer through the slit valve" },
@@ -31,7 +31,7 @@ export const TRANSFER = [
 ];
 export const WEIGHTS = { vent: 0.9, pick: 1.4, swing: 1.5, place: 1.3, pins: 1.6, heat: 0.9, pulseA: 0.55, purgeA: 0.45, pulseB: 0.55, purgeB: 0.45, done: 0.8 };
 export const HALF = [
-  { id: "pulseA", label: `${ALD.precursor} pulse`, say: `${ALD.precursor} pulse · bonds to every OH site, then stops` },
+  { id: "pulseA", label: `${ALD.precursor} pulse`, say: `${ALD.precursor} pulse · bonds to OH sites until no room is left` },
   { id: "purgeA", label: `${ALD.purge} purge`, say: `${ALD.purge} purge · spare ${ALD.precursor} and ${ALD.byproduct} pumped away` },
   { id: "pulseB", label: `${ALD.coreactant} pulse`, say: `${ALD.coreactant} pulse · turns the surface back to Al–OH` },
   { id: "purgeB", label: `${ALD.purge} purge`, say: `${ALD.purge} purge · one layer done` },
@@ -46,8 +46,9 @@ export const RCA = {
 };
 
 // ---- thermal oxidation: Deal & Grove, J. Appl. Phys. 36, 3770 (1965), https://doi.org/10.1063/1.1713945 ----
-// range of the model's validity 700-1200 °C, as summarised in KTH lecture notes: https://www.kth.se/social/upload/51029fc0f276540764a5c298/Lecture%205.pdf
-export const OXIDATION = { fromC: 700, toC: 1200 };
+// abstract (via Crossref, https://api.crossref.org/works/10.1063/1.1713945): the model is "in excellent agreement with oxidation
+// data obtained over a wide range of temperature (700°–1300°C), partial pressure (0.1–1.0 atm) and oxide thickness (300–20 000 Å)"
+export const OXIDATION = { fromC: 700, toC: 1300 };
 
 // ---- CVD temperatures: Plasma-Therm, "LPCVD vs PECVD" white paper ----
 // https://www.plasmatherm.com/wp-content/uploads/2022/04/Plasma-Therm-LPCVD-vs-PECVD-Whitepaper.pdf

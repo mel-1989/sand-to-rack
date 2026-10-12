@@ -9,7 +9,6 @@ export const MIRRA = {
   headRpm: [65, 95], // matching head speeds
   psi: [2, 4], // wafer pressure range studied
   slurryMlMin: 200, // slurry flow
-  peakAPerMin: 24800, // peak Cu removal rate in Fig. 1 (4 psi, 93 rpm, about 1 wt% H2O2), read off the plot
   endpoint: "ISRM", // in-situ removal monitor stopped every polish
 };
 
@@ -47,7 +46,7 @@ export const PRIME = { pads: 4, heads: 6, cleanChambers: 8, dryChambers: 2 };
 
 // Sun et al. (Applied Materials CMP group), "Low-downforce CMP for copper/low-k structures", Silicon Semiconductor, Nov 2003.
 // https://siliconsemiconductor.net/article/66785/Low-downforce_CMP_for_copper_low-k_structures/feature
-export const DOWNFORCE = { n130: [3, 5], n90: [2, 2.5], n65Below: 1, lowKFracturePsi: 1.2 }; // psi by node; low-k fractures near 1.2 psi
+export const DOWNFORCE = { n130: [3, 5], n90: [2, 2.5], n65Below: 1, lowKFracturePsi: 1.2 }; // psi by node; 1.2 psi gives the threshold shear on low-k with conventional consumables at 65 nm
 
 export const WAFER_MM = 300;
 
@@ -55,7 +54,6 @@ export const WAFER_MM = 300;
 export const nm = (aPerMin) => Math.round(aPerMin / 10); // angstrom/min to nm/min
 export const BULK_NM = nm(REFLEXION.bulkAPerMin); // 594 nm/min
 export const CLEAR_NM = nm(REFLEXION.clearAPerMin); // 176 nm/min
-export const PEAK_NM = nm(MIRRA.peakAPerMin); // about 2480 nm/min
 export const PLATEN_RPM = MIRRA.platenRpm[1];
 export const HEAD_RPM = MIRRA.headRpm[1];
 
@@ -64,21 +62,22 @@ export const HEAD_RPM = MIRRA.headRpm[1];
 export const PHASES = [
   { id: "load", t0: 0.0, t1: 0.14, label: "Load the wafer", say: "load cup lifts the wafer into the head · head carries it to the platen" },
   { id: "slurry", t0: 0.14, t1: 0.25, label: "Slurry on", say: `slurry on · ${MIRRA.slurryMlMin} ml/min · platen spins up to ${PLATEN_RPM} rpm` },
-  { id: "press", t0: 0.25, t1: 0.37, label: "Head lowers, both spin", say: `head down · ${REFLEXION.bulkPsi} psi · platen ${PLATEN_RPM} rpm · head ${HEAD_RPM} rpm` },
+  { id: "press", t0: 0.25, t1: 0.37, label: "Head lowers, both spin", say: `head down · ${REFLEXION.bulkPsi} psi (Reflexion LK) · platen ${PLATEN_RPM} / head ${HEAD_RPM} rpm (Mirra, ${MIRRA.psi[0]}–${MIRRA.psi[1]} psi)` },
   { id: "condition", t0: 0.37, t1: 0.49, label: "Conditioner sweeps", say: `diamond disc · ${REFLEXION.condLbf} lbf · ${REFLEXION.condRpm} rpm · ${REFLEXION.sweepsPerMin} sweeps/min` },
   { id: "flatten", t0: 0.49, t1: 0.67, label: "Copper polishes flat", say: `bulk copper · ${BULK_NM} nm/min · ${REFLEXION.bulkWiwnu} % non-uniformity` },
-  { id: "endpoint", t0: 0.67, t1: 0.76, label: "Endpoint", say: `window sees the barrier · stop · dishing under ${REFLEXION.dishingAvgA / 10} nm` },
+  { id: "endpoint", t0: 0.67, t1: 0.76, label: "Endpoint", say: `window sees the barrier · stop · final clear runs ${CLEAR_NM} nm/min` },
   { id: "rinse", t0: 0.76, t1: 0.87, label: "Rinse", say: "slurry off · DI water rinses the pad · head lifts" },
-  { id: "clean", t0: 0.87, t1: 1.0, label: "Brush clean", say: "PVA roller brushes scrub both faces · then dry" },
+  { id: "clean", t0: 0.87, t1: 1.0, label: "Brush clean", say: `wafer to the cleaner · brush scrub, dry · dishing under ${REFLEXION.dishingAvgA / 10} nm` },
 ];
 
 export const PIECES = {
-  platen: { name: "Platen and pad", say: `platen and polyurethane pad · ${PLATEN_RPM} rpm · endpoint window in the pad` },
+  platen: { name: "Platen and pad", say: `platen and polyurethane pad · ${PLATEN_RPM} rpm in a Mirra study · endpoint window in the pad` },
   head: { name: "Carrier head", say: `wafer face down · zoned membrane · ${REFLEXION.bulkPsi} psi on bulk copper` },
   slurry: { name: "Slurry arm", say: `slurry ${MIRRA.slurryMlMin} ml/min and DI rinse nozzles` },
   cond: { name: "Pad conditioner", say: `diamond disc · ${REFLEXION.condLbf} lbf · ${REFLEXION.condRpm} rpm · ${REFLEXION.sweepsPerMin} sweeps/min` },
-  cup: { name: "Load cup", say: "load cup lifts the wafer into the head pocket" },
+  cup: { name: "Load cup", say: "load cup hands the wafer up to the head and takes it back" },
+  port: { name: "Load port and FOUP", say: "wafers come in a sealed FOUP pod · robot not drawn" },
   clean: { name: "Brush cleaner", say: "two PVA roller brushes scrub the wafer, then it is dried" },
 };
 
-export const IDLE = `CMP · ${BULK_NM} nm/min · ${REFLEXION.bulkPsi} psi · ${PLATEN_RPM} rpm`;
+export const IDLE = `CMP · bulk copper ${BULK_NM} nm/min at ${REFLEXION.bulkPsi} psi (Reflexion LK)`;

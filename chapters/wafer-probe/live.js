@@ -13,7 +13,7 @@ const still = matchMedia("(prefers-reduced-motion: reduce)");
 const items = [...stage.querySelectorAll(".it")];
 const movers = { ycar: [], xcar: [], chuck: [], wafer: [], fork: [] };
 for (const el of items) if (el.dataset.mv && movers[el.dataset.mv]) movers[el.dataset.mv].push(el);
-const cells = [...stage.querySelectorAll(".wp-cell")];
+const cells = [...stage.querySelectorAll(".wp-cell, .wp-wd")]; // monitor map cells and the dies on the wafer, both keyed by data-n
 const scr = Object.fromEntries([...stage.querySelectorAll("[data-scr]")].map((el) => [el.dataset.scr, el]));
 const lens = Object.fromEntries([...stage.querySelectorAll("[data-lens]")].map((el) => [el.dataset.lens, el]));
 const leds = stage.querySelector(".wp-leds");
@@ -119,9 +119,10 @@ function render() {
   flag(probes, testing || (p.die >= 0 && p.cz > D.lift - 0.05));
   let pass = 0;
   let fail = 0;
-  cells.forEach((cell, n) => {
+  for (let n = 0; n < D.dies.length; n++) if (t >= binAt[n]) D.dies[n][2] ? pass++ : fail++;
+  cells.forEach((cell) => {
+    const n = +cell.dataset.n;
     const done = t >= binAt[n];
-    if (done) D.dies[n][2] ? pass++ : fail++;
     if (done !== cell.hasAttribute("data-done")) cell.toggleAttribute("data-done", done);
     const cur = !done && n === p.die && p.phase !== "step";
     if (cur !== cell.hasAttribute("data-cur")) cell.toggleAttribute("data-cur", cur);
@@ -149,7 +150,7 @@ function phaseText(p, pass, fail) {
     case "align":
       return p.phase === "align:up" ? "align · the stage camera looks up at the probe tips" : "align · the down camera finds the wafer's marks";
     case "touch":
-      return `touch down · die ${n} · ${D.overdrive} µm overdrive`;
+      return `touch down · die ${n} · ${D.overdrive}\u00a0µm overdrive`;
     case "test":
       return `run patterns · die ${n} of ${D.gross}`;
     case "bin":

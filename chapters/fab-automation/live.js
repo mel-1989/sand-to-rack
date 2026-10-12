@@ -21,7 +21,7 @@ const beltG = dyn("belts");
 const slotWafer = layers.querySelector("[data-slot]");
 const inside = layers.querySelector("[data-inside]");
 const gateG = layers.querySelector("[data-gate]");
-const lamp = layers.querySelector("[data-lamp]");
+const lamps = [...layers.querySelectorAll("[data-lamp]")];
 
 const TOTAL = D.T.steps.reduce((sum, step) => sum + step.sec, 0);
 let s = 0; // slider position 0..1
@@ -82,12 +82,14 @@ function armPose(p) {
 }
 
 function beltSvg(gz) {
-  const len = D.belts.top - D.belts.grip - gz;
+  // the gripper group is recorded hoisted (gz = lift); belts run from its plate up to the housing
+  const drop = gz - D.belts.lift;
+  const len = D.belts.top - D.belts.grip - drop;
   if (len < 0.6) return "";
   return D.belts.at
     .map(([x, y]) => {
       const a = iso([x, y, D.belts.grip - 0.5], PJ);
-      const b = iso([x, y, D.belts.top - gz + 0.5], PJ);
+      const b = iso([x, y, D.belts.top - drop + 0.5], PJ);
       return `<path class="fa-belt" d="M${a[0].toFixed(2)} ${a[1].toFixed(2)}L${b[0].toFixed(2)} ${b[1].toFixed(2)}"/>`;
     })
     .join("");
@@ -99,7 +101,7 @@ function screenOf([x, y, z]) {
 
 function render() {
   const p = poseAt(s, D.T);
-  const off = offsetsOf(p);
+  const off = offsetsOf(p, D.T);
   // groups that move with the OHT and the port door
   for (const node of nodes) {
     if (!node.mv) continue;
@@ -120,7 +122,7 @@ function render() {
     layers.appendChild(fragment);
     order = next;
   }
-  const key = [p.th, p.r, p.lift, p.wafer, p.gz, p.gate, p.lamp, off.foup[2], off.foup[1]].map((v) => (typeof v === "number" ? v.toFixed(3) : v)).join("|");
+  const key = [p.th, p.r, p.lift, p.wafer, p.gz, p.gate, p.lamp, off.foup[0], off.foup[1], off.foup[2]].map((v) => (typeof v === "number" ? v.toFixed(3) : v)).join("|");
   if (key !== shownPose) {
     shownPose = key;
     const arm = armPose(p);
@@ -128,11 +130,11 @@ function render() {
     waferA.innerHTML = arm.front;
     beltG.innerHTML = beltSvg(p.gz);
     slotWafer.style.visibility = p.wafer === "foup" ? "" : "hidden";
-    inside.style.visibility = Math.abs(off.foup[2]) + Math.abs(off.foup[1]) < 0.01 ? "" : "hidden";
+    inside.style.visibility = Math.abs(off.foup[0]) + Math.abs(off.foup[1]) + Math.abs(off.foup[2]) < 0.01 ? "" : "hidden";
     const [gx, gy] = screenOf([0, 0, D.gate.close * p.gate]);
     if (p.gate > 0.001) gateG.setAttribute("transform", `translate(${gx.toFixed(2)} ${gy.toFixed(2)})`);
     else gateG.removeAttribute("transform");
-    lamp.toggleAttribute("data-on", p.lamp > 0.5);
+    for (const lamp of lamps) lamp.toggleAttribute("data-on", p.lamp > 0.5);
   }
   return p;
 }
@@ -205,6 +207,9 @@ function run() {
 }
 
 function takeOver() {
+  // the first interaction ends the idle tour, and the tour's playback with it
+  if (touring && playing) playing = false;
+  hoverPaused = false;
   touring = false;
 }
 
@@ -212,14 +217,19 @@ function setPlaying(on) {
   playing = on;
   if (on && s >= 0.999) s = 0;
   if (on && still.matches) {
-    // reduced motion: jump to the end of the current step, then to the next, instead of animating
+    // reduced motion: jump to the middle of the next step (a moment that shows the step at work) instead of animating
     playing = false;
     let acc = 0;
+    let next = 1;
     for (const step of D.T.steps) {
+      const mid = acc + (0.5 * step.sec) / TOTAL;
       acc += step.sec / TOTAL;
-      if (acc > s + 1e-4) break;
+      if (mid > s + 1e-4) {
+        next = mid;
+        break;
+      }
     }
-    s = Math.min(1, acc);
+    s = next;
   }
   show();
   run();
@@ -309,8 +319,9 @@ document.addEventListener("keydown", (event) => {
   if (target instanceof HTMLButtonElement && (event.key === " " || event.key === "Enter")) return;
   if (event.key === " ") {
     event.preventDefault();
+    const was = playing;
     takeOver();
-    setPlaying(!playing);
+    setPlaying(!was);
     return;
   }
   if (event.key === "Escape") {
@@ -342,8 +353,9 @@ scrubInput.addEventListener("input", () => {
 });
 
 playButton.addEventListener("click", () => {
+  const was = playing;
   takeOver();
-  setPlaying(!playing);
+  setPlaying(!was);
 });
 
 const narrow = matchMedia("(hover: none), (max-width: 480px)");

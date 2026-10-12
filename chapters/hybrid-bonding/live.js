@@ -213,7 +213,7 @@ function processText() {
   const { c, ph } = stepOf(s);
   const e = D.eras[c];
   const dens = e.area ? `${fmt(e.per)} /mm²` : "edge pads";
-  return `${e.short} · ${e.pitch} µm · ${dens} · ${phaseLabel(c, ph)}`;
+  return `${e.short} · ${e.pitchText} µm · ${dens} · ${phaseLabel(c, ph)}`;
 }
 function readoutText() {
   if (selected) return D.pieces[selected].say;

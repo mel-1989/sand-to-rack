@@ -208,7 +208,7 @@
 
 .dz-step {
   flex: none;
-  width: 150px;
+  width: 168px;
   font: 10.5px/1.2 var(--anatomy-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -268,8 +268,14 @@
 }
 
 @media (max-width: 480px) {
-  .dz-stage > svg {
-    width: 108%;
-    margin-left: -4%;
+  /* room for a two-line readout below the stage, so it never rises into the stage frame */
+  .dz .iso-plate {
+    padding-bottom: 100px;
+  }
+
+  /* anchored just under the stage and growing downward */
+  .dz .iso-plate-corner[data-corner="readout"] {
+    top: calc(100% - 72px);
+    bottom: auto;
   }
 }

@@ -217,7 +217,7 @@
 
 .rk-step {
   flex: none;
-  width: 190px;
+  width: 230px;
   font: 10.5px/1.2 var(--anatomy-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -236,5 +236,12 @@
     width: auto;
     order: 3;
     flex-basis: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .rk .iso-plate .rk-stage > svg {
+    width: 104%;
+    margin: 0 -2%; /* a slight overscan, kept centred; the kit's own svg margin rule needs the extra specificity */
   }
 }

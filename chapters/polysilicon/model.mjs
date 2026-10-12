@@ -65,7 +65,7 @@ export const rodRadius = (mm) => mm / 2 / DRAW_MM;
 
 // Slider: five steps over 0..1. Deposition (step 4) takes the longest share.
 export const STEPS = [
-  { id: "mgsi", from: 0, to: 0.16, label: "metallurgical silicon", say: `arc furnace >${MGSI.furnaceC} °C · MG-Si ${MGSI.puritySoG}–${MGSI.purityEG} %` },
+  { id: "mgsi", from: 0, to: 0.16, label: "metallurgical silicon", say: `MG-Si feed · ${MGSI.puritySoG}–${MGSI.purityEG} % Si` },
   { id: "tcs", from: 0.16, to: 0.32, label: "hydrochlorination", say: `MG-Si + HCl · ${TCS.synthesisC} °C → SiHCl₃` },
   { id: "dist", from: 0.32, to: 0.48, label: "distillation", say: `SiHCl₃ boils at ${TCS.boilC} °C · ${DIST.passesEG} passes` },
   { id: "cvd", from: 0.48, to: 0.84, label: "deposition", say: "" },

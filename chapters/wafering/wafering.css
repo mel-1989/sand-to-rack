@@ -134,7 +134,7 @@
 
 @media (max-width: 640px) {
   .wf .iso-plate {
-    padding: 48px 8px 84px;
+    padding: 48px 8px 112px;
   }
 
   .wf .iso-plate-corner[data-corner="readout"] {
@@ -277,11 +277,4 @@
 .wf-dyn,
 .wf-dyn * {
   pointer-events: none;
-}
-
-@media (max-width: 480px) {
-  .wf-stage > svg {
-    width: 118%;
-    margin: -6% -9% -4%;
-  }
 }

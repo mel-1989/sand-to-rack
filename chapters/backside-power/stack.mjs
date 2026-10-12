@@ -14,12 +14,12 @@ export const BLK = {
 // backside block, in wafer coordinates v (0 = top of the original silicon, transistors above it)
 export const RB = {
   sub0: 12, // drawn silicon before thinning
-  sub1: 2, // drawn silicon after thinning
+  sub1: 2.6, // drawn silicon after thinning
   dev: 5,
   beol: [1.8, 1.8, 2.4, 3, 4, 5], // signal layers
   bond: 1,
   carrier: 14,
-  back: [2.2, 2.4, 3], // backside power layers
+  back: [2.8, 3.2, 3.8], // backside power layers
   tsvU: [-27, -21, -15, -9, -3, 3, 9, 15, 21, 27],
   carrierLift: 11,
 };
@@ -56,7 +56,7 @@ export function phasesAt(s) {
   SEQ.forEach((step, index) => {
     const p = clamp((s * TOTAL - at) / step.w);
     out[step.id] = p;
-    if (s * TOTAL >= at - 1e-9) out.step = index;
+    if (s * TOTAL > at + 1e-6) out.step = index;
     at += step.w;
   });
   if (s >= 1) out.step = SEQ.length - 1;
@@ -79,6 +79,8 @@ export function rightState(s) {
     else if (p.thin < 0.86) grind = -(restGap - topNow);
     else grind = -(restGap - (vc + RB.sub1)) * (1 - ease((p.thin - 0.86) / 0.14));
   }
+  // while the fixture turns the block over, the head backs up its column out of the sweep
+  if (p.flip > 0 && p.flip < 1) grind = WHEEL.flipLift * ease(clamp(p.flip / 0.2)) * (1 - ease(clamp((p.flip - 0.8) / 0.2)));
   return {
     p,
     S,
@@ -87,6 +89,7 @@ export function rightState(s) {
     carrier: p.bond > 0 ? (1 - ease(clamp(p.bond / 0.85))) * RB.carrierLift : null,
     bonded: p.bond >= 0.85,
     tsv: ease(p.tsv),
+    tsvHot: p.tsv > 0 && p.metal === 0,
     back: p.metal * RB.back.length,
     bumps: ease(p.bumps),
     grind,
@@ -95,7 +98,7 @@ export function rightState(s) {
 }
 
 // the cup wheel's rest height (its underside), above everything the flip sweeps
-export const WHEEL = { rest: 87, r: 16, h: 4 };
+export const WHEEL = { rest: 104, r: 16, h: 4, flipLift: 14 };
 
 // ---- projection (the kit's iso, repeated so this file needs nothing) ----
 function isoOf([x, y, z], P) {
@@ -138,17 +141,20 @@ function placer(place, theta) {
   return (u, y, v) => [place.xc + u * c + (v - place.vc) * s, y, place.zc - u * s + (v - place.vc) * c];
 }
 
+export const JAW = { w: 3, h: 12, d: 7 };
+const az = (P) => (P.azimuth * Math.PI) / 180;
+const at3 = (place, theta, u, y, v) => placer(place, theta)(u, y, v);
+
 // one box of the block, shaded like the kit's prismOf: { body, edges }
-function boxOf(place, theta, v0, v1, P, V, L) {
+function boxOf(place, theta, v0, v1, P, V, L, { u0 = -BLK.half, u1 = BLK.half, y0 = BLK.y0, y1 = BLK.y1, tone = "mid" } = {}) {
   const at = placer(place, theta);
-  const h = BLK.half;
-  const ring = [[-h, v0], [h, v0], [h, v1], [-h, v1]]; // counter-clockwise in (u, v)
+  const ring = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]]; // counter-clockwise in (u, v)
   const c = Math.cos(theta);
   const s = Math.sin(theta);
   const U = [c, 0, -s];
   const W = [s, 0, c];
-  const low = ring.map(([u, v]) => isoOf(at(u, BLK.y0, v), P));
-  const high = ring.map(([u, v]) => isoOf(at(u, BLK.y1, v), P));
+  const low = ring.map(([u, v]) => isoOf(at(u, y0, v), P));
+  const high = ring.map(([u, v]) => isoOf(at(u, y1, v), P));
   const buckets = [[], [], [], [], []];
   const seen = [];
   for (let j = 0; j < 4; j++) {
@@ -172,7 +178,7 @@ function boxOf(place, theta, v0, v1, P, V, L) {
   const outline = pathOf(hull([...low, ...high]), true);
   const shades = buckets.slice(0, 4).map((list) => list.join(""));
   const body = `<path class="iso-fill" d="${outline}"/>` + shades.map((d, i) => (d ? `<path class="iso-shade" data-shade="${i}" d="${d}"/>` : "")).join("") + `<path class="iso-top" d="${buckets[4].join("")}"/>`;
-  const edges = `<path class="iso-line iso-crease" data-tone="lo" d="${creases.join("")}"/><path class="iso-line iso-edge" data-tone="mid" d="${outline}"/>`;
+  const edges = `<path class="iso-line iso-crease" data-tone="lo" d="${creases.join("")}"/><path class="iso-line iso-edge" data-tone="${tone}" d="${outline}"/>`;
   return { body, edges, seen, at };
 }
 
@@ -260,8 +266,11 @@ export function rightRects(st) {
     out.push({ piece: "carrier", m: "si2", u0: -half, u1: half, v0: RB.beolTop + RB.bond, v1: RB.top });
   }
   if (st.tsv > 0) {
-    const reach = (S + 0.9) * st.tsv;
-    for (const u of RB.tsvU) out.push({ piece: "ntsv", m: "pw", u0: u - 0.6, u1: u + 0.6, v0: -S, v1: -S + reach });
+    // each pillar runs from the exposed back surface up through the silicon into the transistor row;
+    // while its step runs it is drawn in the lit tone so the reader sees the step happen
+    const reach = (S + RB.dev * 0.55) * st.tsv;
+    const m = st.tsvHot ? "nt" : "pw";
+    for (const u of RB.tsvU) out.push({ piece: "ntsv", m, u0: u - 0.9, u1: u + 0.9, v0: -S, v1: -S + reach });
   }
   let b = -S;
   RB.back.forEach((h, j) => {
@@ -323,10 +332,10 @@ export function rightExtent(st) {
   return [v0, v1];
 }
 
-const MAT = { si: "bp-si", si2: "bp-si2", ox: "bp-ox", cu: "bp-cu", pw: "bp-pw", gate: "bp-gate", bond: "bp-bond", bk: "bp-bk" };
+const MAT = { si: "bp-si", si2: "bp-si2", ox: "bp-ox", cu: "bp-cu", pw: "bp-pw", nt: "bp-nt", gate: "bp-gate", bond: "bp-bond", bk: "bp-bk" };
 
 // face content of one block: rectangles on the cut face, bands on the side face that faces the viewer
-function faceSvg(rects, bands, box, sideU) {
+function faceSvg(rects, bands, box, sideU, flows = []) {
   const { at } = box;
   const groups = new Map();
   const add = (piece, m, d) => {
@@ -335,17 +344,25 @@ function faceSvg(rects, bands, box, sideU) {
     groups.get(key).push(d);
   };
   return (P) => {
-    for (const r of rects) add(r.piece, r.m, pathOf([at(r.u0, BLK.y1, r.v0), at(r.u1, BLK.y1, r.v0), at(r.u1, BLK.y1, r.v1), at(r.u0, BLK.y1, r.v1)].map((p) => isoOf(p, P)), true));
+    const cl = (u) => Math.max(-BLK.half, Math.min(BLK.half, u));
+    for (const r0 of rects) {
+      const r = { ...r0, u0: cl(r0.u0), u1: cl(r0.u1) };
+      if (r.u1 - r.u0 < 0.05) continue;
+      add(r.piece, r.m, pathOf([at(r.u0, BLK.y1, r.v0), at(r.u1, BLK.y1, r.v0), at(r.u1, BLK.y1, r.v1), at(r.u0, BLK.y1, r.v1)].map((p) => isoOf(p, P)), true));
+    }
     if (sideU !== null) for (const b of bands) add(b.piece, b.m, pathOf([at(sideU, BLK.y0, b.v0), at(sideU, BLK.y1, b.v0), at(sideU, BLK.y1, b.v1), at(sideU, BLK.y0, b.v1)].map((p) => isoOf(p, P)), true));
     const byPiece = new Map();
     for (const [key, list] of groups) {
       const [piece, m] = key.split("|");
       const d = list.join("");
-      const tone = m === "pw" || m === "cu" || m === "gate" ? "lo" : "faint";
+      const tone = m === "pw" || m === "nt" || m === "cu" || m === "gate" ? "lo" : "faint";
       if (!byPiece.has(piece)) byPiece.set(piece, []);
       byPiece.get(piece).push(`<path class="${MAT[m]}" d="${d}"/><path class="iso-line" data-tone="${tone}" d="${d}"/>`);
     }
-    return [...byPiece].map(([piece, parts]) => `<g class="bp-sec" data-piece="${piece}">${parts.join("")}</g>`).join("");
+    // current: dashes running from the bumps down to the transistors
+    const flow = flows.map((f) => pathOf([isoOf(at(f.u, BLK.y1, f.v0), P), isoOf(at(f.u, BLK.y1, f.v1), P)])).join("");
+    const current = flow ? `<path class="iso-line bp-flow" data-tone="lit" data-flow="" d="${flow}"/>` : "";
+    return [...byPiece].map(([piece, parts]) => `<g class="bp-sec" data-piece="${piece}">${parts.join("")}</g>`).join("") + current;
   };
 }
 
@@ -358,7 +375,19 @@ export function rightSvg(st, P, V, L) {
     const box = boxOf(place, st.theta, v0, v1, P, V, L);
     // the side face that looks at the viewer: index 1 is u = +half, index 3 is u = -half
     const sideU = box.seen[1] ? BLK.half : box.seen[3] ? -BLK.half : null;
-    svg += box.body + faceSvg(rightRects(st), rightBands(st), box, sideU)(P) + box.edges;
+    // the fixture's two clamp jaws grip the block's ends and turn with it
+    // jaws stay on the block: centred on the axis once the stack is tall enough, on the stack before that
+    const jh = Math.min(JAW.h, v1 - v0);
+    const jc = Math.max(v0 + jh / 2, Math.min(v1 - jh / 2, place.vc));
+    const jaws = [-1, 1].map((side) => {
+      const u0 = side < 0 ? -BLK.half - JAW.w : BLK.half;
+      const j = boxOf(place, st.theta, jc - jh / 2, jc + jh / 2, P, V, L, { u0, u1: u0 + JAW.w, y0: BLK.y0, y1: BLK.y0 + JAW.d });
+      const c = at3(place, st.theta, u0 + JAW.w / 2, BLK.y0 + JAW.d / 2, jc);
+      return { side, svg: `<g class="bp-jaw" data-piece="tools">${j.body}${j.edges}</g>`, depth: c[0] * Math.cos(az(P)) + c[1] * Math.sin(az(P)) };
+    });
+    jaws.sort((a, b) => a.depth - b.depth);
+    const flows = st.bumps > 0.5 ? [-21, -9, 9, 21].map((u) => ({ u, v0: v0, v1: 0 })) : [];
+    svg += jaws[0].svg + box.body + faceSvg(rightRects(st), rightBands(st), box, sideU, flows)(P) + box.edges + jaws[1].svg;
   }
   if (st.carrier !== null && !st.bonded) {
     const off = st.carrier;
@@ -373,5 +402,6 @@ export function rightSvg(st, P, V, L) {
 
 export function leftSvg(P, V, L) {
   const box = boxOf(BLK.left, 0, 0, LB.top, P, V, L);
-  return box.body + faceSvg(leftRects(), leftBands(), box, BLK.half)(P) + box.edges;
+  const flows = LB.powerU.map((u) => ({ u, v0: LB.top, v1: LB.sub + LB.dev }));
+  return box.body + faceSvg(leftRects(), leftBands(), box, BLK.half, flows)(P) + box.edges;
 }

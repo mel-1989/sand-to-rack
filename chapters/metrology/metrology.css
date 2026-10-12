@@ -64,6 +64,7 @@
 }
 
 .mt-hint {
+  transition: opacity 160ms var(--anatomy-ease);
   font: 10.5px/1 var(--anatomy-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -194,7 +195,7 @@
 
 .mt-step {
   flex: none;
-  width: 150px;
+  width: 162px;
   font: 10.5px/1.2 var(--anatomy-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -248,9 +249,26 @@
   fill: var(--anatomy-lit);
 }
 
-/* the monitor, drawn in the plane of the case front, inked only with kit tokens */
-.mt-screen {
+/* the monitor, drawn in the plane of the case front. A screen emits light, so it stays bright-on-dark in both
+   themes: its inks are set on .mt (inherited by the narrow-screen inset's <use> copy too) and remapped for light */
+.mt {
   --mt-glass: var(--anatomy-shade-0);
+  --mt-ground: var(--anatomy-faint);
+  --mt-body: var(--anatomy-lo);
+  --mt-bright: var(--anatomy-hi);
+  --mt-ink: var(--anatomy-mid);
+  --mt-ink-lo: var(--anatomy-lo);
+  --mt-hot: var(--anatomy-lit);
+}
+
+[data-theme="light"] .mt {
+  --mt-glass: var(--anatomy-strong);
+  --mt-ground: color-mix(in srgb, var(--anatomy-strong) 88%, var(--anatomy-card));
+  --mt-body: color-mix(in srgb, var(--anatomy-strong) 74%, var(--anatomy-card));
+  --mt-bright: color-mix(in srgb, var(--anatomy-card) 84%, var(--anatomy-strong));
+  --mt-ink: color-mix(in srgb, var(--anatomy-strong) 50%, var(--anatomy-card));
+  --mt-ink-lo: color-mix(in srgb, var(--anatomy-strong) 70%, var(--anatomy-card));
+  --mt-hot: var(--anatomy-card);
 }
 
 .mt-glass {
@@ -261,68 +279,73 @@
 .mt-frame,
 .mt-thin-line {
   fill: none;
-  stroke: var(--anatomy-mid);
+  stroke: var(--mt-ink);
   stroke-width: 0.35;
 }
 
 .mt-thin {
   stroke-width: 0.22;
-  stroke: var(--anatomy-lo);
+  stroke: var(--mt-ink-lo);
 }
 
 .mt-cursor {
   fill: none;
-  stroke: var(--anatomy-lit);
+  stroke: var(--mt-hot);
   stroke-width: 0.35;
 }
 
 .mt-mark {
   fill: none;
-  stroke: var(--anatomy-lit);
+  stroke: var(--mt-hot);
   stroke-width: 0.5;
 }
 
 .mt-dash {
   fill: none;
-  stroke: var(--anatomy-mid);
+  stroke: var(--mt-ink);
   stroke-width: 0.3;
   stroke-dasharray: 1 0.8;
 }
 
 .mt-trace {
   fill: none;
-  stroke: var(--anatomy-hi);
+  stroke: var(--mt-bright);
   stroke-width: 0.4;
   stroke-linejoin: round;
 }
 
 .mt-fill-ground {
-  fill: var(--anatomy-faint);
+  fill: var(--mt-ground);
 }
 
 .mt-fill-lo {
-  fill: var(--anatomy-lo);
+  fill: var(--mt-body);
 }
 
 .mt-fill-hi {
-  fill: var(--anatomy-hi);
+  fill: var(--mt-bright);
 }
 
 .mt-scanline {
-  fill: var(--anatomy-lit);
+  fill: var(--mt-hot);
 }
 
 .mt-dot {
-  fill: var(--anatomy-hi);
+  fill: var(--mt-bright);
 }
 
 .mt-new {
-  fill: var(--anatomy-lit);
+  fill: var(--mt-hot);
+}
+
+.mt-defect {
+  fill: var(--anatomy-red);
+  transition: opacity 160ms var(--anatomy-ease);
 }
 
 .mt-text {
-  fill: var(--anatomy-hi);
-  font: 600 5px/1 var(--anatomy-mono);
+  fill: var(--mt-bright);
+  font: 600 4.4px/1 var(--anatomy-mono);
   letter-spacing: 0.04em;
 }
 
@@ -332,7 +355,61 @@
 }
 
 .mt-big {
-  font-size: 9px;
+  font-size: 7.6px;
+}
+
+/* the hint is redundant once a part is picked, and a long part readout would run into it */
+.mt-stage[data-focus] ~ .mt-controls .mt-hint {
+  opacity: 0;
+}
+
+/* a flat, enlarged copy of the monitor: the drawn one is too small to read at any width.
+   Wide screens hang it in the empty upper right of the plate, narrow ones under the machine */
+.mt-inset {
+  position: absolute;
+  top: 58px;
+  right: 24px;
+  width: clamp(160px, 29%, 250px);
+  height: auto;
+  pointer-events: none;
+}
+
+.mt-inset-tag {
+  position: absolute;
+  top: 42px;
+  right: 26px;
+  font: 9.5px/1 var(--anatomy-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+  pointer-events: none;
+}
+
+.mt-inset-frame {
+  fill: var(--mt-glass);
+  stroke: var(--anatomy-mid);
+  stroke-width: 0.4;
+}
+
+@media (max-width: 640px) {
+  .mt .iso-plate {
+    padding-bottom: 254px;
+  }
+
+  .mt-inset-tag {
+    display: none;
+  }
+
+  .mt-inset {
+    top: auto;
+    right: auto;
+    left: 50%;
+    bottom: 114px;
+    width: min(60%, 200px);
+    height: auto;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
 }
 
 .mt-stage[data-beam] .mt-beam-edge {
@@ -342,7 +419,8 @@
 
 @media (max-width: 480px) {
   .mt-stage > svg {
-    width: 116%;
-    margin: -4% 0 0 -8%;
+    width: 112%;
+    margin: -4% 0 0 -6%;
+    transform: translateX(-21px);
   }
 }

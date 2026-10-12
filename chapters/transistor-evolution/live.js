@@ -30,6 +30,7 @@ const shareOfPiece = (id) => (piece[id] ? piece[id].x : 0);
 
 let clock = 0;
 let selected = null;
+let picked = null; // { item, sub, text }: one part of the lit specimen, named in the readout
 let inside = false;
 let leaveTimer = 0;
 let idleTimer = 0;
@@ -53,9 +54,40 @@ function say(text) {
   if (readout.textContent !== text) readout.textContent = text;
 }
 
+// On a phone the readout drops the node name so it stays on one line.
+const panning = matchMedia("(max-width: 520px)");
+const sayOf = (id) => (panning.matches ? D.gens[id].sayShort : D.gens[id].say);
+const idleSay = () => (panning.matches ? D.idleShort : D.idle);
+
+function partText(item, sub) {
+  const role = (sub && sub.dataset.sub) || item.dataset.role;
+  let text = D.parts[role];
+  if (!text) return null;
+  if (typeof text === "object") text = text[item.dataset.gen] || null;
+  if (!text) return null;
+  return text.replace("{half}", item.dataset.half || "source/drain");
+}
+
+function pick(hit) {
+  const item = hit && hit.gen === selected ? hit.item : null;
+  const sub = item ? hit.sub : null;
+  if (picked && picked.item === item && picked.sub === sub) return;
+  if (picked) {
+    picked.item.removeAttribute("data-pick");
+    if (picked.sub) picked.sub.removeAttribute("data-pick");
+  }
+  const text = item ? partText(item, sub) : null;
+  picked = text ? { item, sub, text } : null;
+  if (picked) {
+    item.setAttribute("data-pick", "");
+    if (sub) sub.setAttribute("data-pick", "");
+    stage.setAttribute("data-pick", "");
+  } else stage.removeAttribute("data-pick");
+}
+
 function describe() {
   const s = sliderValue();
-  const text = selected ? `${D.gens[selected].name}: ${D.gens[selected].say}` : s >= 0.999 ? D.open : s <= 0.001 ? `Closed · ${D.idle}` : stepOf(s);
+  const text = selected ? `${D.gens[selected].name}: ${picked ? picked.text : D.gens[selected].say}` : s >= 0.999 ? D.open : s <= 0.001 ? `Closed · ${D.idle}` : stepOf(s);
   if (stage.getAttribute("aria-valuetext") !== text) stage.setAttribute("aria-valuetext", text);
   if (document.activeElement === stage && text !== spoken) {
     spoken = text;
@@ -67,15 +99,34 @@ function select(id) {
   if (id && !D.gens[id]) id = null;
   if (selected === id) return;
   selected = id;
+  pick(null);
   for (const node of nodes) {
-    if (id !== null && node.gen === id) node.el.setAttribute("data-on", "");
-    else node.el.removeAttribute("data-on");
+    const mine = id !== null && node.gen === id;
+    node.el.toggleAttribute("data-mine", mine);
+    node.el.toggleAttribute("data-on", mine && !node.el.hasAttribute("data-host"));
   }
+  if (id) follow(id);
   if (id) stage.setAttribute("data-focus", "");
   else stage.removeAttribute("data-focus");
   partButtons.forEach((button) => (button.dataset.part === id ? button.setAttribute("data-on", "") : button.removeAttribute("data-on")));
   stage.setAttribute("aria-valuenow", String(id ? IDS.indexOf(id) + 1 : 0));
   describe();
+}
+
+// On a phone the bench is wider than the card: the stage pans, and follows the specimen in play.
+// A swipe by the reader forgets which specimen was followed, so the next pick pans back to it.
+let followed = null;
+let followedAt = -1e9;
+stage.addEventListener("scroll", () => {
+  if (performance.now() - followedAt > 900) followed = null;
+}, { passive: true });
+function follow(id, force = false) {
+  if (!panning.matches || !id || (id === followed && !force)) return;
+  followed = id;
+  followedAt = performance.now();
+  const svgEl = stage.querySelector("svg");
+  const left = D.centres[id] * svgEl.clientWidth - stage.clientWidth / 2;
+  stage.scrollTo({ left: Math.max(0, left), behavior: still.matches ? "auto" : "smooth" });
 }
 
 function scrubTo(s) {
@@ -86,6 +137,7 @@ function scrubTo(s) {
     state.pending = null;
   }
   scrubInput.value = String(Math.round(s * 1000));
+  if (s > 0.001 && s < 0.999) follow(IDS[stepIndex(s)]);
   describe();
 }
 
@@ -105,7 +157,8 @@ function progress() {
   for (const [index, id] of IDS.entries()) {
     const x = piece[id].x;
     if (x <= 1e-4) break;
-    s = Math.min(1, (index + WINDOW * Math.min(1, x)) / (IDS.length - 1 + WINDOW));
+    const t = 0.5 - Math.sin(Math.asin(1 - 2 * Math.min(1, x)) / 3); // inverse of ease
+    s = Math.min(1, (index + WINDOW * t) / (IDS.length - 1 + WINDOW));
   }
   return s;
 }
@@ -195,12 +248,12 @@ function quietTour() {
 }
 
 function idleText() {
-  if (selected) return D.gens[selected].say;
+  if (selected) return picked ? `${D.gens[selected].short} · ${picked.text}` : sayOf(selected);
   const s = sliderValue();
-  if (s > 0.001 && s < 0.999) return D.gens[IDS[stepIndex(s)]].say;
+  if (s > 0.001 && s < 0.999) return sayOf(IDS[stepIndex(s)]);
   const moving = IDS.some((id) => Math.abs(piece[id].x - piece[id].target) > 0.002 || piece[id].pending);
   if (moving) return "closing the specimens";
-  return s >= 0.999 ? D.open : D.idle;
+  return s >= 0.999 ? D.open : idleSay();
 }
 
 function tick(now) {
@@ -223,7 +276,7 @@ function tick(now) {
     moving = true;
   } else {
     for (const id of IDS) if (steerSpring(piece[id], dt, calm)) moving = true;
-    scrubInput.value = String(Math.round(progress() * 1000));
+    if (moving || IDS.some((id) => piece[id].x !== shareAt(sliderValue(), IDS.indexOf(id)))) scrubInput.value = String(Math.round(progress() * 1000));
   }
   showPlay();
   place();
@@ -247,10 +300,12 @@ new IntersectionObserver(
   { rootMargin: "120px 0px" },
 ).observe(stage);
 
-function genAt(event) {
+function hitAt(event) {
   const hit = document.elementFromPoint(event.clientX, event.clientY);
   const item = hit && hit.closest ? hit.closest(".it") : null;
-  return item ? item.dataset.gen || null : null;
+  if (!item || !item.dataset.gen) return { gen: null, item: null, sub: null };
+  const sub = hit.closest("[data-sub]");
+  return { gen: item.dataset.gen, item, sub: sub && item.contains(sub) ? sub : null };
 }
 
 function refresh() {
@@ -265,7 +320,9 @@ stage.addEventListener("pointermove", (event) => {
   inside = true;
   clearTimeout(leaveTimer);
   if (touring) quietTour();
-  select(genAt(event));
+  const hit = hitAt(event);
+  select(hit.gen);
+  pick(hit);
   refresh();
 });
 
@@ -286,8 +343,14 @@ stage.addEventListener("pointerdown", (event) => {
   }
   quietTour();
   playing = null;
-  const id = genAt(event);
-  select(id === selected ? null : id);
+  // first tap lights a specimen and names the part tapped; tapping that same part again lets go
+  const hit = hitAt(event);
+  const again = hit.gen && hit.gen === selected && picked && picked.item === hit.item && picked.sub === hit.sub;
+  if (again || !hit.gen) select(null);
+  else {
+    select(hit.gen);
+    pick(hit);
+  }
   refresh();
 });
 
@@ -296,6 +359,8 @@ partButtons.forEach((button) => {
     quietTour();
     clearTimeout(leaveTimer);
     select(button.dataset.part);
+    pick(null);
+    follow(button.dataset.part, true);
     refresh();
   };
   const hide = () => {
@@ -388,7 +453,7 @@ playButton.addEventListener("click", () => {
 if (still.matches) touring = false;
 const narrow = matchMedia("(hover: none), (max-width: 480px)");
 const hint = root.querySelector(".tr-hint");
-const wording = () => hint && (hint.textContent = narrow.matches ? "Tap a specimen · play below" : "Hover a specimen · Space plays");
+const wording = () => hint && (hint.textContent = narrow.matches ? "Tap a part · play below" : "Hover a part · Space plays");
 wording();
 narrow.addEventListener("change", wording);
 refresh();

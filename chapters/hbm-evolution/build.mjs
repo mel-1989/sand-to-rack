@@ -55,7 +55,7 @@ const HEAD = { x: XP - 8, y: -10, w: 16, d: 20, r: 1.5 };
 const HEAD_Z = 76;
 const HEAD_TOP = 98;
 
-const heightOf = (g) => (g.heightUm ?? DRAW_UM) * Z_PER_UM;
+const heightOf = (g) => (g.heightUm ?? g.drawUm ?? DRAW_UM) * Z_PER_UM;
 const topOf = (g) => Z0 + heightOf(g);
 const basePlan = (x) => ({ x: x - 13, y: -15, w: 26, d: 30, r: 0.4 });
 const couponPlan = (x) => ({ x: x - 20, y: -21, w: 40, d: 42, r: 1.2 });
@@ -209,7 +209,9 @@ function stack(index) {
   const base = basePlan(x);
   const core = k.insetPlan(base, MOLD_W);
   const top = topOf(g);
-  const zb = Z0 + BASE_H;
+  const logic = !!(g.base || g.future);
+  const baseH = logic ? BASE_H + 1.4 : BASE_H; // illustrative: the foundry logic die drawn thicker and darker
+  const zb = Z0 + baseH;
   const n = g.high;
   const pitch = (top - zb) / n;
   const gap = g.bond === "hybrid" ? 0 : Math.min(0.7, pitch * 0.25);
@@ -220,15 +222,24 @@ function stack(index) {
   const tsvAt = (z, face) => [...colsY.map((cx) => at([cx, face.y + face.d, z])), ...colsX.map((cy) => at([face.x + face.w, cy, z]))];
 
   const parts = [];
-  // base die: a logic die from a foundry on HBM4 and later, a DRAM-process buffer die before
-  const logic = g.base || g.future;
-  const baseInner = L(k.sideSeam(base, Z0 + 1.2, P, 2), { tone: "faint" }) + (logic ? L(k.sideSeam(base, Z0 + 2.6, P, 2), { tone: "faint" }) : "");
-  parts.push(S(k.slabOf(base, Z0, BASE_H, P, 2, 0.3), { tone: "mid", crease: "lo", inner: baseInner }));
-  parts.push(Dots(tsvAt(Z0 + BASE_H / 2, base), { size: 0.5, tone: "lo" }));
-  // PHY bumps along the base die's exposed front margin
+  // base die: a logic die from a foundry on HBM4 and later (thicker, dark, with a dense circuit texture of
+  // metal-layer seams and contact rows), a DRAM-process buffer die before
+  const baseInner = logic
+    ? L([1, 2, 3, 4].map((dz) => k.sideSeam(base, Z0 + dz * 1.08, P, 2)).join(""), { tone: "faint" })
+    : L(k.sideSeam(base, Z0 + 1.2, P, 2), { tone: "faint" });
+  parts.push(S(k.slabOf(base, Z0, baseH, P, 2, 0.3), { tone: logic ? "lo" : "mid", crease: logic ? "mid" : "lo", inner: baseInner }));
+  if (logic) {
+    const grid = [];
+    for (let px = base.x + 1.4; px < base.x + base.w - 0.8; px += 1.1) grid.push(at([px, base.y + base.d, Z0 + 1.62]), at([px, base.y + base.d, Z0 + 3.78]));
+    for (let py = base.y + 1.4; py < base.y + base.d - 0.8; py += 1.1) grid.push(at([base.x + base.w, py, Z0 + 1.62]), at([base.x + base.w, py, Z0 + 3.78]));
+    parts.push(Dots(grid, { size: 0.18, tone: "mid" }));
+  }
+  parts.push(Dots(tsvAt(Z0 + baseH / 2, base), { size: 0.5, tone: logic ? "mid" : "lo" }));
+  // PHY bumps along the base die's exposed front margin: one row for 1,024 bits, two staggered rows for 2,048
   const phy = [];
-  for (let px = core.x + 2; px < core.x + core.w; px += 2.2) phy.push(at([px, core.y + core.d + MOLD_W / 2, zb]));
-  parts.push(Dots(phy, { size: 0.28, tone: "lo" }));
+  const rows = g.busBits >= 2048 ? [[0.55, 0], [1.45, 1.1]] : [[1, 0]];
+  for (const [dy, shift] of rows) for (let px = core.x + 2 + shift; px < core.x + core.w; px += 2.2) phy.push(at([px, core.y + core.d + dy * (MOLD_W / 2), zb]));
+  parts.push(Dots(phy, { size: 0.28, tone: logic ? "hi" : "lo" }));
   // mold compound on the two far sides (cut away on the near sides)
   const moldY = { x: base.x, y: base.y, w: base.w, d: MOLD_W, r: 0.3 };
   const moldX = { x: base.x, y: base.y + MOLD_W, w: MOLD_W, d: base.d - MOLD_W, r: 0.3 };
@@ -268,10 +279,8 @@ function carriage() {
   put("carriage", centreOf(COLUMN, BLOCK_TOP), colSvg, [slab(COLUMN, BLOCK_TOP, COLUMN_TOP - BLOCK_TOP), slab(k.insetPlan(COLUMN, -1), COLUMN_TOP, 2)], { name: "carriage.column" });
   const armSvg = S(k.slabOf(ARM, ARM_Z, ARM_TOP - ARM_Z, P, 2, 0.4), { tone: "mid", inner: L(k.sideSeam(ARM, ARM_Z + 2.4, P, 2), { tone: "faint" }) }) + Dots([at([ARM.x + 5, ARM.y + 4, ARM_TOP]), at([ARM.x + 5, ARM.y + ARM.d - 4, ARM_TOP])], { size: 0.45 });
   put("carriage", centreOf(ARM, ARM_Z), armSvg, [slab(ARM, ARM_Z, ARM_TOP - ARM_Z, 2)], { name: "carriage.arm" });
-  // head: the beam is drawn first so the head's body covers its upper end
-  const beam = `<g class="hb-beam" data-beam></g>`;
+  // head; its laser beam lives in its own layer above every stack (see BEAM below)
   const headSvg =
-    beam +
     S(k.slabOf(HEAD, HEAD_Z, HEAD_TOP - HEAD_Z, P, 3, 0.6), { tone: "hi", crease: "lo", inner: L(k.sideSeam(HEAD, HEAD_Z + 4, P, 3) + k.sideSeam(HEAD, HEAD_TOP - 4, P, 3), { tone: "faint" }) }) +
     L(k.planOutline(k.insetPlan(HEAD, 2.4), HEAD_TOP, P, 3), { tone: "lo" }) +
     L(k.sideRing([XP, HEAD.y + HEAD.d, HEAD_Z + 11], 2.2, "y", P, 20), { tone: "lo" }) +
@@ -292,11 +301,31 @@ const groups = R.items.map((item, index) => {
   return `<g class="it" data-piece="${item.piece}" data-k="${item.key.toFixed(2)}" data-m="${mx.toFixed(1)},${my.toFixed(1)},${mz.toFixed(1)}" data-i="${index}">${item.svg}</g>`;
 });
 
-// the laser beam for each station, drawn in the carriage's home frame
+// the laser beam for each station, drawn in the carriage's home frame. It starts where the vertical line through the
+// head's centre leaves the head's bottom outline on screen, so it can paint above the head without crossing its faces.
+const headBottom = k.corners(HEAD, 0).map(([x, y]) => at([x, y, HEAD_Z]));
+const inside = ([px, py], poly) => {
+  let hit = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i];
+    const [xj, yj] = poly[j];
+    if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) hit = !hit;
+  }
+  return hit;
+};
+const hull = [...headBottom].sort((a, b) => Math.atan2(a[1] - at([XP, 0, HEAD_Z])[1], a[0] - at([XP, 0, HEAD_Z])[0]) - Math.atan2(b[1] - at([XP, 0, HEAD_Z])[1], b[0] - at([XP, 0, HEAD_Z])[0]));
+let lo = HEAD_Z - 30;
+let hi = HEAD_Z;
+for (let i = 0; i < 40; i++) {
+  const mid = (lo + hi) / 2;
+  if (inside(at([XP, 0, mid]), hull)) hi = mid;
+  else lo = mid;
+}
+const BEAM_Z = lo;
 const beams = M.GENS.map((g) => {
   const zTop = topOf(g);
   const spot = [XP, 0, zTop];
-  return L(k.segment([XP, 0, HEAD_Z], spot, P), { tone: "lit" }) + L(k.ring(XP, 0, 1.6, zTop, P, 16), { tone: "lit" }) + Dots([at(spot)], { size: 0.8, tone: "hi" });
+  return L(k.segment([XP, 0, BEAM_Z], spot, P), { tone: "lit" }) + L(k.ring(XP, 0, 1.6, zTop, P, 16), { tone: "lit" }) + Dots([at(spot)], { size: 0.8, tone: "hi" });
 });
 
 const unit = (vector) => {
@@ -317,15 +346,15 @@ const DATA = {
 };
 
 const LABEL = `A measuring bench with seven HBM memory stacks cut open side by side, oldest on the left: HBM, HBM2, HBM2E, HBM3, HBM3E, HBM4 and an expected hybrid-bonded HBM4E. Each stack sits on a test coupon and interposer in a pocket of a fixture strip; each shows its base die, its DRAM dies with through-silicon vias as columns of dots, the micro-bumps between dies, and mold on its far sides. A laser height gauge on a carriage runs along a rail behind them and measures each stack in turn.`;
-const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="hb-layers">${groups.join("")}</g>`], className: "hb-svg" });
+const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="hb-layers">${groups.join("")}</g><g class="hb-beam" data-beam></g>`], className: "hb-svg" });
 
 const PARTS = M.GENS.map((g, i) => `<button type="button" class="hb-part" data-part="${g.id}"><span class="hb-num">${String(i + 1).padStart(2, "0")}</span>${g.name}</button>`).join("");
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">HBM · seven generations</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="hb-controls"><span class="hb-hint">Hover a stack · Space plays</span><span class="hb-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="hb-stage" tabindex="0" role="slider" aria-label="Seven generations of HBM stacks on a bench. Hover a stack, or use the arrow keys, to send the height gauge to it and read its numbers; Space plays through the generations; Escape parks the gauge." aria-valuemin="0" aria-valuemax="${N}" aria-valuenow="0" aria-valuetext="Gauge parked · ${M.IDLE}">${svg}</div>`;
 const g = (id) => M.GENS.find((x) => x.id === id);
-const caption = `Seven HBM stacks cut open, oldest on the left, with the per-stack peak of each generation: ${M.GENS.filter((x) => !x.future).map((x) => `${x.name} ${M.bw(x)}`).join(", ")}. The interface stayed ${(1024).toLocaleString("en-US")} bits wide for five generations while the pin speed rose from ${M.first.pinGbps} to ${g("hbm3e").pinGbps} Gb/s; HBM4 doubles it to ${(2048).toLocaleString("en-US")} bits. The stacks grew from ${M.first.high} to ${g("hbm4").high} DRAM dies yet stayed within ${M.HEIGHT_12H_UM} µm until HBM4 (${M.HEIGHT_HBM4_UM} µm), because the dies were thinned. Dots in columns are through-silicon vias; dots between dies are micro-bumps in underfill. The last stack is an expected hybrid-bonded HBM4E or HBM5 with no bumps; it has no published numbers. Footprints, die thicknesses, via and bump counts are illustrative, heights are exaggerated against the plan, and the first HBM's height is drawn, not sourced.`;
-const scrub = `<span class="hb-scrub"><button type="button" class="hb-play" data-play aria-label="Play through the generations"><span class="hb-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="hb-range" data-scrub min="0" max="${N * 100}" step="1" value="0" aria-label="Generation: 0 is the gauge parked, then one step per generation"><span class="hb-step" data-step>parked</span></span>`;
+const caption = `Seven HBM stacks cut open, oldest on the left, with the per-stack peak of each generation: ${M.GENS.filter((x) => !x.future).map((x) => `${x.name} ${M.bw(x)}`).join(", ")}. The interface stayed ${(1024).toLocaleString("en-US")} bits wide for five generations while the pin speed rose from ${M.first.pinGbps} to ${g("hbm3e").pinGbps} Gb/s; HBM4 doubles it to ${(2048).toLocaleString("en-US")} bits. The stacks grew from ${M.first.high} to ${g("hbm4").high} DRAM dies yet stayed within ${M.HEIGHT_12H_UM} µm until HBM4 (${M.HEIGHT_HBM4_UM} µm), because the dies were thinned. Dots in columns are through-silicon vias; dots between dies are micro-bumps in underfill. The last stack is an expected hybrid-bonded HBM4E or HBM5 with no bumps; it has no published numbers. Footprints, die thicknesses, via and bump counts are illustrative, heights are exaggerated against the plan, and the first HBM's and the HBM4E/HBM5 stack's heights are drawn, not sourced.`;
+const scrub = `<span class="hb-scrub"><button type="button" class="hb-play" data-play aria-label="Play through the generations"><span class="hb-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="hb-range" data-scrub min="0" max="${N * 100}" step="100" value="0" aria-label="Generation: 0 is the gauge parked, then one step per generation"><span class="hb-step" data-step>parked</span></span>`;
 const body = `<figure class="iso-figure hb"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="hb-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 
 const CSS = readFileSync(join(HERE, "hbm-evolution.css"), "utf8");

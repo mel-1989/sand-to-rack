@@ -131,11 +131,13 @@
 
 @media (max-width: 640px) {
   .et .iso-plate {
-    padding: 48px 8px 84px;
+    padding: 48px 8px 108px;
   }
 
+  /* the readout hangs from the top of the reserved band, so a wrapped second line grows down, away from the stage edge */
   .et .iso-plate-corner[data-corner="readout"] {
-    bottom: 44px;
+    top: calc(100% - 78px);
+    bottom: auto;
     right: 0;
     left: 16px;
     max-width: calc(100% - 32px);
@@ -285,7 +287,7 @@
   position: absolute;
   left: 22px;
   top: 74px;
-  width: 168px;
+  width: 180px;
   pointer-events: none;
 }
 .et-inset-label {
@@ -307,6 +309,9 @@
 .et-in-head { fill: var(--et-glow); }
 .et-in-text { font: 8px var(--anatomy-mono); fill: var(--anatomy-muted); letter-spacing: 0.04em; }
 .et-in-ion { fill: var(--et-ion); }
+.et-in-tag { font: 7.5px var(--anatomy-mono); fill: var(--anatomy-text); letter-spacing: 0.03em; }
+.et-in-note { fill: var(--anatomy-muted); }
+.et-in-lead { fill: none; stroke: var(--anatomy-muted); stroke-width: 0.6; }
 
 @media (max-width: 640px) {
   .et-inset {

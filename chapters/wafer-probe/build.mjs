@@ -62,7 +62,7 @@ const SLOT = { y0: -66 + 40, y1: 66 + 40, z0: 60, z1: 78 };
 const LOADPOS = [-60, 40];
 const SHELF = { x: -256, y: 175, w: 92, d: 42, r: 2, z: 66, h: 6 };
 const FOUP = { x: -251, y: 178, w: 82, d: 36, r: 6, z: 72, h: 48 };
-const MON = { x: -264, y: 44, w: 104, d: 8, r: 2, z: 150, h: 64 };
+const MON = { x: -270, y: 44, w: 116, d: 8, r: 2, z: 150, h: 84 };
 // tester mainframe
 const MAIN = { x: 40, y: -250, w: 130, d: 82, r: 4 };
 const MAIN_TOP = 150;
@@ -201,7 +201,17 @@ function wafer() {
     ...ys.filter((y) => Math.abs(y) < r - 1).map((y) => k.lineOnTop([lx - Math.sqrt(r * r - y * y), ly + y], [lx + Math.sqrt(r * r - y * y), ly + y], z, P)),
   ].join("");
   const notch = L(k.ring(lx, ly - WR + 1.4, 1.2, z, P, 12), { tone: "lo" });
-  const svg = S(k.cylinder(lx, ly, WR, WAFER_Z, WAFER_T, P, 120, 0.3), { tone: "hi", crease: "lo" }) + L(grid, { tone: "faint" }) + notch;
+  // each die's face, tinted once it is binned (green pass, red fail) with an ink dot on a failing die, as an inker marks it
+  const [dw, dh] = M.DIE_MM.map((v) => v * SC);
+  const poly = (pts) => `M${pts.map((pt) => at(pt).map((v) => v.toFixed(2)).join(" ")).join("L")}Z`;
+  const tints = M.DIES.map((d, n) => {
+    const x = lx + d.x * SC;
+    const y = ly + d.y * SC;
+    const face = poly([[x - dw / 2 + 0.6, y - dh / 2 + 0.6, z], [x + dw / 2 - 0.6, y - dh / 2 + 0.6, z], [x + dw / 2 - 0.6, y + dh / 2 - 0.6, z], [x - dw / 2 + 0.6, y + dh / 2 - 0.6, z]]);
+    const ink = d.pass ? "" : `<path class="wp-ink" d="${k.ring(x, y, Math.min(dw, dh) * 0.16, z, P, 16)}"/>`;
+    return `<g class="wp-wd" data-n="${n}" data-pass="${d.pass ? 1 : 0}"><path class="wp-wdface" d="${face}"/>${ink}</g>`;
+  }).join("");
+  const svg = S(k.cylinder(lx, ly, WR, WAFER_Z, WAFER_T, P, 120, 0.3), { tone: "hi", crease: "lo" }) + tints + L(grid, { tone: "faint" }) + notch;
   put("stage", [lx, ly, WAFER_Z], svg, [A.cylinder(lx, ly, WR, WAFER_Z, WAFER_T, {})], { name: "wafer", mv: "wafer", clip: true });
 }
 
@@ -349,7 +359,7 @@ function monitor() {
   const T = k.sideMatrix([sx0, face], sz1, P, "left");
   const cols = [...new Set(M.DIES.map((d) => d.i))].sort((a, b) => a - b);
   const rows = [...new Set(M.DIES.map((d) => d.j))].sort((a, b) => a - b);
-  const cell = Math.min((sh - 6) / rows.length / M.DIE_MM[1], (sw * 0.56) / cols.length / M.DIE_MM[0]);
+  const cell = Math.min((sh - 6) / rows.length / M.DIE_MM[1], (sw * 0.6) / cols.length / M.DIE_MM[0]);
   const cw = M.DIE_MM[0] * cell;
   const ch = M.DIE_MM[1] * cell;
   const mapW = cw * cols.length;

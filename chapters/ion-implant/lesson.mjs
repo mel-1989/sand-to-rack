@@ -10,19 +10,19 @@ export const LESSON = {
   steps: [
     `<strong>Ionise.</strong> A dopant gas (${B.gas}, ${Ph.gas} or ${As.gas}) flows into the arc chamber, where a hot filament strikes a plasma of charged fragments.`,
     `<strong>Extract.</strong> Electrodes at high voltage pull positive ions out through a slit, forming a beam.`,
-    `<strong>Select the mass.</strong> In the analyzer magnet each ion bends on a radius set by its momentum, so at one field strength only one mass (say ${B.ion}, not ¹⁰B⁺ or BF₂⁺) lines up with the resolving slit. The rest strike the walls.`,
+    `<strong>Select the mass.</strong> In the analyzer magnet each ion bends on a radius set by its momentum, so at one field strength only one mass (say ${B.ion}, not ¹⁰B⁺ or BF₂⁺) lines up with the resolving slit. The rest strike the walls. The readout's Bρ (field times bend radius) is what the magnet must supply; heavier ions need more.`,
     `<strong>Accelerate.</strong> A column of graded electrodes (or an RF linear accelerator for MeV beams) sets the final energy, which sets the depth.`,
     `<strong>Scan.</strong> The beam sweeps side to side while the wafer moves through it, tilted about ${M.TILT_DEG}° so ions cannot slip down the crystal's open channels. A Faraday cup at the edge of the sweep measures beam current; integrating it gives the dose.`,
     `<strong>Stop at depth.</strong> Each ion loses energy in collisions and stops in a spread around a mean depth, the projected range. Heavier ions stop shallower.`,
     `<strong>Anneal.</strong> The implant knocks the crystal about. A spike anneal in a lamp-heated chamber, or a millisecond laser or flash anneal, repairs the lattice and moves the dopants onto lattice sites, where they become electrically active, while letting them diffuse as little as possible.`,
   ],
   numbers: [
-    ["Energy range", `${M.TOOLS.mediumKeV[0]} keV to ${M.TOOLS.maxMeV} MeV`, `Axcelis Purion M covers 2 keV–1 MeV; the RF-LINAC Purion XE series reaches ${M.TOOLS.maxMeV} MeV (XEmax)`],
-    ["Dose range", `${M.sci(M.TOOLS.doseRange[0])} to ${M.sci(M.TOOLS.doseRange[1])} ions/cm²`, "five orders of magnitude, set by counting charge"],
+    ["Energy range", `about ${M.MIN_KEV} keV to ${M.TOOLS.maxMeV} MeV`, `across tool classes: high-current tools from ${M.TOOLS.highCurrentEV[0]} eV (VIISta Trident), medium-current ${M.TOOLS.mediumKeV[0]} keV–1 MeV (Purion M), high-energy RF-LINAC tools to ${M.TOOLS.maxMeV} MeV (Purion XEmax)`],
+    ["Dose range", `about ${M.sci(M.TOOLS.doseRange[0])} to ${M.sci(M.TOOLS.highCurrentDose[1])} ions/cm²`, `medium-current and high-energy tools cover ${M.sci(M.TOOLS.doseRange[0])}–${M.sci(M.TOOLS.doseRange[1])}, high-current tools ${M.sci(M.TOOLS.highCurrentDose[0])}–${M.sci(M.TOOLS.highCurrentDose[1])}; set by counting charge`],
     ["Tilt", `${M.TILT_DEG}°`, "off the crystal axis, to avoid channelling"],
     ["Projected range at 100 keV", `B ${B.rpNm} · P ${Ph.rpNm} · As ${As.rpNm} nm`, "read from SRIM-2013 curves; approximate"],
-    ["Throughput", `up to ${M.TOOLS.wph} wafers/hour`, `a moderate dose can take about ${M.WAFER_SECONDS} s per 300 mm wafer`],
-    ["Anneal", `spike ≈${M.ANNEAL.spikeC.toLocaleString("en-US")} °C · ms anneal ${M.ANNEAL.msaC[0].toLocaleString("en-US")}–${M.ANNEAL.msaC[1].toLocaleString("en-US")} °C`, `lamp RTP reaches ${M.ANNEAL.rtpC[1].toLocaleString("en-US")} °C in ${M.ANNEAL.rtpSeconds[0]}–${M.ANNEAL.rtpSeconds[1]} s; ms anneals last hundreds of µs to a few ms`],
+    ["Throughput", `up to ${M.TOOLS.wph} wafers/hour`, `Axcelis Purion M end-station rating; lower at high doses, since implant time grows with dose (a moderate dose takes about ${M.WAFER_SECONDS} s per 300 mm wafer in the Georgia Tech lecture)`],
+    ["Anneal", `lamp RTP ${M.ANNEAL.rtpC[0]}–${M.ANNEAL.rtpC[1].toLocaleString("en-US")} °C · ms anneal ${M.ANNEAL.msaC[0].toLocaleString("en-US")}–${M.ANNEAL.msaC[1].toLocaleString("en-US")} °C`, `lamp RTP runs at ${M.ANNEAL.rtpC[0]}–${M.ANNEAL.rtpC[1].toLocaleString("en-US")} °C for ${M.ANNEAL.rtpSeconds[0]}–${M.ANNEAL.rtpSeconds[1]} s; ms anneals last hundreds of µs to a few ms. The figure's ~${M.ANNEAL.spikeC.toLocaleString("en-US")} °C spike is illustrative`],
   ],
   innovationsTitle: "Why it matters",
   innovations: [
@@ -34,7 +34,7 @@ export const LESSON = {
   sources: [
     ["Axcelis: Purion M medium-current implanter", "https://www.axcelis.com/purion-m-mid-current-ion-implantation/"],
     ["Axcelis: Purion XE high-energy series", "https://www.axcelis.com/products/purion-xe-series-high-energy-ion-implantation/"],
-    ["Axcelis at PAC 2013: Purion XE beamline (dose range)", "https://accelconf.web.cern.ch/pac2013/talks/weyb2_talk.pdf"],
+    ["Axcelis at PAC 2013: implanter types, energy and dose ranges", "https://accelconf.web.cern.ch/pac2013/talks/weyb2_talk.pdf"],
     ["Georgia Tech ECE6450: Ion implantation lecture", "https://alan.ece.gatech.edu/ECE6450/Lectures/ECE6450L5-Ion%20Implantation.pdf"],
     ["Coherent: projected range statistics (SRIM-2013)", "https://www.coherent.com/content/dam/coherent/site/en/resources/datasheet/materials/ion-implantation-projected-range-statistics-ds.pdf"],
     ["Laser Focus World: wafer annealing meets the 28 nm node", "https://www.laserfocusworld.com/home/article/16547890/photonics-applied-microelectronics-processing-semiconductor-wafer-annealing-meets-the-28-nm-node"],

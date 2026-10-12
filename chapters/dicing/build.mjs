@@ -73,6 +73,9 @@ const HOUSING_R = 13;
 const Y0 = SY - 70; // blade y at share 0 (parked off the back of the wafer)
 const Y_TRAVEL = 130;
 const ZLIFT = 6;
+const REST_Y = 1; // Y share of the spindle's rest at the front end of the beam
+// a die-handling rail along the bench front: carries the UV lamp and the pick head (illustrative)
+const PRAIL = { x0: TCX - 112, x1: TCX + 112, y: 127, d: 4, top: 4 };
 const SCOL = { x: SX - 24, y: -196, w: 48, d: 30, r: 3 };
 const BEAM = { x: SX - 15, y: -196, w: 30, d: 66 + 196, r: 2 };
 const BEAM_Z = [100, 116];
@@ -113,6 +116,8 @@ const circlePts = (cx, cy, r, z, n, phase = 0) => Array.from({ length: n }, (_, 
 
 const R = A.recorder(P, { order: ["head", "stock", "table", "ycar", "spindle"], spring: {} });
 function put(piece, part, ref, svg, shapes, { bias = 0, name, extra = {} } = {}) {
+  // fixed frames (columns, beam, rails) belong to the bench, not to the part they carry
+  if (piece === "stand" && ["wheel", "blade", "table"].includes(part)) part = "stand";
   const id = name ?? R.nameFor(`${part}.item`);
   shapes.forEach((shape) => (shape.name = shape.name ?? id));
   return R.put({ piece, part, at: ref, bias, svg, move: MOVES[piece], shapes: shapes.map(R.solid), name: id, ...extra });
@@ -299,6 +304,17 @@ function sawBase() {
       put("stand", "table", [x + 3, y + 2, 4], stop.svg, [stop.shape], { name: R.nameFor("stand.xstop") });
     }
   }
+  // the handling rail in front of the table, with an end block at each end
+  {
+    const pr = box({ x: PRAIL.x0, y: PRAIL.y, w: PRAIL.x1 - PRAIL.x0, d: PRAIL.d, r: 0.8 }, 0, PRAIL.top, {}, { steps: 2, bevel: 0.3 });
+    const bolts = [];
+    for (let x = PRAIL.x0 + 10; x < PRAIL.x1; x += 22) bolts.push([x, PRAIL.y + PRAIL.d / 2]);
+    put("stand", "stand", [TCX, PRAIL.y + 2, 2], pr.svg + screwDots(bolts, PRAIL.top, 0.4), [pr.shape], { name: "stand.prail" });
+    for (const x of [PRAIL.x0 - 7, PRAIL.x1]) {
+      const e = box({ x, y: PRAIL.y - 3, w: 7, d: PRAIL.d + 6, r: 1 }, 0, 8, {}, { steps: 2, bevel: 0.3 });
+      put("stand", "stand", [x + 3.5, PRAIL.y + 2, 4], e.svg + screwDots([[x + 3.5, PRAIL.y + 2]], 8), [e.shape], { name: R.nameFor("stand.pstop") });
+    }
+  }
   // X drive: motor block at the rail's left end
   const mb = { x: RAIL.x0 - 30, y: SY - 12, w: 22, d: 24, r: 2 };
   const m = box(mb, 0, 16, {}, { steps: 3, bevel: 0.5, inner: seam(mb, 6, 3) });
@@ -326,12 +342,12 @@ function sawTable() {
   put("table", "table", [TCX, SY, 20], ch.svg + L(k.ring(TCX, SY, SCHUCK_R - 3, SCHUCK_TOP, P, 96), { tone: "lo" }) + Dots(pores, { size: 0.3, tone: "lo" }), [ch.shape], { name: "table.chuck" });
   // dicing tape across the frame, the steel ring frame, the thinned wafer on it
   const tp = puck(TCX, SY, DTAPE_R, SCHUCK_TOP, DTAPE_TOP - SCHUCK_TOP, { tone: "lo", crease: "none" }, { steps: 120 });
-  put("table", "table", [TCX, SY, 21.8], `<g data-sawload><g data-dtape>${tp.svg}</g><g data-uv></g></g>`, [tp.shape], { name: "table.tape" });
+  put("table", "table", [TCX, SY, 21.8], `<g data-sawframe><g data-dtape>${tp.svg}</g><g data-uv></g></g>`, [tp.shape], { name: "table.tape" });
   const F = up([TCX, SY, 0]);
   const fr = S(G.ringBand(DTAPE_TOP, FRAME.top, FRAME.rIn, FRAME.rOut, F, P, { hole: [FRAME.top, FRAME.rIn] }), { tone: "mid" });
-  put("table", "table", [TCX, SY, 22.2], `<g data-sawload class="dc-frame">${fr}</g>`, [A.ring(F, DTAPE_TOP, FRAME.top, FRAME.rIn, FRAME.rOut, {})], { name: "table.frame" });
+  put("table", "table", [TCX, SY, 22.2], `<g data-sawframe class="dc-frame">${fr}</g>`, [A.ring(F, DTAPE_TOP, FRAME.top, FRAME.rIn, FRAME.rOut, {})], { name: "table.frame" });
   const w = puck(TCX, SY, WAFER_R, DTAPE_TOP, SW_TOP - DTAPE_TOP, { tone: "hi", crease: "lo" }, { steps: 120 });
-  put("table", "table", [TCX, SY, 22.2], `<g data-sawload>${w.svg}<g data-grid></g></g>`, [w.shape], { name: "table.wafer" });
+  put("table", "table", [TCX, SY, 22.2], `<g data-sawwafer>${w.svg}<g data-grid></g></g>`, [w.shape], { name: "table.wafer" });
   // four frame clamps on the θ table, each rebuilt live as it turns and recorded over its quarter turn
   for (let i = 0; i < 4; i++) {
     const shapes = [];
@@ -445,7 +461,14 @@ function spindle() {
     const strut = { x: SX - 26, y: y0, w: 3, d: 1.8, r: 0.4 };
     const b2 = box(bar, 29, 2, {}, { steps: 2 });
     const s2 = box(strut, 31, COVER_Z[0] - 31, {}, { steps: 2 });
-    put("spindle", "blade", [SX - 10, y0 + 1, 30], s2.svg + b2.svg + `<g data-jet="${i}"></g>`, [b2.shape, s2.shape], { name: `spindle.nozzle${i}` });
+    // the nozzle head at the bar's end, aimed down at the blade's edge, with its orifice
+    const hp = { x: SX - 1, y: i ? by + 1.8 : by - 6.8, w: 8, d: 5, r: 0.8 };
+    const hd = box(hp, 25, 4, {}, { steps: 2, bevel: 0.3, inner: seam(hp, 27.6, 2) });
+    const orifice = Dots([at([SX + 3, i ? by + 2.4 : by - 2.4, 25])], { size: 0.6 });
+    // the front head also takes a short feed pipe from the cover above it
+    const pp = box({ x: SX + 3.6, y: by + 2.7, w: 1.8, d: 1.4, r: 0.4 }, 31, COVER_Z[0] - 31, {}, { steps: 2 });
+    const parts = i ? [pp] : [];
+    put("spindle", "blade", [SX, y0 + 1, AXIS_Z], s2.svg + b2.svg + parts.map((q) => q.svg).join("") + hd.svg + orifice + `<g data-jet="${i}"></g>`, [b2.shape, s2.shape, hd.shape, ...parts.map((q) => q.shape)], { name: `spindle.nozzle${i}` });
   }
   // alignment camera on the Z block's +x side: body, lens tube, ring light
   const camX = SX + 25;
@@ -537,6 +560,8 @@ for (const yRel of [-70, ...streetYs]) {
 }
 // parked: the blade off the back of the wafer, the table anywhere along its travel
 STATES.push({ label: "park", shares: { head: 0, stock: 1, table: 0, ycar: 0, spindle: 0 } });
+// at rest the spindle waits at the front of the beam, clear of it, while the grinder works
+for (const h of [0, 0.5, 1]) STATES.push({ label: `rest ${h}`, shares: { head: h, stock: h, table: 0, ycar: REST_Y, spindle: REST_Y } });
 
 if (!process.argv.includes("--fast")) A.settle(R, P, { states: STATES });
 R.items.sort((a, b) => a.key - b.key);
@@ -546,7 +571,7 @@ const groups = R.items.map((item, index) => {
 });
 
 const LABEL = "A back-grinder and a dicing saw on one bench. Left: a wafer lies face down on a porous vacuum chuck while a diamond cup wheel on a vertical spindle grinds its back away, watched by a two-probe thickness gauge. Right: the thinned wafer, on dicing tape in a ring frame, sits on a rotating chuck on an X table; a thin blade on a horizontal spindle, under a cover with water nozzles and beside an alignment camera, cuts the streets between the dies.";
-const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="dc-layers">${groups.join("")}</g>`], className: "dc-svg" });
+const svg = k.figureSvg({ width: W, height: H, label: LABEL, body: [`<g class="dc-layers">${groups.join("")}</g>`, `<g class="dc-over" data-over></g>`], className: "dc-svg" });
 
 const vec = (v) => {
   const o = at([0, 0, 0]);
@@ -561,7 +586,7 @@ const DATA = {
   EY: vec([0, 1, 0]),
   EZ: vec([0, 0, 1]),
   G: { x: GX, y: GY, wx: WX, wy: WY, chuckR: CHUCK_R, chuckTop: CHUCK_TOP, wheelR: WHEEL.r, seg: WHEEL.seg, wb0: WB0, travel: HEAD_TRAVEL, lift: LIFT, stock: STOCK, thick: THICK_TOP, thin: THIN_TOP, waferR: WAFER_R },
-  S: { x: SX, y: SY, tcx: TCX, tOff: T_OFF, tTravel: T_TRAVEL, y0: Y0, yTravel: Y_TRAVEL, zlift: ZLIFT, thetaR: THETA_R, thetaTop: THETA_TOP, waferTop: SW_TOP, waferR: WAFER_R, frameIn: FRAME.rIn, frameOut: FRAME.rOut, frameTop: FRAME.top, axisZ: AXIS_Z, bladeR: BLADE.r, bladeT: BLADE.t, cam: [25, -39], streets: streetYs, die: 10 },
+  S: { x: SX, y: SY, tcx: TCX, tOff: T_OFF, tTravel: T_TRAVEL, y0: Y0, yTravel: Y_TRAVEL, zlift: ZLIFT, thetaR: THETA_R, thetaTop: THETA_TOP, waferTop: SW_TOP, waferR: WAFER_R, frameIn: FRAME.rIn, frameOut: FRAME.rOut, frameTop: FRAME.top, axisZ: AXIS_Z, bladeR: BLADE.r, bladeT: BLADE.t, cam: [25, -39], streets: streetYs, die: 10, restY: REST_Y, prail: PRAIL },
   CLAMP,
   phases: M.PHASES,
   pieces: M.PIECES,
@@ -575,7 +600,7 @@ const legend = PARTS_ORDER.map((id, index) => `<button type="button" class="dc-p
 const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="iso-plate-corner" data-corner="fig">Fig 1</span><span class="iso-plate-corner" data-corner="title">Back-grinder · dicing saw</span><span class="iso-plate-corner" data-corner="readout" data-readout>${M.IDLE}</span></div>`;
 const controls = `<div class="dc-controls"><span class="dc-hint">Hover a part · Space plays</span><span class="dc-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="dc-stage" tabindex="0" role="group" aria-label="Back-grinder and dicing saw. Hover, or use the arrow keys, to pick a part; Space plays or pauses the process; Escape resets it; the slider below steps through it.">${svg}</div>`;
-const caption = `Two machines drawn side by side on one bench; in a fab they are separate tools, and the frame is carried between them. Left, a back-grinder of the DISCO DGP8761 class: the wafer lies face down on its protective tape on a porous vacuum chuck, and a Φ${M.GRINDER.wheelMm} mm diamond cup wheel, its rim crossing the wafer centre, feeds down while both turn, until a contact gauge reads the target (${M.TARGET_UM} µm here, from ${M.WAFER.um} µm). Right, a dicing saw of the DISCO DFD6362 class: the thinned wafer on dicing tape in a ring frame sits on a θ chuck on the X table; a hub blade under its cover, with a shower nozzle on each side, cuts every street in X, the table turns 90° and it cuts every street in Y. Real saws carry two facing spindles; one is drawn. The streets on the drawn wafer are illustrative (${M.DIE_MM} mm pitch, ${streetYs.length} each way); layer thicknesses are exaggerated (the ${M.WAFER.um} µm wafer is drawn about 15 mm thick), the layout is illustrative and the motion is compressed.`;
+const caption = `Two machines drawn side by side on one bench; in a fab they are separate tools, and the frame is carried between them. Left, a back-grinder of the DISCO DGP8761 class: the wafer lies face down on its protective tape on a porous vacuum chuck, and a Φ${M.GRINDER.wheelMm} mm diamond cup wheel, its rim crossing the wafer centre, feeds down while both turn, until a contact gauge reads the target (${M.TARGET_UM} µm here, from ${M.WAFER.um} µm). Right, a dicing saw of the DISCO DFD6362 class: the thinned wafer on dicing tape in a ring frame sits on a θ chuck on the X table; a hub blade under its cover, with a water nozzle on each side aimed at the blade's edge, cuts every street in X, the table turns 90° and it cuts every street in Y. Real saws carry two facing spindles; one is drawn. UV release and picking are shown on the saw's chuck to keep one wafer in view, with the UV lamp and the pick head riding a rail along the bench front (illustrative): in a fab the frame goes to a separate UV unit, and the dies are picked on a die sorter or bonder after the tape is stretched; the dots mark dies flagged bad in the probe map (illustrative). The streets on the drawn wafer are illustrative (${M.DIE_MM} mm pitch, ${streetYs.length} each way); layer thicknesses are exaggerated (the ${M.WAFER.um} µm wafer is drawn about 15 mm thick), the layout is illustrative and the motion is compressed.`;
 const scrub = `<span class="dc-scrub"><button type="button" class="dc-play" data-play aria-label="Play the process"><span class="dc-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="dc-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Process: 0 is taping, 1000 is picking dies"><span class="dc-step" data-step>01 · ${M.PHASES[0].label}</span></span>`;
 const meter = (title, fill, value, mark = "") => `<span class="dc-meter"><span class="dc-gauge-title">${title}</span><span class="dc-gauge-track"><span class="dc-gauge-fill" ${fill}></span>${mark}</span><span class="dc-gauge-value" ${value[0]}>${value[1]}</span></span>`;
 const gaugeBar = `<div class="dc-gauge" aria-hidden="true">${meter("Wafer thickness", "data-thick", ["data-thick-text", `${M.WAFER.um} µm`], `<span class="dc-gauge-mark" style="left:${((M.TARGET_UM / M.WAFER.um) * 100).toFixed(1)}%"></span>`)}${meter("Streets cut", "data-cut", ["data-cut-text", `0 / ${streetYs.length * 2}`])}</div>`;

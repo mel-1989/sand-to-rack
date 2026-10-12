@@ -7,7 +7,7 @@ export const E_CHARGE = 1.602176634e-19; // C (exact)
 
 // ---- machine envelope ----
 export const TOOLS = {
-  // Axcelis Purion M (medium current): "industry's broadest energy range (2KeV – 1 MeV)", up to 500 wafers an hour
+  // Axcelis Purion M (medium current): "industry's broadest energy range (2KeV – 1 MeV)", "throughput of up to 500 WPH" (no dose condition given)
   // https://www.axcelis.com/purion-m-mid-current-ion-implantation/
   mediumKeV: [2, 1000],
   wph: 500,
@@ -15,10 +15,14 @@ export const TOOLS = {
   // https://www.axcelis.com/products/purion-xe-series-high-energy-ion-implantation/
   linacStages: 12,
   maxMeV: 15,
-  // Axcelis talk at PAC 2013 (Purion XE): dose range 1E11 to 1E16 per cm²
+  // Axcelis talk at PAC 2013: Purion XE / medium-current dose range 1E11 to 1E16 per cm²;
+  // high-current AMAT/VSE VIISta Trident HC: 200 eV – 60 keV, dose 1E13 – 5E16 per cm²
   // https://accelconf.web.cern.ch/pac2013/talks/weyb2_talk.pdf
   doseRange: [1e11, 1e16],
+  highCurrentEV: [200, 60e3],
+  highCurrentDose: [1e13, 5e16],
 };
+export const MIN_KEV = TOOLS.highCurrentEV[0] / 1000; // 0.2 keV, the low end across tool classes (PAC 2013)
 
 // Wafer tilt off the beam to keep ions from channelling down crystal rows.
 // Georgia Tech ECE6450 lecture 5: "Most implants are done at 7.4 degree angles ... to minimize the channeling effect."
@@ -59,7 +63,7 @@ export const ANNEAL = {
   rtpC: [300, 1050],
   rtpSeconds: [1, 30],
   msaC: [1100, 1350],
-  spikeC: 1050, // the top of the lamp-RTP range above: a spike reaches it and cools at once
+  spikeC: 1050, // illustrative spike peak, set at the top of the lamp-RTP range above (not a quoted spike figure)
 };
 
 const fmt = (value, digits = 0) => value.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -70,14 +74,14 @@ export const sci = (value) => {
 };
 
 export const PIECES = {
-  gas: { name: "Gas box", say: "BF₃, PH₃, AsH₃ bottles · one valve open" },
-  source: { name: "Ion source", say: "arc chamber · a filament strikes a plasma" },
-  extract: { name: "Extraction electrodes", say: `${RECIPE.extractKeV} kV pulls the ions out (illustrative)` },
-  magnet: { name: "Analyzer magnet", say: "bends ions by mass · one fits the slit" },
-  column: { name: "Acceleration column", say: `graded rings add energy · tools: ${TOOLS.mediumKeV[0]} keV–${TOOLS.maxMeV} MeV` },
-  scanner: { name: "Scanner", say: "sweeps the beam, then makes it parallel" },
-  station: { name: "End station", say: `platen tilted ${TILT_DEG}° · Faraday cup counts dose` },
-  anneal: { name: "Anneal chamber", say: `lamp RTP · spike to ${fmt(ANNEAL.spikeC)} °C` },
+  gas: { name: "Gas box", say: "BF₃, PH₃, AsH₃ bottles · one valve open", short: "BF₃ · PH₃ · AsH₃ bottles" },
+  source: { name: "Ion source", say: "arc chamber · a filament strikes a plasma", short: "arc chamber · plasma" },
+  extract: { name: "Extraction electrodes", say: `${RECIPE.extractKeV} kV pulls the ions out (illustrative)`, short: `${RECIPE.extractKeV} kV pulls ions out` },
+  magnet: { name: "Analyzer magnet", say: "bends ions by mass · one fits the slit", short: "bends by mass · one fits slit" },
+  column: { name: "Acceleration column", say: `graded rings add energy · tools: ${MIN_KEV} keV–${TOOLS.maxMeV} MeV`, short: `rings add energy · ${MIN_KEV} keV–${TOOLS.maxMeV} MeV` },
+  scanner: { name: "Scanner", say: "sweeps the beam, then makes it parallel", short: "sweeps beam, makes it parallel" },
+  station: { name: "End station", say: `platen tilted ${TILT_DEG}° · Faraday cup counts dose`, short: `tilt ${TILT_DEG}° · cup counts dose` },
+  anneal: { name: "Anneal chamber", say: `lamp RTP · spike to ~${fmt(ANNEAL.spikeC)} °C (illustrative)`, short: `lamp RTP · ~${fmt(ANNEAL.spikeC)} °C spike` },
   stand: { name: "Bed", say: "" },
 };
 export const ORDER = ["gas", "source", "extract", "magnet", "column", "scanner", "station", "anneal"];
@@ -85,11 +89,11 @@ export const ORDER = ["gas", "source", "extract", "magnet", "column", "scanner",
 export const STEPS = [
   { id: "ionize", name: "Ionise the gas" },
   { id: "extract", name: "Extract a beam" },
-  { id: "select", name: "Magnet selects the mass" },
+  { id: "select", name: "Select the mass" },
   { id: "accelerate", name: "Accelerate" },
-  { id: "scan", name: "Scan across the wafer" },
-  { id: "stop", name: "Ions stop at depth" },
-  { id: "anneal", name: "Anneal: repair and activate" },
+  { id: "scan", name: "Scan the wafer" },
+  { id: "stop", name: "Stop at depth" },
+  { id: "anneal", name: "Anneal and activate" },
 ];
 
 export { fmt };

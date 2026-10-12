@@ -56,10 +56,15 @@
 .bp-ox { fill: var(--bp-ox); }
 .bp-cu { fill: var(--bp-cu); }
 .bp-pw { fill: var(--bp-pw); }
+.bp-nt { fill: var(--bp-hot); }
 .bp-gate { fill: var(--bp-gate); }
 .bp-bond { fill: var(--bp-bond); }
 .bp-bk { fill: var(--bp-bk); }
 .bp-screen { fill: var(--bp-screen); }
+
+.bp-flow {
+  stroke-width: 0.9;
+}
 
 .bp-readout {
   fill: var(--anatomy-hi);
@@ -99,16 +104,19 @@
   stroke: var(--anatomy-hi);
 }
 
-.it[data-on] {
+.it[data-on],
+.bp-jaw[data-on] {
   --anatomy-hi: var(--anatomy-lit);
   --anatomy-mid: var(--anatomy-hi);
 }
 
-.it[data-on] .iso-top {
+.it[data-on] .iso-top,
+.bp-jaw[data-on] .iso-top {
   fill: var(--anatomy-lit-top);
 }
 
-.it[data-on] .iso-shade {
+.it[data-on] .iso-shade,
+.bp-jaw[data-on] .iso-shade {
   fill: var(--anatomy-lit-shade);
 }
 
@@ -275,9 +283,16 @@
     flex-wrap: wrap;
   }
 
+  .bp .bp-stage > svg.bp-svg {
+    width: 116%;
+    margin-left: -8%;
+  }
+
   .bp-step {
     width: auto;
     order: 3;
     flex-basis: 100%;
   }
 }
+
+.bp [data-readout] { text-wrap: balance; }

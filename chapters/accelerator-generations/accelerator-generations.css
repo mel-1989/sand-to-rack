@@ -275,3 +275,9 @@
 .ag-scr-dim {
   fill: var(--anatomy-muted);
 }
+
+/* phone camera: while zoomed onto one package, the rest of the bench stays inside the stage */
+.ag-stage[data-zoomed] > svg {
+  overflow: hidden;
+  border-radius: 10px;
+}

@@ -208,7 +208,8 @@
 
 .cmp-step {
   flex: none;
-  width: 150px;
+  width: max-content;
+  min-width: 196px;
   font: 10.5px/1.2 var(--anatomy-mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -243,13 +244,23 @@
   --anatomy-mid: var(--anatomy-lo);
 }
 
-/* slurry, water and the wet pad: tints of the figure's own inks */
+/* slurry, water and the wet pad: a milky tint mixed from the figure's own inks */
+.cmp {
+  --cmp-milk: color-mix(in srgb, var(--anatomy-lit) 72%, var(--anatomy-blue));
+  --cmp-milk-pool: color-mix(in srgb, var(--anatomy-blue) 22%, var(--anatomy-faint));
+}
+
+[data-theme="light"] .cmp {
+  --cmp-milk: color-mix(in srgb, var(--anatomy-blue) 55%, var(--anatomy-paper));
+  --cmp-milk-pool: color-mix(in srgb, var(--anatomy-blue) 16%, var(--anatomy-paper));
+}
+
 .cmp-stream {
   stroke: none;
 }
 
 .cmp-slurry {
-  fill: var(--anatomy-hi);
+  fill: var(--cmp-milk);
 }
 
 .cmp-water {
@@ -257,8 +268,88 @@
 }
 
 .cmp-wet {
-  fill: var(--anatomy-faint);
+  fill: var(--cmp-milk-pool);
   stroke: none;
+}
+
+.cmp-wet-spot {
+  fill: var(--cmp-milk);
+}
+
+.cmp-wet-water {
+  fill: color-mix(in srgb, var(--anatomy-blue) 10%, var(--anatomy-faint));
+}
+
+[data-theme="light"] .cmp-wet-water {
+  fill: color-mix(in srgb, var(--anatomy-blue) 8%, var(--anatomy-paper));
+}
+
+/* Fig 1b: the carrier head, cut away */
+.cmp-cut {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-height: 128px;
+  height: auto;
+  display: block;
+  overflow: hidden;
+}
+
+.cmp-cut-head {
+  transform: translateY(calc(-1 * var(--cmp-lift, 8px)));
+  transition: transform 120ms linear;
+}
+
+.cmp-cut-pad {
+  fill: var(--anatomy-lo);
+  fill-opacity: 0.35;
+}
+
+.cmp-cut-body {
+  fill: var(--anatomy-mid);
+  fill-opacity: 0.45;
+  stroke: var(--anatomy-mid);
+  stroke-width: 0.8;
+}
+
+.cmp-cut-ring {
+  fill: var(--anatomy-lo);
+  fill-opacity: 0.7;
+  stroke: var(--anatomy-mid);
+  stroke-width: 0.8;
+}
+
+.cmp-cut-zone {
+  fill: var(--anatomy-faint);
+  stroke: var(--anatomy-mid);
+  stroke-width: 0.8;
+  transition: fill 200ms var(--anatomy-ease);
+}
+
+.cmp-cut[data-pressed] .cmp-cut-zone {
+  fill: color-mix(in srgb, var(--anatomy-lit) 22%, var(--anatomy-faint));
+  stroke: var(--anatomy-strong);
+}
+
+.cmp-cut-arrow {
+  fill: var(--anatomy-strong);
+  opacity: 0;
+  transition: opacity 200ms var(--anatomy-ease);
+}
+
+.cmp-cut[data-pressed] .cmp-cut-arrow {
+  opacity: 0.85;
+}
+
+.cmp-cut-membrane {
+  fill: var(--anatomy-muted);
+}
+
+.cmp-cut-wafer {
+  fill: var(--anatomy-hi);
+}
+
+.cmp-inset-sub {
+  margin-top: 8px;
 }
 
 .cmp-window {

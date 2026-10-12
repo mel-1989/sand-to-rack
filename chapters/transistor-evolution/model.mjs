@@ -2,12 +2,12 @@
 // Each number carries its source. Geometry that is not listed here is illustrative.
 
 const S = {
-  intel45: "https://en.wikipedia.org/wiki/45_nm_process", // Mistry et al., IEDM 2007, as summarised: 160 nm gate pitch, 35 nm gate length, high-k + metal gate, late 2007
+  intel45: "https://doi.org/10.1109/IEDM.2007.4418914", // Mistry et al., IEDM 2007, pp. 247–250: 160 nm gate pitch, 35 nm gate length, high-k + metal gate, third-generation strained silicon, late 2007
   intel90: "https://www.eetimes.com/?p=1145028", // Intel 90 nm (2003): ~50 nm gate length, 1.2 nm oxide, strained silicon
-  intel22: "https://docs.ampnuts.ru/eevblog.docs/_Metrology/auth2012.pdf", // Auth et al., VLSI 2012: 90 nm contacted gate pitch, 60 nm fin pitch, 8 nm fin width, 34 nm fin height
+  intel22: "https://archive.vlsisymposium.org/12web/technology/tec_pdf/session15.htm", // Auth et al., VLSI 2012, paper 15.2; its text gives 90 nm contacted gate pitch, 60 nm fin pitch, 8 nm fin width, 34 nm fin height
   intel22news: "https://www.anandtech.com/show/4313", // Intel announces 22 nm 3D tri-gate, 4 May 2011
   density: "https://faculty-web.msoe.edu/johnsontimoj/EE4980/files4980/Kaizad-Mistry-2017-Manufacturing.pdf", // Intel Technology and Manufacturing Day 2017: 3.3 (45 nm), 15.3 (22 nm) MTr/mm²
-  intel18a: "https://www.intel.com/content/www/us/en/newsroom/news/corporate/intel-foundry-details-process-milestones-future-innovation-at-vlsi-symposium.html", // 18A: 50 nm contacted poly pitch, 160/180 nm cell heights
+  intel18a: "https://www.intel.com/content/www/us/en/newsroom/news/corporate/intel-foundry-details-process-milestones-future-innovation-at-vlsi-symposium.html", // Intel Foundry at VLSI, 18A-P release: "Similar to Intel 18A, Intel 18A-P offers two cell heights (180nm and 160nm), a contacted poly pitch of 50nm"
   intel18aHvm: "https://www.businesswire.com/news/home/20251009013156/en", // Panther Lake, first 18A product; Fab 52 high-volume production, Oct 2025; ~30% density vs Intel 3
   hdDensity: "https://www.tomshardware.com/tech-industry/intels-18a-and-tsmcs-n2-process-nodes-compared-intel-is-faster-but-tsmc-is-denser", // TechInsights HD cell estimates: N2 313, 18A 238 MTr/mm²
   samsung3: "https://news.samsung.com/global/samsung-begins-chip-production-using-3nm-process-technology-with-gaa-architecture", // first GAA (MBCFET) production, 30 June 2022
@@ -33,7 +33,7 @@ export const GENS = [
     lgNm: 35, // physical gate length (S.intel45)
     density: 3.3, // MTr/mm² (S.density)
     sides: 1,
-    grip: "gate on one side",
+    grip: "gate on 1 side",
     note: "high-k metal gate · strained silicon since 90 nm",
   },
   {
@@ -48,7 +48,7 @@ export const GENS = [
     finHeightNm: 34, // (S.intel22)
     density: 15.3, // MTr/mm² (S.density)
     sides: 3,
-    grip: "gate on three sides",
+    grip: "gate on 3 sides",
     note: "fin 8 nm wide, 34 nm tall, 60 nm pitch",
   },
   {
@@ -59,8 +59,9 @@ export const GENS = [
     node: "Intel 18A",
     cppNm: 50, // contacted poly pitch (S.intel18a)
     density: 238, // MTr/mm², HD cells, TechInsights estimate (S.hdDensity)
+    densityEst: true,
     sides: 4,
-    grip: "gate on all four sides",
+    grip: "gate on 4 sides",
     note: "first GAA in production: Samsung 3 nm, 2022",
   },
   {
@@ -73,7 +74,7 @@ export const GENS = [
     cppNm: 60, // gate pitch of the stacked demo (S.intelCfet)
     density: null, // no production density yet
     sides: 4,
-    grip: "nFET stacked on pFET",
+    grip: "n stacked on p",
     note: "imec roadmap: from the A7 node, around 2033",
   },
 ];
@@ -86,13 +87,62 @@ export const STRAIN_YEAR = 2003;
 export const DENNARD_END = "2005–2007"; // (S.dennard)
 
 const fmt = (value) => (value >= 100 ? value.toFixed(0) : value.toFixed(1));
-export const densityText = (g) => (g.density ? `${fmt(g.density)} MTr/mm²` : `roadmap ≈${ROADMAP_CFET}`);
+export const densityText = (g) => (g.density ? `${g.densityEst ? "≈" : ""}${fmt(g.density)} MTr/mm²${g.densityEst ? " est." : ""}` : `roadmap ≈${ROADMAP_CFET}`);
 export const yearText = (g) => g.yearText ?? String(g.year);
 export const readoutOf = (g) => [g.short, yearText(g), g.node, `CPP ${g.cppNm} nm`, densityText(g)].join(" · ");
+// phone width: the node name drops so the line fits
+export const readoutShort = (g) => [g.short, yearText(g), `CPP ${g.cppNm} nm`, densityText(g)].join(" · ");
 
 // derived. Densities are not one series: 3.3 and 15.3 are Intel's 2017 count (60/40 NAND2 and scan flip-flop),
 // 238 is TechInsights' high-density-cell estimate. Only the order of magnitude compares.
 export const pitchShrink = GENS[0].cppNm / GENS[2].cppNm; // 3.2×
 
-export const IDLE = `4 generations · CPP ${GENS[0].cppNm} → ${GENS[2].cppNm} nm · ${fmt(GENS[0].density)} → ${fmt(GENS[2].density)} MTr/mm²`;
+export const IDLE = `4 generations · CPP ${GENS[0].cppNm} → ${GENS[2].cppNm} nm · ${fmt(GENS[0].density)} → ${densityText(GENS[2])}`;
+export const IDLE_SHORT = `4 generations · CPP ${GENS[0].cppNm} → ${GENS[2].cppNm} nm`;
 export const OPEN = "all four cut open · compare the gate grip";
+
+// What each drawn part is, for the hover / tap readout. Keys are the part names build.mjs gives each item.
+const F = GENS[1];
+export const PART_TEXT = {
+  base: "silicon substrate",
+  sti: "shallow trench isolation · oxide between devices",
+  oxide: "gate dielectric · high-k insulator under the gate",
+  gate: {
+    planar: "metal gate · sits on 1 side of the flat channel",
+    finfet: "metal gate · wraps 3 sides of each fin",
+    gaa: "metal gate · fills in around every sheet",
+    cfet: "shared metal gate · around the n and the p sheets",
+  },
+  cap: "gate cap · insulator on top of the gate",
+  spacer: "spacer · insulates the gate from the source/drain contact",
+  epi: { planar: "raised {half} · doped silicon", finfet: "{half} epitaxy grown on the fins", gaa: "{half} epitaxy joining the sheet ends" },
+  epiP: "p-type {half} epitaxy · bottom device",
+  epiN: "n-type {half} epitaxy · top device",
+  isolation: "dielectric between the n and p {half}",
+  contact: "trench contact to the {half}",
+  gatecontact: "gate contact · via down to the gate",
+  backside: "backside power layer · power wires under the transistors",
+  pedestal: "pedestal · holds the source half",
+  rail: "linear rail",
+  stop: "end stop",
+  bearing: "bearing block",
+  carriage: "carriage · slides the drain half out",
+  jaw: "clamp jaw",
+  lug: "pull lug",
+  knob: "pull knob",
+  // section paths drawn on the cut faces
+  channel: {
+    planar: "channel · flat silicon under the gate",
+    finfet: `channel · silicon fin ${F.finWidthNm} nm wide, ${F.finHeightNm} nm tall`,
+    gaa: "channel · silicon nanosheets, gate on all 4 sides",
+    cfet: "channels · n-type sheets over p-type sheets",
+  },
+  gox: "gate dielectric · lines the channel under the metal",
+  root: "fin root · silicon below the gate, in the isolation",
+  core: "fin core inside the {half} epitaxy",
+  trench: "trench isolation oxide",
+  mdi: "middle dielectric · separates the n and p sheet stacks",
+  well: "doped {half} region",
+  body: "doped well under the channel",
+  bench: "bench plate",
+};

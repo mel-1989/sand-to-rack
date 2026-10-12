@@ -15,19 +15,26 @@ export const PROBES_HBM = "100,000 or more"; // HBM cards, "a hundred thousand p
 export const PROBES_MAX_K = 200; // FormFactor: up to roughly 150,000-200,000 pins per card; https://finance.yahoo.com/sectors/technology/articles/formfactor-targets-revenue-doubling-2030-180507795.html
 export const OVERDRIVE_UM = 75; // typical overdrive past first touch; https://www.electronicdesign.com/home/article/21200247/measurement-repeatability-key-to-probe-card-metrology
 export const OVERDRIVE_RANGE_UM = [25, 150]; // range cited in US patent 5,909,121; https://patents.google.com/patent/US5909121
-export const CARD_COST_K = 500; // "a conventional probe card costs about $500,000"; https://semiengineering.com/hbm-shifts-testing-left-to-preserve-ai-chip-yield/
+// Price: no vendor lists one. Applies to the largest full-wafer-contact cards, undated article. Rudolph Technologies (Darren James, Solid State Technology): "The most advanced cards, designed to test
+// all die on a 300-mm wafer at the same time, can cost hundreds of thousands of dollars each"; https://sst.semiconductor-digest.com/?p=35397
+export const CARD_COST = "hundreds of thousands of dollars";
+// Context only, about an HBM wafer-level burn-in card, not a logic sort card: Aehr Test's Vernon Rodgers, "You don't need to go spend
+// $500,000 on a probe card", and sacrificial pads "can save up to 80% on the cost of a probe card";
+// https://semiengineering.com/hbm-shifts-testing-left-to-preserve-ai-chip-yield/
+export const HBM_CARD_K = 500;
+export const SAC_PAD_SAVE = 80;
 
 // ---- the prober ----
 export const PROBER = "Tokyo Electron Prexa, Accretech AP3000 class"; // https://www.eejournal.com/industry_news/tokyo-electron-introduces-prexa-the-next-generation-300mm-wafer-prober/ ; https://www.accretech.com/en/product/semicon/semi/probe_semi/probingmachine_ap3000ap3000e.html
 export const STAGE_REPEAT_UM = 1; // linear-motor XY stage repeat accuracy, prober maker Plum Five; https://plumfive.co.jp/semicon/en/product/wafer_prober/comparison/index.html
-export const CHUCK_C = [-40, 150]; // tri-temperature chuck range, Accretech UF3000EX listing (secondary source); https://moov.co/marketplace/probers/accretech-tsk/accretech-tsk-uf3000ex/d4cb2ba8b34b4ac18d2d673885e95554
+export const CHUCK_C = [-50, 180]; // low/high temperature chuck option listed for Plum Five's 300 mm production probers (a prober maker's own page; not TEL/Accretech); https://plumfive.co.jp/semicon/en/product/wafer_prober/list/index.html
 
 // ---- the tester ----
 export const ATE_SHARE = 90; // Advantest + Teradyne combined share, "~90%+" (Wing VC analysis); https://wing.vc/content/the-chip-testing-bottleneck
 export const AI_TEST_MIN = 20; // a Blackwell-class accelerator "can spend well over 20 minutes" on the tester vs 30-60 s for a phone SoC; same source
 export const PHONE_TEST_S = [30, 60]; // same source
-export const PAM4_GBPS = 32; // Advantest Pin Scale Multilevel Serial for V93000 EXA Scale; https://www.advantest.com/news/2023/20231114.html
-export const DIGITAL_GBPS = 5; // Advantest Pin Scale 5000B digital card; https://www.advantest.com/news/2026/20260422.html
+export const PAM4_GBPS = 32; // fastest high-speed serial I/O card (PAM4, for SerDes-type interfaces), not general pins: Advantest Pin Scale Multilevel Serial for V93000 EXA Scale; https://www.advantest.com/news/2023/20231114.html
+export const DIGITAL_GBPS = 5; // general digital pins, Advantest Pin Scale 5000B card; https://www.advantest.com/news/2026/20260422.html
 
 // ---- memory and chiplets ----
 export const HBM_SITES = [64, 128]; // DRAM wafer test sites in parallel; https://semiengineering.com/hbm-shifts-testing-left-to-preserve-ai-chip-yield/
@@ -76,16 +83,17 @@ const score = DIES.map((d, n) => ({ n, s: hash(d.i + 11, d.j + 7) + (Math.hypot(
 const failing = new Set(score.sort((a, b) => b.s - a.s).slice(0, GROSS - GOOD).map((x) => x.n));
 DIES.forEach((d, n) => (d.pass = !failing.has(n)));
 
+const NB = "\u00a0"; // no-break space between a number and its unit
 const fmt = (v, d = 0) => v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
 
 // The process the slider steps through, in order.
 export const STEPS = [
   { id: "load", name: "Load wafer", say: "fork carries the wafer from the FOUP onto the chuck · vacuum on" },
-  { id: "align", name: "Align", say: `cameras find the wafer's marks and the probe tips · stage repeat ±${STAGE_REPEAT_UM} µm` },
-  { id: "touch", name: "Touch down", say: `chuck rises · ${OVERDRIVE_UM} µm overdrive past first touch` },
-  { id: "test", name: "Run patterns", say: `tester drives scan and functional patterns through the pogo tower · up to ${PAM4_GBPS} Gb/s a pin` },
+  { id: "align", name: "Align", say: `cameras find the wafer's marks and the probe tips · stage repeat ±${STAGE_REPEAT_UM}${NB}µm` },
+  { id: "touch", name: "Touch down", say: `chuck rises · ${OVERDRIVE_UM}${NB}µm overdrive past first touch` },
+  { id: "test", name: "Run patterns", say: `tester drives scan and functional patterns through the pogo tower · digital pins up to ${DIGITAL_GBPS}${NB}Gb/s` },
   { id: "bin", name: "Bin", say: "pass or fail is written to the wafer map" },
-  { id: "step", name: "Step to next die", say: `chuck drops, steps ${DIE_MM[0]} mm, rises again` },
+  { id: "step", name: "Step to next die", say: `chuck drops, steps ${DIE_MM[0]}${NB}mm, rises again` },
   { id: "map", name: "Map fills", say: `${GROSS} dies probed · ${GOOD} good` },
 ];
 
@@ -93,12 +101,12 @@ export const FOUP_WAFERS = 25; // a 300 mm FOUP carries 25 wafers (SEMI E47.1); 
 export const PIECES = {
   loader: { name: "Loader and FOUP", say: `FOUP of ${FOUP_WAFERS} wafers · robot fork` },
   cameras: { name: "Alignment cameras", say: "one finds the wafer, one the probe tips" },
-  stage: { name: "Chuck on XYZ-θ stage", say: `${CHUCK_C[0]} to +${CHUCK_C[1]} °C · ±${STAGE_REPEAT_UM} µm repeat` },
-  card: { name: "Probe card", say: `MEMS probes · up to ~${PROBES_MAX_K}k · ~$${CARD_COST_K}k` },
+  stage: { name: "Chuck on XYZ-θ stage", say: `${CHUCK_C[0]} to +${CHUCK_C[1]}${NB}°C · ±${STAGE_REPEAT_UM}${NB}µm repeat` },
+  card: { name: "Probe card", say: `MEMS probes · up to ~${PROBES_MAX_K}${NB}k · six figures for the largest cards` },
   head: { name: "Test head", say: "pin electronics on a pogo tower" },
-  tester: { name: "ATE mainframe", say: `Advantest or Teradyne · ~${ATE_SHARE} % share` },
+  tester: { name: "ATE mainframe", say: `Advantest or Teradyne · ~${ATE_SHARE}${NB}% share` },
   map: { name: "Wafer map", say: `${GROSS} dies · ${GOOD} expected good` },
 };
 
-export const IDLE = `${GROSS} dies · ${DIE_MM[0]} × ${DIE_MM[1]} mm · ${fmt(POISSON_YIELD * 100)} % expected yield`;
-export { fmt };
+export const IDLE = `${GROSS} dies · ${DIE_MM[0]}${NB}×${NB}${DIE_MM[1]}${NB}mm · ${fmt(POISSON_YIELD * 100)}${NB}% expected yield`;
+export { fmt, NB };

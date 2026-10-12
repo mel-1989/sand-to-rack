@@ -411,6 +411,9 @@ const DATA = {
   idle: M.IDLE,
   bars: M.GENS.map((g) => BARS.map(([, of]) => of(g))),
   barW: BAR.w,
+  // phone camera: the gantry head's screen point at the first and last stop, and the full view
+  cam: [at([STOPS[0], ROW_Y, CHIP_TOP]), at([STOPS[STOPS.length - 1], ROW_Y, CHIP_TOP])].map(([x, y]) => [f2(x), f2(y)]),
+  view: [W, H],
 };
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -419,7 +422,7 @@ const corners = `<div class="iso-plate-corners" aria-hidden="true"><span class="
 const controls = `<div class="ag-controls"><span class="ag-hint">Hover a package · Space runs the gantry</span><span class="ag-live" aria-live="polite" data-live></span></div>`;
 const stage = `<div class="ag-stage" tabindex="0" role="slider" aria-label="Five NVIDIA GPU packages on a bench, V100 to Rubin. Hover, or use the arrow keys, to pick a generation; Space plays or pauses the inspection gantry; Escape returns it to the start; the slider below steps through the generations." aria-valuemin="0" aria-valuemax="${M.GENS.length}" aria-valuenow="0" aria-valuetext="${M.IDLE}">${svg}</div>`;
 const [v, a, h, b, r] = M.GENS;
-const caption = `Each package sits in its own nest on a ruled plate (ruler ticks every 2 mm); the silicon is drawn at true size. ${v.name} (${v.year}): one ${v.dieMm2} mm² die and ${v.hbm.stacks} ${v.hbm.gen} stacks. ${a.name} and ${h.name}: one ${a.dieMm2} and ${h.dieMm2} mm² die with six memory sites, ${a.hbm.stacks} of them live and one a plain silicon spacer. ${b.name} and ${r.name}: two reticle-limited dies (drawn at ${M.RETICLE_MM.join(" × ")} mm, since NVIDIA does not publish per-die area) working as one GPU, with ${b.hbm.stacks} stacks each. B200 memory, bandwidth and FLOPS are per-GPU shares of NVIDIA's DGX B200 totals. Die areas are NVIDIA's; die aspect, HBM footprints, substrate outlines and all heights are illustrative. FLOPS are dense in the lowest-precision format each generation supports; the Rubin power figure is a reported estimate, not an NVIDIA spec.`;
+const caption = `Each package sits in its own nest on a ruled plate (ruler ticks every 2 mm); the silicon is drawn at true size. ${v.name} (${v.year}): one ${v.dieMm2} mm² die and ${v.hbm.stacks} ${v.hbm.gen} stacks. ${a.name} and ${h.name}: one ${a.dieMm2} and ${h.dieMm2} mm² die with six memory sites, ${a.hbm.stacks} of them live; the sixth is drawn as an inactive dummy (NVIDIA says only that five are enabled). ${b.name} and ${r.name}: two reticle-limited dies (drawn at ${M.RETICLE_MM.join(" × ")} mm, since NVIDIA does not publish per-die area) working as one GPU, with ${b.hbm.stacks} stacks each. B200 memory, bandwidth and FLOPS are per-GPU shares of NVIDIA's DGX B200 totals. Die areas are NVIDIA's; die aspect, HBM footprints, substrate outlines and all heights are illustrative. FLOPS are dense, in the lowest-precision format each generation supports (Rubin: ${M.flopsText(r)} ${r.flops.fmt} dense, ${M.flopsText(r, r.sparse)} sparse). The Rubin power figure (≈) is an analyst estimate, not an NVIDIA spec; Rubin's process variant (N3P) is reported, not confirmed.`;
 const scrub = `<span class="ag-scrub"><button type="button" class="ag-play" data-play aria-label="Play the inspection run"><span class="ag-play-icon" aria-hidden="true"></span><span data-play-text>Play</span></button><input type="range" class="ag-range" data-scrub min="0" max="1000" step="1" value="0" aria-label="Generations: the gantry visits each package from 2017 to 2026"><span class="ag-step" data-step>ready</span></span>`;
 const body = `<figure class="iso-figure ag"><div class="iso-plate">${corners}${stage}${controls}</div><figcaption class="iso-legend">${scrub}<span class="ag-parts">${PARTS}</span><span class="iso-caption">${caption}</span></figcaption></figure>`;
 

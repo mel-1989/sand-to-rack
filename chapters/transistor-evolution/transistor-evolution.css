@@ -38,7 +38,7 @@
   pointer-events: visiblePainted;
 }
 
-.tr-stage[data-focus] .it[data-gen]:not([data-on]) {
+.tr-stage[data-focus] .it[data-gen]:not([data-mine]) {
   --anatomy-hi: var(--anatomy-mid);
   --anatomy-mid: var(--anatomy-lo);
 }
@@ -131,11 +131,14 @@
 
 @media (max-width: 640px) {
   .tr .iso-plate {
-    padding: 48px 8px 84px;
+    padding: 48px 8px 104px;
   }
 
+  /* the readout gets its own strip between the stage frame and the hint, on the card colour */
   .tr .iso-plate-corner[data-corner="readout"] {
-    bottom: 44px;
+    bottom: 36px;
+    padding: 3px 0;
+    background: var(--anatomy-card);
     right: 0;
     left: 16px;
     max-width: calc(100% - 32px);
@@ -257,4 +260,37 @@
 
 .it[data-on] .tr-si-edge {
   stroke: var(--anatomy-lit);
+}
+
+@media (max-width: 520px) {
+  .tr-stage {
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x pan-y;
+    scrollbar-width: none;
+  }
+
+  .tr-stage::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tr-stage > svg {
+    width: 175%;
+    max-width: none;
+  }
+}
+
+/* one part of the lit specimen picked by hover or tap: its outline stays lit, the rest of the specimen steps down */
+.tr-stage[data-pick] .it[data-on]:not([data-pick]) {
+  --anatomy-hi: inherit;
+  --anatomy-mid: inherit;
+}
+
+.tr-stage[data-pick] .it[data-pick]:not([data-on]) {
+  --anatomy-hi: var(--anatomy-lit);
+  --anatomy-mid: var(--anatomy-hi);
+}
+
+.tr-mat[data-pick] {
+  fill: var(--anatomy-lit);
 }

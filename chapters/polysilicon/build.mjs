@@ -50,6 +50,8 @@ const HOPPER = { x: -220, y: 58, w: 40, d: 34, r: 2 };
 const HOP_Z = 16;
 const HOP_TOP = 46;
 const FBR = { at: [-200, -5], r: 15, z0: 10, z1: 96 };
+const SIGHT = { deg: 30, z: 36, r: 5.4, bubbles: 9 }; // illustrative sight glass on the bed
+let SIGHT_BOX = null;
 const COL = { at: [-200, -100], r: 9, z0: 10, z1: 176 };
 const CAB = { x: 34, y: -170, w: 46, d: 30, r: 2 };
 const CAB_H = 66;
@@ -58,7 +60,7 @@ const TBOX = { x: 34, y: -50, w: 18, d: 14, r: 1.2 };
 const PIECES = {
   bell: { name: "Bell jar", say: "bell jar · double steel wall, water cooled", move: [0, 0, LIFT] },
   rods: { name: "Silicon rods", say: "", move: [0, 0, 0] },
-  base: { name: "Baseplate and electrodes", say: "baseplate · electrodes, chucks, gas nozzles", move: [0, 0, 0] },
+  base: { name: "Baseplate and electrodes", say: "baseplate · electrodes, chucks, nozzles", move: [0, 0, 0] },
   hopper: { name: "MG-Si feed bin", say: "", move: [0, 0, 0] },
   fbr: { name: "Hydrochlorinator", say: "", move: [0, 0, 0] },
   column: { name: "Distillation column", say: "", move: [0, 0, 0] },
@@ -96,10 +98,23 @@ function put(piece, ref, svg, shapes, { bias = 0, name, cls } = {}) {
 }
 
 // ---- pipe helpers (after the Raptor's pipe(), flangeAt() and padOn()) ----
-function tubeItems(piece, route, r, { name, tone = "hi", maxLength = 24, gaps = [], rims, free = [false, false], limp = false, spacing = 1.6, touch } = {}) {
+// Screen length of a 3D polyline, for dash offsets that run on across tube chunks.
+const screenLength = (points) => points.map(at).reduce((sum, p, i, all) => (i ? sum + Math.hypot(p[0] - all[i - 1][0], p[1] - all[i - 1][1]) : 0), 0);
+const flatPath = (points) => `M${points.map((p) => at(p).map((v) => v.toFixed(1)).join(" ")).join("L")}`;
+
+function tubeItems(piece, route, r, { name, tone = "hi", maxLength = 24, gaps = [], rims, free = [false, false], limp = false, spacing = 1.6, touch, flow } = {}) {
   const id = R.nameFor(name ?? `${piece}.tube`);
   R.route(id, route, r, { owner: id, gaps, rims, free, limp, touch, piece, move: PIECES[piece].move });
-  Tube.tubePieces(route, r, P, { maxLength, spacing, gaps }).forEach((part, index) => R.put({ piece, at: part.mid, svg: Tube.tubeSvg(part, { tone }), move: PIECES[piece].move, name: `${id}:${index}`, route: id, chunk: index, shapes: [A.tube(part.points, part.radii)] }));
+  Tube.tubePieces(route, r, P, { maxLength, spacing, gaps }).forEach((part, index) => {
+    // flow marks: round dots on the centreline that the slider walks along the pipe (see live.js)
+    let marks = "";
+    if (flow) {
+      const start = Math.max(0, part.from - 0.5);
+      const before = start > 0.01 ? screenLength(G.cut(G.resample(route, 1.6), 0, start)) : 0;
+      marks = `<path class="pz-flow" data-flow="${flow}" style="--o:${before.toFixed(1)}" d="${flatPath(part.points)}"/>`;
+    }
+    R.put({ piece, at: part.mid, svg: Tube.tubeSvg(part, { tone }) + marks, move: PIECES[piece].move, name: `${id}:${index}`, route: id, chunk: index, shapes: [A.tube(part.points, part.radii)] });
+  });
   return id;
 }
 
@@ -111,7 +126,7 @@ function flangeAt(piece, centre, axis, r, thick, { bolts = 6, tone = "hi", name,
   put(piece, centre, S(G.disc(-thick / 2, thick / 2, r, F, P), { tone }) + faces.join(""), [A.disc(F, -thick / 2, thick / 2, r, { owner })], { name: R.nameFor(name ?? `${piece}.flange`) });
 }
 
-function pipe(piece, control, r, { bend = 2.8, tone = "hi", flangeR = 1.6, name, bands = [] } = {}) {
+function pipe(piece, control, r, { bend = 2.8, tone = "hi", flangeR = 1.6, name, bands = [], flow } = {}) {
   const line = G.fillet(control, Math.max(r * bend, 4), 12, { P, tube: r });
   const total = G.pathLength(line);
   const thick = Math.max(1.2, r * 0.6);
@@ -125,7 +140,7 @@ function pipe(piece, control, r, { bend = 2.8, tone = "hi", flangeR = 1.6, name,
     const t = Math.max(0.9, r * 0.6);
     collars.push({ centre: G.pointAlong(line, along), tangent: G.tangentAlong(line, along), radius: r * 1.2, thick: t, gap: [along - t / 2, along + t / 2], bolts: 0 });
   }
-  const owner = tubeItems(piece, line, r, { name: name ?? `${piece}.pipe`, tone, gaps: collars.map((c) => c.gap), rims: [r * flangeR, r * flangeR] });
+  const owner = tubeItems(piece, line, r, { name: name ?? `${piece}.pipe`, tone, gaps: collars.map((c) => c.gap), rims: [r * flangeR, r * flangeR], flow });
   for (const c of collars) flangeAt(piece, c.centre, c.tangent, c.radius, c.thick, { bolts: c.bolts, tone: c.bolts ? tone : "mid", name: `${owner}.collar`, owner });
   return line;
 }
@@ -407,6 +422,7 @@ function bell() {
 
 // ---- feed skid: MG-Si bin, hydrochlorinator, distillation column ----
 let FBR_SHELL, COL_SHELL;
+let TRAYS = 0;
 function hopper() {
   const legs = k.corners(HOPPER, 3);
   for (const [x, y] of byDepth(legs)) put("hopper", [x, y, HOP_Z / 2], S(k.cylinder(x, y, 3.4, 0, 1.4, P, 20), { tone: "mid" }) + S(k.cylinder(x, y, 2, 1.4, HOP_Z - 1.4, P, 20), { tone: "mid", crease: "none" }), [A.cylinder(x, y, 3.4, 0, 1.4, {}), A.cylinder(x, y, 2, 1.4, HOP_Z - 1.4, {})], { name: R.nameFor("hopper.leg") });
@@ -449,6 +465,19 @@ function fbr() {
   nozzle("fbr", v.shape, [x, y], 45, FBR.r, 52, 5.2, { tag: "manway", length: 2.4 });
   nozzle("fbr", v.shape, [x, y], 12, FBR.r, 20, 2.4, { tag: "hcl-in", length: 4 });
   gauge("fbr", v.shape, [x, y], 5, FBR.r, 74, { reading: 0.4 });
+  // sight glass onto the fluidised bed; live.js lifts bubbles through it during hydrochlorination
+  const n = polar(SIGHT.deg, 1, 0);
+  const end = padOn("fbr", v.shape, [x + n[0] * (FBR.r - 0.6), y + n[1] * (FBR.r - 0.6), SIGHT.z], n, SIGHT.r, 2.6, { name: "fbr.sight-pad", tone: "mid" });
+  const F2 = G.frameAlong(end, n);
+  const ring = G.circleOf(F2, 1.6, SIGHT.r * 0.74, P, 32);
+  const pts = Array.from({ length: 32 }, (_, i) => at(G.pointOf(F2, 1.6, SIGHT.r * 0.74, (i / 32) * Math.PI * 2)));
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  SIGHT_BOX = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+  const bubbles = Array.from({ length: SIGHT.bubbles }, (_, i) => `<circle class="pz-bubble" data-b="${i}" r="${(0.5 + (i % 3) * 0.22).toFixed(2)}" cx="0" cy="0"/>`).join("");
+  let svg = S(G.disc(0, 1.6, SIGHT.r * 1.3, F2, P), { tone: "mid" }) + Dots(G.dotsOf(F2, 1.6, SIGHT.r * 1.08, 8, P, { all: true }), { size: 0.4, tone: "mid" });
+  svg += `<clipPath id="pz-sight-clip"><path d="${ring}"/></clipPath><path class="pz-glass" d="${ring}"/><g class="pz-bubbles" clip-path="url(#pz-sight-clip)">${bubbles}</g>` + L(ring, { tone: "lo" });
+  put("fbr", G.add3(end, G.mul3(n, 0.8)), svg, [A.disc(F2, 0, 1.6, SIGHT.r * 1.3, {})], { name: "fbr.sight-flange", bias: 0.2 });
 }
 
 function column() {
@@ -457,7 +486,10 @@ function column() {
   const F = UP([x, y, COL.z0]);
   const trays = [];
   for (let s = 18; s < length - 12; s += 11) trays.push(G.arcOf(F, s, COL.r, P));
-  const v = vessel("column", [x, y, COL.z0], COL.r, length, 6, { inner: L(trays.join(""), { tone: "faint" }), name: "column.shell" });
+  // a copy of each tray seam that live.js lights in turn, bottom to top, while the column runs
+  const hot = trays.map((d, i) => `<path class="pz-tray" data-tray="${i}" d="${d}"/>`).join("");
+  TRAYS = trays.length;
+  const v = vessel("column", [x, y, COL.z0], COL.r, length, 6, { inner: L(trays.join(""), { tone: "faint" }) + hot, name: "column.shell" });
   COL_SHELL = v.shape;
   put("column", [x, y, COL.z0 / 2], S(k.cylinder(x, y, COL.r + 3, 0, 2, P, 40), { tone: "mid" }) + S(k.cylinder(x, y, COL.r - 1, 2, COL.z0 + 3 - 2, P, 40), { tone: "mid", crease: "none" }), [A.cylinder(x, y, COL.r + 3, 0, 2, {}), A.cylinder(x, y, COL.r - 1, 2, COL.z0 + 1, { seated: true, cut: v.shape })], { name: "column.skirt" });
   gauge("column", v.shape, [x, y], 75, COL.r, 150, { reading: 0.25 });
@@ -517,16 +549,16 @@ function plumbing() {
   // MG-Si screw feeder: bin to the hydrochlorinator's lower nozzle
   const [fx, fy] = FBR.at;
   const p1 = padOn("fbr", FBR_SHELL, [fx, fy + FBR.r - 0.6, 26], [0, 1, 0], 4.6, 4, { name: "fbr.feed-pad", tone: "mid" });
-  pipe("hopper", [[fx, HOPPER.y, 26], p1], 2.8, { name: "hopper.feeder", bands: [0.5] });
+  pipe("hopper", [[fx, HOPPER.y, 26], p1], 2.8, { name: "hopper.feeder", bands: [0.5], flow: "feeder" });
   // hydrochlorinator top to the column's feed tray
   const [cx, cy] = COL.at;
   const topS = FBR.z1;
   const p2a = padOn("fbr", FBR_SHELL, [fx, fy, topS - 0.6], [0, 0, 1], 3.6, 3, { name: "fbr.top-pad", tone: "mid" });
   const p2b = padOn("column", COL_SHELL, [cx, cy + COL.r - 0.5, 120], [0, 1, 0], 3.6, 3.5, { name: "column.feed-pad", tone: "mid" });
-  pipe("fbr", [p2a, [fx, fy, 120], p2b], 2.2, { name: "fbr.crude" });
+  pipe("fbr", [p2a, [fx, fy, 120], p2b], 2.2, { name: "fbr.crude", flow: "crude" });
   // purified TCS from the column foot to the reactor's inlet, under the baseplate
   const p3a = padOn("column", COL_SHELL, [cx + COL.r - 0.5, cy, 18], [1, 0, 0], 3.6, 3.5, { name: "column.draw-pad", tone: "mid" });
-  pipe("column", [p3a, [-12, cy, 18], [-12, -12, 18], [-12, -12, BP_Z]], 2.2, { name: "column.tcs", bands: [0.3, 0.62] });
+  pipe("column", [p3a, [-12, cy, 18], [-12, -12, 18], [-12, -12, BP_Z]], 2.2, { name: "column.tcs", bands: [0.3, 0.62], flow: "tcs" });
   // off-gas: H2, HCl and chlorosilanes leave through the baseplate to the recovery plant under the floor
   const SLEEVE = { x: 4, y: 12, w: 14, d: 14, r: 2 };
   put("base", centreOf(SLEEVE, 0), S(k.slabOf(SLEEVE, 0, 3, P, 3, 0.4), { tone: "mid" }) + Dots(k.corners(SLEEVE, 2.2).map(([x, y]) => at([x, y, 3])), { size: 0.42 }), [A.slab(SLEEVE, 0, 3, {}, 3)], { name: "base.floor-sleeve" });
@@ -587,6 +619,8 @@ const DATA = {
   order: ORDER,
   stepPiece: { mgsi: "hopper", tcs: "fbr", dist: "column", cvd: "rods", harvest: "rods" },
   idle: M.IDLE,
+  sight: SIGHT_BOX,
+  trays: TRAYS,
 };
 DATA.pieces.hopper.say = M.STEPS[0].say;
 DATA.pieces.fbr.say = M.STEPS[1].say;

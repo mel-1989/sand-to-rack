@@ -256,13 +256,46 @@
   pointer-events: none;
 }
 
-.pm-beam path {
+.pm-beam-fan {
   fill: var(--anatomy-lit);
-  opacity: 0.55;
+  opacity: 0.7;
 }
 
-.pm-beam circle {
+.pm-beam-spot {
   fill: var(--anatomy-lit);
+  opacity: 0.22;
+}
+
+.pm-beamlet {
+  fill: var(--anatomy-lo);
+}
+
+.pm-beamlet[data-on] {
+  fill: var(--anatomy-lit);
+}
+
+/* aperture plate holes: dark holes, lit when that beamlet is switched on */
+.pm-ap {
+  fill: var(--anatomy-lo);
+}
+
+.pm-ap[data-on] {
+  fill: var(--anatomy-lit);
+}
+
+/* Mo bands of the Mo/Si multilayer, painted on its two near faces */
+.pm-mo {
+  fill: var(--anatomy-lo);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.it[data-on] .pm-mo {
+  opacity: 1;
+}
+
+.pm-dies {
+  transition: opacity 120ms linear;
 }
 
 .pm-leds circle {
@@ -307,15 +340,97 @@
   }
 }
 
-@media (max-width: 480px) {
-  .pm-stage > svg {
-    width: 112%;
-    margin-left: -6%;
-  }
-}
-
 .pm-membrane {
   fill: var(--anatomy-lit);
   opacity: 0.07;
+  pointer-events: none;
+}
+
+/* readout: balance long lines so no single word is left on the second line */
+.pm .iso-plate-corner[data-corner="readout"] {
+  text-wrap: balance;
+}
+
+@media (max-width: 480px) {
+  .pm-stage:focus-visible {
+    outline-offset: 2px;
+  }
+
+  .pm .iso-plate {
+    padding-bottom: 92px;
+  }
+}
+
+/* EUV mask layers on the bench: each its own tone. The tokens resolve on .pm, so the layer tones hold while a part is lit or dimmed. */
+.pm {
+  --pm-sub-top: color-mix(in srgb, var(--anatomy-faint) 50%, var(--anatomy-paper));
+  --pm-sub-side: var(--anatomy-faint);
+  --pm-mo: color-mix(in srgb, var(--anatomy-lo) 85%, var(--anatomy-paper));
+  --pm-abs-top: color-mix(in srgb, var(--anatomy-mid) 65%, var(--anatomy-paper));
+  --pm-abs-side: color-mix(in srgb, var(--anatomy-mid) 85%, var(--anatomy-paper));
+  --pm-wall: var(--anatomy-mid);
+}
+
+.pm .pm-l-sub > .iso-fill,
+.pm .pm-l-sub > .iso-top {
+  fill: var(--pm-sub-top);
+}
+
+.pm .pm-l-sub > .iso-shade {
+  fill: var(--pm-sub-side);
+}
+
+.pm .pm-l-cap > .iso-fill,
+.pm .pm-l-cap > .iso-shade,
+.pm .pm-l-cap > .iso-top {
+  fill: var(--anatomy-hi);
+}
+
+.pm .pm-l-abs > .iso-fill,
+.pm .pm-l-abs > .iso-top {
+  fill: var(--pm-abs-top);
+}
+
+.pm .pm-l-abs > .iso-shade {
+  fill: var(--pm-abs-side);
+}
+
+.pm .pm-mo {
+  fill: var(--pm-mo);
+  opacity: 1;
+}
+
+/* etched openings: the floor is the Ru cap, the walls are absorber */
+.pm-floor {
+  fill: var(--anatomy-hi);
+}
+
+.pm-wall {
+  fill: var(--pm-wall);
+}
+
+/* rack display: the layout shape, then its OPC/ILT version */
+.pm-screen-face {
+  fill: var(--anatomy-shade-0);
+}
+
+.pm-design,
+.pm-ilt path {
+  fill: var(--anatomy-mid);
+  transition: none;
+}
+
+.it[data-on] .pm-design,
+.it[data-on] .pm-ilt path {
+  fill: var(--anatomy-hi);
+}
+
+.pm-ilt {
+  opacity: 0;
+}
+
+.pm-packet {
+  fill: var(--anatomy-lit);
+  opacity: 0;
   pointer-events: none;
 }

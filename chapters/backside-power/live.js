@@ -50,8 +50,8 @@ function stepLabel(st) {
 }
 
 function siliconText(st) {
-  // drawn thickness runs 12 -> 2 units; show the real thickness on a log scale from 775 um to ~0.3 um
-  const t = Math.max(0, Math.min(1, (12 - st.S) / (12 - 2)));
+  // drawn thickness runs 12 -> 2.6 units; show the real thickness on a log scale from 775 um to ~0.3 um
+  const t = Math.max(0, Math.min(1, (12 - st.S) / (12 - 2.6)));
   if (t <= 0.001) return `silicon ${D.waferUm} µm`;
   if (t >= 0.999) return `silicon ${D.thinNm} nm`;
   const um = Math.exp(Math.log(D.waferUm) + (Math.log(0.3) - Math.log(D.waferUm)) * t);
@@ -67,9 +67,11 @@ function processText(st) {
   return step.say;
 }
 
+// the accessible value names the step or the picked part, never the numbers that tick while it moves
 function describe() {
   const st = rightState(s);
-  const text = selected ? `${D.pieces[selected].name}: ${D.pieces[selected].say}` : `${stepLabel(st)}. ${processText(st)}`;
+  const phase = s >= 0.9995 ? D.done : s <= 0.0005 ? `bare wafer, ${D.waferUm} µm of silicon` : D.steps[stepIndex(st)].say;
+  const text = selected ? `${D.pieces[selected].name}: ${D.pieces[selected].say}` : `${stepLabel(st)}. ${phase}`;
   if (stage.getAttribute("aria-valuetext") !== text) stage.setAttribute("aria-valuetext", text);
   if (document.activeElement === stage && text !== spoken) {
     spoken = text;
@@ -78,7 +80,7 @@ function describe() {
 }
 
 function markSelection() {
-  for (const el of stage.querySelectorAll(".it, .bp-sec")) {
+  for (const el of stage.querySelectorAll(".it, .bp-sec, .bp-jaw")) {
     if (selected && el.dataset.piece === selected) el.setAttribute("data-on", "");
     else el.removeAttribute("data-on");
   }
@@ -112,9 +114,11 @@ function draw() {
     for (const el of grindEls) t ? el.setAttribute("transform", t) : el.removeAttribute("transform");
     scrubInput.value = String(Math.round(s * 1000));
     const label = stepLabel(st);
-    if (stepText.textContent !== label) stepText.textContent = label;
+    if (stepText.textContent !== label) {
+      stepText.textContent = label;
+      describe();
+    }
     if (ctrlText) ctrlText.textContent = `STEP ${s <= 0.0005 ? 0 : stepIndex(st) + 1}`;
-    describe();
   }
   if (!selected) say(processText(st));
   else say(D.pieces[selected].say);
@@ -139,10 +143,12 @@ function showPlay() {
 }
 
 // idle tour: rewind through the build, play it forward, hold the finished chip, then walk the parts
-const TOUR = { rewind: 3, forward: PLAY_SECONDS, hold: 2.5, part: 1.6 };
+const TOUR = { lead: 2, rewind: 3, forward: PLAY_SECONDS, hold: 2.5, part: 1.6 };
 function tourAt(t) {
-  const total = TOUR.rewind + TOUR.forward + TOUR.hold + D.order.length * TOUR.part + 1.5;
+  const total = TOUR.lead + TOUR.rewind + TOUR.forward + TOUR.hold + D.order.length * TOUR.part + 1.5;
   t %= total;
+  if (t < TOUR.lead) return { s: 1, part: null };
+  t -= TOUR.lead;
   if (t < TOUR.rewind) return { s: 1 - t / TOUR.rewind, part: null };
   t -= TOUR.rewind;
   if (t < TOUR.forward) return { s: t / TOUR.forward, part: null };
@@ -213,12 +219,22 @@ function play() {
   }
   const from = s >= 0.9995 ? 0 : s;
   if (still.matches) {
-    s = 1;
+    // reduced motion: each press jumps to the end of the next step
+    const total = SEQ.reduce((sum, step) => sum + step.w, 0);
+    let edge = 0;
+    const ends = SEQ.map((step) => (edge += step.w) / total);
+    s = s >= 0.9995 ? 0 : ends.find((end) => end > s + 1e-4) ?? 1;
     draw();
     return;
   }
   playing = { from, to: 1, t: 0, seconds: PLAY_SECONDS * (1 - from) };
   run();
+}
+
+// picking a part from the legend or the keys shows the finished chip, where every part exists
+function finish() {
+  playing = null;
+  s = 1;
 }
 
 function reset() {
@@ -264,6 +280,7 @@ partButtons.forEach((button) => {
   const show = () => {
     quietTour();
     clearTimeout(leaveTimer);
+    finish();
     select(button.dataset.part);
     draw();
   };
@@ -312,6 +329,7 @@ document.addEventListener("keydown", (event) => {
   if (next === null) return;
   event.preventDefault();
   quietTour();
+  finish();
   select(D.order[next]);
   draw();
 });

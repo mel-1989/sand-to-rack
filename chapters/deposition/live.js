@@ -34,14 +34,21 @@ let frame = 0;
 let last = 0;
 let spoken = "";
 let drawn = -1;
+let dragging = false;
 
 // ---- drawing the moving parts ----
 const solid = (ring, z, h, style) => solidSvg(extrude(ring, z, h, P), style);
 const byDepth = (a, b) => a.z + a.h - (b.z + b.h) || depthOf([a.at[0], a.at[1], 0], P) - depthOf([b.at[0], b.at[1], 0], P);
 
-// gas columns: one under each showerhead hole along the cut, in three rows reaching forward over the wafer
+// gas columns: a grid over the wafer in front of the showerhead's cut face, so the pulse covers the exposed half of the wafer
 const COLUMNS = [];
-for (let x = -28; x <= 28.1; x += 4) for (const [row, y] of [-3, 3, 9].entries()) if (Math.hypot(x, y) < 29) COLUMNS.push({ x: RIG.PED_X + x, y, off: ((x + 28) * 0.137 + row * 0.33) % 1 });
+for (let y = D.shower.cut + 2, row = 0; y <= 27; y += 4.5, row++) for (let x = -28 + (row % 2) * 2; x <= 28.1; x += 4) if (Math.hypot(x, y) < 28.5) COLUMNS.push({ x: RIG.PED_X + x, y, off: ((x + 28) * 0.137 + row * 0.31) % 1 });
+// on a phone the figure is about half size: larger dots so each pulse still reads
+const small = matchMedia("(max-width: 480px)");
+small.addEventListener("change", () => {
+  drawn = -1;
+  render();
+});
 
 function filmHeight(s) {
   if (s.seg.id === "done") return D.cycles * RIG.FILM_PER;
@@ -65,18 +72,17 @@ function draw(s) {
   const [wx, wy] = waferAt(s);
   const film = filmHeight(s);
   const done = Math.floor(film / RIG.FILM_PER + 1e-6);
-  let carry = solid(bladeA.ring, bladeA.z, bladeA.h, { tone: "mid" });
+  const bladeSvg = solid(bladeA.ring, bladeA.z, bladeA.h, { tone: "mid" });
   const waferBottom = s.waferZ;
-  const wafer = solidSvg(cylinder(wx, wy, RIG.WAFER_R, waferBottom, RIG.WAFER_T, P, 64), { tone: "hi", crease: "lo" });
-  const onBlade = s.wafer === "blade" || s.wafer === "ll";
-  if (onBlade) carry += wafer;
-  else carry = wafer + carry;
+  let waferSvg = solidSvg(cylinder(wx, wy, RIG.WAFER_R, waferBottom, RIG.WAFER_T, P, 64), { tone: "hi", crease: "lo" });
   if (film > 0.01) {
     const z0 = waferBottom + RIG.WAFER_T;
     const seams = [];
     for (let i = 1; i <= done && i * RIG.FILM_PER < film - 0.05; i++) seams.push(sideArc(wx, wy, RIG.WAFER_R - 0.6, z0 + i * RIG.FILM_PER, P, 48));
-    carry += solidSvg(cylinder(wx, wy, RIG.WAFER_R - 0.6, z0, film, P, 64), { tone: "hi", lit: true, crease: "lo", inner: seams.length ? lineSvg(seams.join(""), { tone: "mid" }) : "" });
+    waferSvg += solidSvg(cylinder(wx, wy, RIG.WAFER_R - 0.6, z0, film, P, 64), { tone: "hi", lit: true, crease: "lo", inner: seams.length ? lineSvg(seams.join(""), { tone: "mid" }) : "" });
   }
+  // paint by height, not by holder: a wafer at or above the blade top (on the blade, or lifted on the pins) goes over it
+  const carry = s.waferZ >= RIG.Z_BLADE[1] - 1e-6 ? bladeSvg + waferSvg : waferSvg + bladeSvg;
   carryEl.innerHTML = carry;
 
   // lift pins rising out of the pedestal
@@ -87,6 +93,7 @@ function draw(s) {
   const floorZ = RIG.PED_TOP + RIG.WAFER_T + film + 0.6;
   let gas = "";
   const phase = s.seg.id;
+  const dot = small.matches ? 1.7 : 1;
   if (phase === "pulseA" || phase === "pulseB") {
     const ring = phase === "pulseB";
     const fade = Math.min(1, s.p * 6, (1 - s.p) * 6);
@@ -94,7 +101,7 @@ function draw(s) {
       const f = (s.p * 2.2 + c.off) % 1;
       const z = top - f * (top - floorZ);
       const [x, y] = iso([c.x, c.y, z], P);
-      gas += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${ring ? 1.05 : 0.95}" opacity="${(fade * (0.35 + 0.65 * Math.sin(Math.PI * f))).toFixed(2)}"${ring ? " data-ring" : ""}/>`;
+      gas += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${((ring ? 1.05 : 0.95) * dot).toFixed(2)}" opacity="${(fade * (0.35 + 0.65 * Math.sin(Math.PI * f))).toFixed(2)}"${ring ? " data-ring" : ""}/>`;
     }
   } else if (phase === "purgeA" || phase === "purgeB") {
     const fade = Math.min(1, s.p * 6, (1 - s.p) * 6);
@@ -103,7 +110,7 @@ function draw(s) {
       const y = 26 - f * 78;
       const z = floorZ + 3 + c.off * (top - floorZ - 5);
       const [sx, sy] = iso([c.x, y, z], P);
-      gas += `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="0.8" data-purge opacity="${(fade * (0.4 + 0.6 * Math.sin(Math.PI * f))).toFixed(2)}"/>`;
+      gas += `<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${(0.8 * dot).toFixed(2)}" data-purge opacity="${(fade * (0.4 + 0.6 * Math.sin(Math.PI * f))).toFixed(2)}"/>`;
     }
   }
   gasEl.innerHTML = gas;
@@ -148,7 +155,7 @@ function showPlay() {
   const text = stateAt(t, SEGS).seg.label;
   if (stepText.textContent !== text) stepText.textContent = text;
   const value = String(Math.round(t * 1000));
-  if (scrubInput.value !== value && document.activeElement !== scrubInput) scrubInput.value = value;
+  if (scrubInput.value !== value && !dragging) scrubInput.value = value;
 }
 
 function render() {
@@ -343,6 +350,9 @@ document.addEventListener("keydown", (event) => {
   select(D.order[next]);
 });
 
+scrubInput.addEventListener("pointerdown", () => (dragging = true));
+for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) scrubInput.addEventListener(type, () => (dragging = false));
+document.addEventListener("pointerup", () => (dragging = false));
 scrubInput.addEventListener("input", () => {
   quietTour();
   playing = false;

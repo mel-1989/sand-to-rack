@@ -81,8 +81,23 @@ const waferMovers = [...$$('[data-move="wafer"]'), wafers.stage];
 const reticleMovers = $$('[data-move="reticle"]');
 const drops = $("[data-drops]");
 const co2 = $(".euv-co2");
+const pre = $(".euv-pre");
 const flash = $(".euv-flash");
-const cone = $(".euv-cone");
+const preflash = $(".euv-preflash");
+const pancake = $(".euv-pancake");
+const layer = $(".euv-layers");
+const homes = {};
+for (const id of Object.keys(wafers)) {
+  if (!wafers[id]) continue;
+  homes[id] = document.createComment(id);
+  wafers[id].after(homes[id]);
+}
+const cupFronts = { coat: $('[data-name="track.coat.cupfront"]'), dev: $('[data-name="track.dev.cupfront"]') };
+const tunnel = $('[data-name="wstage.tunnel"]');
+const gateDoor = $("[data-gate]");
+const poseNodes = $$("[data-pose]");
+let poseShown = 0;
+const cones = $$(".euv-cone");
 const legs = $$(".euv-beam").sort((a, b) => a.dataset.leg - b.dataset.leg);
 const rays = legs.map((leg) => {
   const path = leg.querySelector(".euv-ray");
@@ -120,7 +135,7 @@ function scanPose(T) {
   const after = T >= t1("scan");
   if (before || after) {
     const done = after ? N : 0;
-    const back = after ? ramp(local("peb", T), 0, 0.3) : 0;
+    const back = after ? ramp(local("peb", T), 0, 0.12) : 0;
     const last = centre(N - 1);
     const endY = dir(N - 1) * half;
     if (after) return { wafer: [-last[0] * (1 - back), -(last[1] + endY) * (1 - back)], reticle: endY * D.reticleGain * (1 - back), exposed: done, i: N - 1 };
@@ -148,21 +163,93 @@ function scanPose(T) {
   return { wafer: [-(c[0] + (n[0] - c[0]) * k), -(c[1] + (n[1] - c[1]) * k + y)], reticle: y * D.reticleGain, exposed: i + 1, i };
 }
 
-function waferShown(id, T) {
-  const u = (s) => local(s, T);
-  switch (id) {
-    case "coat":
-      return T < t1("coat") ? 1 : 1 - ramp(u("softbake"), 0, 0.15);
-    case "soft":
-      return T < t0("softbake") ? 0 : T < t1("softbake") ? ramp(u("softbake"), 0, 0.15) : 1 - ramp(u("load"), 0.05, 0.4);
-    case "stage":
-      return T < t0("load") ? 0 : T < t1("scan") ? ramp(u("load"), 0.45, 0.85) : 1 - ramp(u("peb"), 0.15, 0.35);
-    case "peb":
-      return T < t0("peb") ? 0 : T < t1("peb") ? ramp(u("peb"), 0.3, 0.5) : 1 - ramp(u("develop"), 0, 0.15);
-    case "dev":
-      return T < t0("develop") ? 0 : ramp(u("develop"), 0.1, 0.25);
+// ---- the wafer's trips between stations: positions in world units (centre x, y and bottom z) ----
+const NP = D.poses.length;
+const lerp3 = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+const R0 = D.rest;
+const up = (p) => [p[0], p[1], D.transit];
+const handAt = (index) => [D.poses[index][0], D.poses[index][1], D.forkTop];
+const OUT = handAt(NP - 1);
+const INSIDE = [OUT[0] + D.tunnelIn, OUT[1], OUT[2]];
+// keys: [[u, point], ...] in order; eased between neighbours
+function along(keys, u) {
+  if (u <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) if (u <= keys[i][0]) return lerp3(keys[i - 1][1], keys[i][1], ease((u - keys[i - 1][0]) / (keys[i][0] - keys[i - 1][0])));
+  return keys[keys.length - 1][1];
+}
+function robotAt(T) {
+  if (T >= t0("load") && T < t1("load")) {
+    const u = local("load", T);
+    return ramp(u, 0.34, 0.6) * (1 - ramp(u, 0.74, 0.92));
+  }
+  if (T >= t0("peb") && T < t1("peb")) {
+    const u = local("peb", T);
+    return ramp(u, 0.16, 0.28) * (1 - ramp(u, 0.36, 0.56));
   }
   return 0;
+}
+function gateAt(T) {
+  if (T >= t0("load") && T < t1("load")) {
+    const u = local("load", T);
+    return ramp(u, 0.72, 0.78) * (1 - ramp(u, 0.94, 1));
+  }
+  if (T >= t0("peb") && T < t1("peb")) {
+    const u = local("peb", T);
+    return ramp(u, 0.1, 0.15) * (1 - ramp(u, 0.26, 0.31));
+  }
+  return 0;
+}
+// where each track wafer is, and how opaque; null when it is not shown
+function trips(T, pose) {
+  const out = { coat: null, soft: null, peb: null, dev: null };
+  const fork = handAt(pose);
+  if (T < t0("softbake")) out.coat = { p: R0.coat, a: 1 };
+  if (T >= t0("softbake") && T < t0("load")) {
+    out.soft = { p: along([[0, R0.coat], [0.08, up(R0.coat)], [0.2, up(R0.soft)], [0.26, R0.soft]], local("softbake", T)), a: 1 };
+  } else if (T >= t0("load") && T < t1("load")) {
+    const u = local("load", T);
+    if (u < 0.34) out.soft = { p: along([[0, R0.soft], [0.06, up(R0.soft)], [0.3, up(handAt(0))], [0.34, handAt(0)]], u), a: 1 };
+    else if (u < 0.6) out.soft = { p: fork, a: 1 };
+    else if (u < 0.72) out.soft = { p: along([[0.6, OUT], [0.72, INSIDE]], u), a: 1 - ramp(u, 0.63, 0.71) };
+  }
+  if (T >= t0("peb") && T < t0("develop")) {
+    const u = local("peb", T);
+    if (u >= 0.26 && u < 0.36) out.peb = { p: along([[0.26, INSIDE], [0.36, OUT]], u), a: ramp(u, 0.26, 0.32) };
+    else if (u >= 0.36 && u < 0.56) out.peb = { p: fork, a: 1 };
+    else if (u >= 0.56) out.peb = { p: along([[0.56, handAt(0)], [0.6, up(handAt(0))], [0.74, up(R0.peb)], [0.78, R0.peb]], u), a: 1 };
+  }
+  if (T >= t0("develop")) out.dev = { p: along([[0, R0.peb], [0.05, up(R0.peb)], [0.17, up(R0.dev)], [0.24, R0.dev]], local("develop", T)), a: 1 };
+  return out;
+}
+// the exposure-side wafer: slides in through the gate after the load lock, out again before the bake
+function stageWafer(T) {
+  if (T >= t0("load") && T < t1("load")) {
+    const u = local("load", T);
+    return { a: ramp(u, 0.78, 0.83), slide: -D.gateSlide * (1 - ease((u - 0.78) / 0.16)) };
+  }
+  if (T >= t1("load") && T < t0("peb")) return { a: 1, slide: 0 };
+  if (T >= t0("peb") && T < t1("peb")) {
+    const u = local("peb", T);
+    return { a: 1 - ramp(u, 0.21, 0.26), slide: -D.gateSlide * ease((u - 0.15) / 0.11) };
+  }
+  return { a: 0, slide: 0 };
+}
+// painter's order for a wafer in transit: under a lid it goes just before the lid, low in a cup before the cup's front,
+// entering the tunnel before the tunnel; at its own station it goes home; otherwise it is drawn last
+function anchorFor(id, p) {
+  const near = (c, r) => Math.hypot(p[0] - c[0], p[1] - c[1]) < r;
+  const rest = R0[id];
+  if (rest && Math.hypot(p[0] - rest[0], p[1] - rest[1], p[2] - rest[2]) < 0.3) return homes[id];
+  if (p[2] < 55) for (const cup of ["coat", "dev"]) if (near(D.cups[cup], 30)) return cupFronts[cup];
+  if (p[2] < 66) for (const lid of ["soft", "peb"]) if (near(D.lids[lid], 48)) return lids[lid];
+  if (p[0] > OUT[0] + 4) return tunnel;
+  return null;
+}
+function seat(el, ref) {
+  if (!el || !layer) return;
+  if (ref ? el.nextSibling === ref : el === layer.lastChild) return;
+  if (ref) layer.insertBefore(el, ref);
+  else layer.appendChild(el);
 }
 
 let spin = { coat: 0, dev: 0 };
@@ -170,8 +257,30 @@ let clock = 0;
 let lastStep = -1;
 function render(T, calm) {
   const u = (s) => local(s, T);
-  // wafers at their stations
-  for (const id of Object.keys(wafers)) fade(wafers[id], waferShown(id, T));
+  // the robot: one pose shown at a time
+  const pose = Math.round(robotAt(T) * (NP - 1));
+  if (pose !== poseShown) {
+    poseShown = pose;
+    for (const node of poseNodes) node.toggleAttribute("data-away", Number(node.dataset.pose) !== pose);
+  }
+  // wafers on their trips
+  const trip = trips(T, pose);
+  for (const id of ["coat", "soft", "peb", "dev"]) {
+    const el = wafers[id];
+    const at = trip[id];
+    if (!el) continue;
+    fade(el, at ? at.a : 0);
+    if (!at) {
+      move(el, [0, 0, 0]);
+      seat(el, homes[id]);
+      continue;
+    }
+    move(el, [at.p[0] - R0[id][0], at.p[1] - R0[id][1], at.p[2] - R0[id][2]]);
+    seat(el, anchorFor(id, at.p));
+  }
+  const sw = stageWafer(T);
+  fade(wafers.stage, sw.a);
+  move(gateDoor, [0, 0, D.gateLift * gateAt(T)]);
   // coat: the arm swings in, resist lands and spreads while the wafer spins, the arm parks
   const coatU = u("coat");
   const coatArm = T < t1("coat") ? ramp(coatU, 0.04, 0.2) * (1 - ramp(coatU, 0.74, 0.9)) : 0;
@@ -181,13 +290,13 @@ function render(T, calm) {
   for (const id of ["soft", "stage", "peb"]) if (films[id] && !films[id].getAttribute("d")) films[id].setAttribute("d", ellipse(D.centres[id], D.waferR));
   // develop: the arm comes in, a puddle spreads, the pattern appears
   const devU = u("develop");
-  const devArm = T >= t0("develop") ? ramp(devU, 0.2, 0.34) * (1 - ramp(devU, 0.8, 0.94)) : 0;
+  const devArm = T >= t0("develop") ? ramp(devU, 0.26, 0.36) * (1 - ramp(devU, 0.82, 0.94)) : 0;
   move(arms.dev, [D.armTravel * devArm, 0, 0]);
-  const puddle = T >= t0("develop") ? ramp(devU, 0.34, 0.6) : 0;
-  films.dev?.setAttribute("d", ellipse(D.centres.dev, D.waferR * Math.max(0.05, puddle)));
+  const puddle = T >= t0("develop") ? ramp(devU, 0.38, 0.6) : 0;
+  films.dev?.setAttribute("d", puddle > 0.01 ? ellipse(D.centres.dev, D.waferR * puddle) : "");
   fade(films.dev, T >= t0("develop") ? 0.35 + 0.65 * (1 - ramp(devU, 0.75, 1)) * Math.max(0.2, puddle) : 1);
   // spin: the notch turns while a cup spins the wafer
-  const spinning = { coat: T < t1("coat") ? ramp(coatU, 0.15, 0.3) * (1 - ramp(coatU, 0.85, 1)) : 0, dev: T >= t0("develop") ? ramp(devU, 0.3, 0.4) * (1 - ramp(devU, 0.85, 1)) : 0 };
+  const spinning = { coat: T < t1("coat") ? ramp(coatU, 0.15, 0.3) * (1 - ramp(coatU, 0.85, 1)) : 0, dev: T >= t0("develop") ? ramp(devU, 0.36, 0.44) * (1 - ramp(devU, 0.86, 1)) : 0 };
   for (const id of ["coat", "dev"]) {
     const notch = notches[id];
     if (!notch) continue;
@@ -200,10 +309,10 @@ function render(T, calm) {
   }
   // bakes: the lid comes down onto the plate, the plate glows
   const softU = u("softbake");
-  const softLid = T >= t0("softbake") && T < t1("softbake") ? ramp(softU, 0.15, 0.3) * (1 - ramp(softU, 0.82, 0.97)) : 0;
+  const softLid = T >= t0("softbake") && T < t1("softbake") ? ramp(softU, 0.28, 0.38) * (1 - ramp(softU, 0.85, 0.97)) : 0;
   move(lids.soft, [0, 0, -D.lidDrop * softLid]);
   const pebU = u("peb");
-  const pebLid = T >= t0("peb") && T < t1("peb") ? ramp(pebU, 0.48, 0.62) * (1 - ramp(pebU, 0.88, 1)) : 0;
+  const pebLid = T >= t0("peb") && T < t1("peb") ? ramp(pebU, 0.8, 0.86) * (1 - ramp(pebU, 0.94, 1)) : 0;
   move(lids.peb, [0, 0, -D.lidDrop * pebLid]);
   plates.soft?.toggleAttribute("data-hot", softLid > 0.6);
   plates.peb?.toggleAttribute("data-hot", pebLid > 0.6);
@@ -222,12 +331,19 @@ function render(T, calm) {
     c.setAttribute("cy", (dropFrom[1] + (dropTo[1] - dropFrom[1]) * s).toFixed(1));
     c.setAttribute("opacity", visible ? (firing && s > hitAt - 0.08 ? "0.5" : "1") : "0");
   });
-  const pulse = calm ? 1 : 0.5 + 0.5 * Math.cos(clock * 21);
-  fade(co2, firing ? 0.25 + 0.75 * pulse : 0);
-  fade(flash, firing ? 0.35 + 0.65 * pulse : 0);
-  flash?.setAttribute("r", firing ? (2.2 + 2.6 * pulse).toFixed(2) : "2");
+  // each hit is two pulses: a weak pre-pulse flattens the droplet into a pancake, then the main pulse makes the plasma
+  const ph = calm ? 0.5 : (clock / 0.9) % 1;
+  const hit = !firing ? null : ph < 0.42 ? "pre" : "main";
+  const preOn = firing && ph < 0.14 ? 1 - ph / 0.14 : 0;
+  const mainOn = firing && ph >= 0.42 && ph < 0.7 ? 1 - ((ph - 0.42) / 0.28) * 0.7 : 0;
+  fade(pre, preOn * 0.8);
+  fade(preflash, preOn * 0.6);
+  fade(pancake, firing && ph >= 0.08 && ph < 0.44 ? 0.9 : 0);
+  fade(co2, mainOn);
+  fade(flash, mainOn);
+  flash?.setAttribute("r", (2.4 + 2.8 * mainOn).toFixed(2));
   const coneOn = T < t0("droplet") ? 0 : T < t0("peb") ? ramp(u("droplet"), 0.45, 0.8) : 1 - ramp(u("peb"), 0, 0.15);
-  fade(cone, coneOn);
+  for (const cone of cones) fade(cone, coneOn * (firing ? 0.45 + 0.55 * Math.max(mainOn, calm ? 1 : 0) : 1));
   fade(drops, sourceOn || dropOn ? 1 : 0);
 
   // the light path, leg by leg: four through the illuminator to the reticle, seven down to the wafer
@@ -251,15 +367,15 @@ function render(T, calm) {
   fade(slit, slitOn);
 
   // scanning: the wafer steps field by field; the reticle sweeps 4x the wafer's travel, the other way
-  const pose = scanPose(T);
-  for (const el of waferMovers) move(el, [pose.wafer[0], pose.wafer[1], 0]);
-  for (const el of reticleMovers) move(el, [0, pose.reticle, 0]);
-  const exposed = pose.exposed;
+  const scan = scanPose(T);
+  for (const el of waferMovers) move(el, [scan.wafer[0] + (el === wafers.stage ? sw.slide : 0), scan.wafer[1], 0]);
+  for (const el of reticleMovers) move(el, [0, scan.reticle, 0]);
+  const exposed = scan.exposed;
   cells.stage.forEach((cell, i) => fade(cell, clamp(exposed - i) * 0.55));
   cells.peb.forEach((cell) => fade(cell, 0.3));
-  const developed = T >= t0("develop") ? ramp(devU, 0.45, 0.8) : 0;
+  const developed = T >= t0("develop") ? ramp(devU, 0.48, 0.8) : 0;
   cells.dev.forEach((cell) => fade(cell, 0.15 + 0.6 * developed));
-  return pose;
+  return { ...scan, pulse: hit };
 }
 
 // ---- readout, step label, selection ----
@@ -296,6 +412,7 @@ function readoutText(pose) {
     const n = Math.min(D.fieldCount, Math.max(1, Math.ceil((pose.exposed / D.fields.length) * D.fieldCount)));
     return `field ${n} / ${D.fieldCount} · reticle moves ${D.reticleGain}× the wafer`;
   }
+  if (step.id === "droplet" && pose.pulse) return pose.pulse === "pre" ? "pre-pulse · flattens the tin droplet" : `main pulse · tin plasma → ${D.wavelength} nm light`;
   return step.say;
 }
 function select(id) {

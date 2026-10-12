@@ -15,7 +15,7 @@ export const LESSON = {
     ["HBM4 capacity", `${M.total} GB`, `${M.HBM.stacks} × ${M.HBM.high}-high × ${M.HBM.gbPerStack} GB`],
     ["Memory bandwidth", `${M.HBM.totalTBs} TB/s`, `≈${M.pinGbps.toFixed(1)} Gb/s per pin, derived`],
     ["NVLink 6", `${M.GPU.nvlinkTBs} TB/s`, "per GPU"],
-    ["NVFP4", `${M.GPU.nvfp4Dense} PF dense · ${M.GPU.nvfp4Sparse} PF sparse`],
+    ["NVFP4", `${M.GPU.nvfp4Inference} PF inference · ${M.GPU.nvfp4Dense} PF dense`, "inference figure uses the Transformer Engine; NVIDIA labels the 35 PF dense"],
   ],
   innovationsTitle: "Why it is built this way",
   innovations: [
@@ -27,6 +27,7 @@ export const LESSON = {
     ["Guru3D: NVIDIA details Rubin GPU architecture", "https://www.guru3d.com/story/nvidia-details-rubin-gpu-architecture-with-hbm4-nvlink-6-and-336-billion-transistors/"],
     ["Introl: Rubin in full production (CES 2026)", "https://introl.com/blog/nvidia-rubin-full-production-ces-2026-ai-infrastructure"],
     ["All About Circuits: JEDEC releases HBM4", "https://www.allaboutcircuits.com/news/jedec-officially-releases-hbm4-memory-standard"],
+    ["NVIDIA: Inside the Rubin platform", "https://developer.nvidia.com/blog/inside-the-nvidia-rubin-platform-six-new-chips-one-ai-supercomputer/"],
     ["TrendForce: HBM4 after the JEDEC standard", "https://www.trendforce.com/news/2025/04/28/news-following-jedecs-hbm4-standard-whats-next-for-sk-hynix-samsung-and-micron/"],
   ],
 };
