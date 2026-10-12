@@ -1,0 +1,11 @@
+{
+  "name": "aiaccelerator-pipeline-suite",
+  "private": true,
+  "description": "An interactive, isometric course through every stage of making an AI accelerator chip.",
+  "license": "MIT",
+  "engines": { "node": ">=20.10" },
+  "scripts": {
+    "build": "node build.mjs",
+    "build:fast": "node build.mjs --fast"
+  }
+}
