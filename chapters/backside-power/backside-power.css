@@ -1,0 +1,283 @@
+.bp {
+  --bp-part-ring: #ffffff10;
+  --bp-part-hover: #ffffff0a;
+  --bp-si: color-mix(in srgb, var(--anatomy-mid) 16%, var(--anatomy-paper));
+  --bp-si2: color-mix(in srgb, var(--anatomy-mid) 10%, var(--anatomy-paper));
+  --bp-ox: color-mix(in srgb, var(--anatomy-mid) 30%, var(--anatomy-paper));
+  --bp-cu: color-mix(in srgb, var(--anatomy-hi) 30%, var(--anatomy-paper));
+  --bp-pw: color-mix(in srgb, var(--anatomy-hi) 78%, var(--anatomy-paper));
+  --bp-gate: color-mix(in srgb, var(--anatomy-hi) 52%, var(--anatomy-paper));
+  --bp-bond: color-mix(in srgb, var(--anatomy-halo) 50%, var(--anatomy-paper));
+  --bp-bk: color-mix(in srgb, var(--anatomy-hi) 46%, var(--anatomy-paper));
+  --bp-hot: var(--anatomy-lit);
+  --bp-hot-soft: color-mix(in srgb, var(--anatomy-lit) 34%, var(--anatomy-paper));
+  --bp-screen: color-mix(in srgb, var(--anatomy-halo) 70%, var(--anatomy-paper));
+}
+
+[data-theme="light"] .bp {
+  --bp-part-ring: #00000014;
+  --bp-part-hover: #0000000a;
+  --bp-pw: color-mix(in srgb, var(--anatomy-hi) 70%, var(--anatomy-paper));
+}
+
+.bp .iso-plate {
+  padding: 52px 24px 60px;
+  overflow: hidden;
+}
+
+.bp-stage {
+  position: relative;
+  border-radius: 10px;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.bp-stage:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 6px;
+}
+
+.bp-stage > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.bp-svg .it {
+  pointer-events: visiblePainted;
+}
+
+/* cut-face materials */
+.bp-si { fill: var(--bp-si); }
+.bp-si2 { fill: var(--bp-si2); }
+.bp-ox { fill: var(--bp-ox); }
+.bp-cu { fill: var(--bp-cu); }
+.bp-pw { fill: var(--bp-pw); }
+.bp-gate { fill: var(--bp-gate); }
+.bp-bond { fill: var(--bp-bond); }
+.bp-bk { fill: var(--bp-bk); }
+.bp-screen { fill: var(--bp-screen); }
+
+.bp-readout {
+  fill: var(--anatomy-hi);
+  font-family: var(--anatomy-mono);
+  letter-spacing: 0.04em;
+}
+
+/* selection: the picked part lights, everything else steps down */
+.bp-stage[data-focus] .it:not([data-on]):not([data-piece="stand"]) {
+  --anatomy-hi: var(--anatomy-mid);
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.bp-stage[data-focus] .it[data-piece="stand"] {
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.bp-stage[data-focus] .bp-sec:not([data-on]) {
+  opacity: 0.5;
+}
+
+.bp-sec[data-on] .bp-pw,
+.bp-sec[data-on] .bp-cu,
+.bp-sec[data-on] .bp-gate {
+  fill: var(--bp-hot);
+}
+
+.bp-sec[data-on] .bp-si,
+.bp-sec[data-on] .bp-si2,
+.bp-sec[data-on] .bp-ox,
+.bp-sec[data-on] .bp-bond,
+.bp-sec[data-on] .bp-bk {
+  fill: var(--bp-hot-soft);
+}
+
+.bp-sec[data-on] > .iso-line {
+  stroke: var(--anatomy-hi);
+}
+
+.it[data-on] {
+  --anatomy-hi: var(--anatomy-lit);
+  --anatomy-mid: var(--anatomy-hi);
+}
+
+.it[data-on] .iso-top {
+  fill: var(--anatomy-lit-top);
+}
+
+.it[data-on] .iso-shade {
+  fill: var(--anatomy-lit-shade);
+}
+
+.it[data-on] [data-seamless] > .iso-shade {
+  stroke: var(--anatomy-lit-shade);
+}
+
+.it[data-on] [data-seamless] > .iso-top {
+  stroke: var(--anatomy-lit-top);
+}
+
+.bp-controls {
+  position: absolute;
+  left: 24px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.bp-hint {
+  font: 10.5px/1 var(--anatomy-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+}
+
+.bp-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.bp-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.bp-part {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--anatomy-muted);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--bp-part-ring);
+  transition: color 160ms var(--anatomy-ease), background 160ms var(--anatomy-ease);
+}
+
+.bp-part:hover,
+.bp-part:focus-visible,
+.bp-part[data-on] {
+  color: var(--anatomy-strong);
+  background: var(--bp-part-hover);
+  outline: none;
+}
+
+.bp-num {
+  font-family: var(--anatomy-mono);
+  font-size: 10px;
+  color: var(--anatomy-muted);
+}
+
+.bp-scrub {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bp-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-width: 96px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bp-part-hover);
+  color: var(--anatomy-strong);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--bp-part-ring);
+}
+
+.bp-play:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 2px;
+}
+
+.bp-play-icon {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent currentColor;
+}
+
+.bp-play[data-playing] .bp-play-icon {
+  width: 8px;
+  height: 10px;
+  border: 0;
+  border-left: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+}
+
+.bp-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--anatomy-lit);
+  cursor: pointer;
+}
+
+.bp-step {
+  flex: none;
+  width: 210px;
+  font: 10.5px/1.2 var(--anatomy-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .bp .iso-plate {
+    padding: 48px 8px 84px;
+  }
+
+  .bp .iso-plate-corner[data-corner="readout"] {
+    bottom: 44px;
+    right: 0;
+    left: 16px;
+    max-width: calc(100% - 32px);
+    text-align: right;
+    line-height: 1.4;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  .bp-controls {
+    left: 14px;
+    bottom: 14px;
+  }
+
+  .bp-hint {
+    font-size: 9.5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bp-scrub {
+    flex-wrap: wrap;
+  }
+
+  .bp-step {
+    width: auto;
+    order: 3;
+    flex-basis: 100%;
+  }
+}

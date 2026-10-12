@@ -1,0 +1,321 @@
+.pm {
+  --pm-part-ring: #ffffff10;
+  --pm-part-hover: #ffffff0a;
+}
+
+[data-theme="light"] .pm {
+  --pm-part-ring: #00000014;
+  --pm-part-hover: #0000000a;
+}
+
+.pm .iso-plate {
+  padding: 52px 24px 60px;
+  overflow: hidden;
+}
+
+.pm-stage {
+  position: relative;
+  border-radius: 10px;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pm-stage:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 6px;
+}
+
+.pm-stage > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.pm-svg .it {
+  pointer-events: visiblePainted;
+}
+
+.pm-stage[data-focus] .it:not([data-on]):not([data-piece="stand"]) {
+  --anatomy-hi: var(--anatomy-mid);
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.pm-stage[data-focus] .it[data-piece="stand"] {
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.it[data-on] {
+  --anatomy-hi: var(--anatomy-lit);
+  --anatomy-mid: var(--anatomy-hi);
+}
+
+.it[data-on] .iso-top {
+  fill: var(--anatomy-lit-top);
+}
+
+.it[data-on] .iso-shade {
+  fill: var(--anatomy-lit-shade);
+}
+
+.it[data-on] [data-seamless] > .iso-shade {
+  stroke: var(--anatomy-lit-shade);
+}
+
+.it[data-on] [data-seamless] > .iso-top {
+  stroke: var(--anatomy-lit-top);
+}
+
+.pm-controls {
+  position: absolute;
+  left: 24px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.pm-hint {
+  font: 10.5px/1 var(--anatomy-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+}
+
+.pm-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.pm-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.pm-part {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--anatomy-muted);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--pm-part-ring);
+  transition: color 160ms var(--anatomy-ease), background 160ms var(--anatomy-ease);
+}
+
+.pm-part:hover,
+.pm-part:focus-visible,
+.pm-part[data-on] {
+  color: var(--anatomy-strong);
+  background: var(--pm-part-hover);
+  outline: none;
+}
+
+.pm-num {
+  font-family: var(--anatomy-mono);
+  font-size: 10px;
+  color: var(--anatomy-muted);
+}
+
+@media (max-width: 640px) {
+  .pm .iso-plate {
+    padding: 48px 8px 84px;
+  }
+
+  .pm .iso-plate-corner[data-corner="readout"] {
+    bottom: 44px;
+    right: 0;
+    left: 16px;
+    max-width: calc(100% - 32px);
+    text-align: right;
+    line-height: 1.4;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  .pm-controls {
+    left: 14px;
+    bottom: 14px;
+  }
+
+  .pm-hint {
+    font-size: 9.5px;
+  }
+}
+
+.pm-scrub {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.pm-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-width: 112px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--pm-part-hover);
+  color: var(--anatomy-strong);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--pm-part-ring);
+}
+
+.pm-play:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 2px;
+}
+
+.pm-play-icon {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent currentColor;
+}
+
+.pm-play[data-playing] .pm-play-icon {
+  width: 8px;
+  height: 10px;
+  border: 0;
+  border-left: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+}
+
+.pm-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--anatomy-lit);
+  cursor: pointer;
+}
+
+.pm-step {
+  flex: none;
+  width: 150px;
+  font: 10.5px/1.2 var(--anatomy-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 480px) {
+  .pm-scrub {
+    flex-wrap: wrap;
+  }
+
+  .pm-step {
+    width: auto;
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+.pm-step {
+  width: 190px;
+}
+
+/* die fields on the blank: closed outlines that appear as the beam writes them */
+.pm-die {
+  fill: none;
+  stroke: var(--anatomy-hi);
+  stroke-width: 0.6;
+  opacity: 0;
+  transition: opacity 220ms var(--anatomy-ease);
+}
+
+.pm-die[data-w] {
+  opacity: 1;
+}
+
+.pm-etch {
+  opacity: 0;
+}
+
+.pm-beam {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pm-beam path {
+  fill: var(--anatomy-lit);
+  opacity: 0.55;
+}
+
+.pm-beam circle {
+  fill: var(--anatomy-lit);
+}
+
+.pm-leds circle {
+  transition: fill 200ms var(--anatomy-ease);
+}
+
+.pm[data-run] .pm-leds circle {
+  fill: var(--anatomy-lit);
+  animation: pm-blink 1.1s steps(2, end) infinite;
+}
+
+.pm[data-run] .pm-leds circle:nth-child(3n) {
+  animation-delay: -0.37s;
+}
+
+.pm[data-run] .pm-leds circle:nth-child(5n + 1) {
+  animation-delay: -0.71s;
+}
+
+@keyframes pm-blink {
+  to {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm[data-run] .pm-leds circle {
+    animation: none;
+  }
+}
+
+@media (min-width: 641px) {
+  .pm .iso-plate-corner[data-corner="readout"] {
+    max-width: 50%;
+    white-space: normal;
+    text-align: right;
+    line-height: 1.45;
+  }
+
+  .pm-controls {
+    max-width: 44%;
+  }
+}
+
+@media (max-width: 480px) {
+  .pm-stage > svg {
+    width: 112%;
+    margin-left: -6%;
+  }
+}
+
+.pm-membrane {
+  fill: var(--anatomy-lit);
+  opacity: 0.07;
+  pointer-events: none;
+}

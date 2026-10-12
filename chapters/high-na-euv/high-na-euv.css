@@ -1,0 +1,334 @@
+.hna {
+  --hna-ring: #ffffff10;
+  --hna-hover: #ffffff0a;
+  --hna-film: var(--anatomy-lit);
+  --hna-glow: var(--anatomy-lit);
+}
+
+[data-theme="light"] .hna {
+  --hna-ring: #00000014;
+  --hna-hover: #0000000a;
+}
+
+.hna .iso-plate {
+  padding: 52px 18px 60px;
+  overflow: hidden;
+}
+
+.hna-stage {
+  position: relative;
+  border-radius: 10px;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.hna-stage:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 6px;
+}
+
+.hna-stage > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.hna-svg .it {
+  pointer-events: visiblePainted;
+}
+
+.hna-svg .it[data-wafer] {
+  pointer-events: none;
+}
+
+/* the light: lit rays, a soft glow for the converging cone, a flash at the plasma point */
+.hna-beam,
+.hna-cone,
+.hna-co2,
+.hna-plasma {
+  pointer-events: none;
+}
+
+.hna-ray {
+  stroke-width: 1.1;
+}
+
+.hna-glow {
+  fill: var(--hna-glow);
+  fill-opacity: 0.16;
+  stroke: none;
+}
+
+.hna-flash {
+  fill: var(--hna-glow);
+  stroke: none;
+}
+
+.hna-drop {
+  fill: var(--anatomy-hi);
+  stroke: none;
+}
+
+.hna-dropline {
+  opacity: 0.5;
+}
+
+/* resist and developer films on the wafers, and exposed fields */
+.hna-film {
+  fill: var(--hna-film);
+  fill-opacity: 0.14;
+  stroke: var(--anatomy-lo);
+  stroke-width: 0.5;
+}
+
+.hna-field {
+  fill: var(--hna-film);
+  opacity: 0;
+  stroke: none;
+}
+
+.it[data-hot] .iso-top {
+  fill: var(--anatomy-lit-top);
+}
+
+.it[data-hot] .iso-edge {
+  stroke: var(--anatomy-lit);
+}
+
+.hna-slit {
+  fill: var(--hna-glow);
+  stroke: none;
+}
+
+/* selection: the picked module lights, the rest step down */
+.hna-stage[data-focus] .it:not([data-on]):not([data-piece="frame"]) {
+  --anatomy-hi: var(--anatomy-mid);
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.hna-stage[data-focus] .it[data-piece="frame"] {
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.it[data-on] {
+  --anatomy-hi: var(--anatomy-lit);
+  --anatomy-mid: var(--anatomy-hi);
+}
+
+.it[data-on] .iso-top {
+  fill: var(--anatomy-lit-top);
+}
+
+.it[data-on] .iso-shade {
+  fill: var(--anatomy-lit-shade);
+}
+
+.it[data-on] [data-seamless] > .iso-shade {
+  stroke: var(--anatomy-lit-shade);
+}
+
+.it[data-on] [data-seamless] > .iso-top {
+  stroke: var(--anatomy-lit-top);
+}
+
+.hna-controls {
+  position: absolute;
+  left: 22px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.hna-hint {
+  font: 10.5px/1 var(--anatomy-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+}
+
+.hna-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.hna-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.hna-part {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--anatomy-muted);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--hna-ring);
+  transition: color 160ms var(--anatomy-ease), background 160ms var(--anatomy-ease);
+}
+
+.hna-part:hover,
+.hna-part:focus-visible,
+.hna-part[data-on] {
+  color: var(--anatomy-strong);
+  background: var(--hna-hover);
+  outline: none;
+}
+
+.hna-num {
+  font-family: var(--anatomy-mono);
+  font-size: 10px;
+  color: var(--anatomy-muted);
+}
+
+.hna-scrub {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.hna-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-width: 84px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--hna-hover);
+  color: var(--anatomy-strong);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--hna-ring);
+}
+
+.hna-play:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 2px;
+}
+
+.hna-play-icon {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent currentColor;
+}
+
+.hna-play[data-playing] .hna-play-icon {
+  width: 8px;
+  height: 10px;
+  border: 0;
+  border-left: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+}
+
+.hna-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--anatomy-lit);
+  cursor: pointer;
+}
+
+.hna-step {
+  flex: none;
+  width: 190px;
+  font: 10.5px/1.2 var(--anatomy-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .hna .iso-plate {
+    padding: 48px 4px 92px;
+  }
+
+  .hna-stage > svg {
+    width: 104%;
+    margin-left: -2%;
+  }
+
+  .hna .iso-plate-corner[data-corner="readout"] {
+    bottom: 44px;
+    right: 0;
+    left: 16px;
+    max-width: calc(100% - 32px);
+    text-align: right;
+    line-height: 1.4;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  .hna-controls {
+    left: 14px;
+    bottom: 14px;
+  }
+
+  .hna-hint {
+    font-size: 9.5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hna-scrub {
+    flex-wrap: wrap;
+  }
+
+  .hna-step {
+    width: auto;
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+/* High-NA: the exit cones, the slit, the half fields, the seam and the stitched die */
+.hna-cone,
+.hna-srccone,
+.hna-seam {
+  pointer-events: none;
+}
+
+.hna-cone .hna-glow {
+  fill-opacity: 0.12;
+}
+
+.hna-cone-low .hna-glow {
+  fill: var(--anatomy-hi);
+  fill-opacity: 0.1;
+}
+
+.hna-cone-low[data-near] .hna-glow {
+  fill-opacity: 0.2;
+}
+
+.hna-field {
+  fill: var(--hna-film);
+  opacity: 0;
+  stroke: none;
+}
+
+.hna-die {
+  fill: none;
+  stroke: var(--anatomy-lit);
+  stroke-width: 0.8;
+}

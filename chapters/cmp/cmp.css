@@ -1,0 +1,337 @@
+.cmp {
+  --cmp-part-ring: #ffffff10;
+  --cmp-part-hover: #ffffff0a;
+}
+
+[data-theme="light"] .cmp {
+  --cmp-part-ring: #00000014;
+  --cmp-part-hover: #0000000a;
+}
+
+.cmp .iso-plate {
+  padding: 52px 24px 60px;
+  overflow: hidden;
+}
+
+.cmp-stage {
+  position: relative;
+  border-radius: 10px;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cmp-stage:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 6px;
+}
+
+.cmp-stage > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.cmp-svg .cmp-it {
+  pointer-events: visiblePainted;
+}
+
+.cmp-stage[data-focus] .cmp-it:not([data-on]):not([data-piece="stand"]) {
+  --anatomy-hi: var(--anatomy-mid);
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.cmp-stage[data-focus] .cmp-it[data-piece="stand"] {
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.cmp-it[data-on] {
+  --anatomy-hi: var(--anatomy-lit);
+  --anatomy-mid: var(--anatomy-hi);
+}
+
+.cmp-it[data-on] .iso-top {
+  fill: var(--anatomy-lit-top);
+}
+
+.cmp-it[data-on] .iso-shade {
+  fill: var(--anatomy-lit-shade);
+}
+
+.cmp-it[data-on] [data-seamless] > .iso-shade {
+  stroke: var(--anatomy-lit-shade);
+}
+
+.cmp-it[data-on] [data-seamless] > .iso-top {
+  stroke: var(--anatomy-lit-top);
+}
+
+.cmp-controls {
+  position: absolute;
+  left: 24px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cmp-hint {
+  font: 10.5px/1 var(--anatomy-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+}
+
+.cmp-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.cmp-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.cmp-part {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--anatomy-muted);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--cmp-part-ring);
+  transition: color 160ms var(--anatomy-ease), background 160ms var(--anatomy-ease);
+}
+
+.cmp-part:hover,
+.cmp-part:focus-visible,
+.cmp-part[data-on] {
+  color: var(--anatomy-strong);
+  background: var(--cmp-part-hover);
+  outline: none;
+}
+
+.cmp-num {
+  font-family: var(--anatomy-mono);
+  font-size: 10px;
+  color: var(--anatomy-muted);
+}
+
+@media (max-width: 640px) {
+  .cmp .iso-plate {
+    padding: 48px 8px 84px;
+  }
+
+  .cmp .iso-plate-corner[data-corner="readout"] {
+    bottom: 44px;
+    right: 0;
+    left: 16px;
+    max-width: calc(100% - 32px);
+    text-align: right;
+    line-height: 1.4;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  .cmp-controls {
+    left: 14px;
+    bottom: 14px;
+  }
+
+  .cmp-hint {
+    font-size: 9.5px;
+  }
+}
+
+.cmp-scrub {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cmp-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-width: 112px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--cmp-part-hover);
+  color: var(--anatomy-strong);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--cmp-part-ring);
+}
+
+.cmp-play:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 2px;
+}
+
+.cmp-play-icon {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent currentColor;
+}
+
+.cmp-play[data-playing] .cmp-play-icon {
+  width: 8px;
+  height: 10px;
+  border: 0;
+  border-left: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+}
+
+.cmp-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--anatomy-lit);
+  cursor: pointer;
+}
+
+.cmp-step {
+  flex: none;
+  width: 150px;
+  font: 10.5px/1.2 var(--anatomy-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 480px) {
+  .cmp-scrub {
+    flex-wrap: wrap;
+  }
+
+  .cmp-step {
+    width: auto;
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+.cmp-svg .cmp-it {
+  pointer-events: visiblePainted;
+}
+
+.cmp-stage[data-focus] .cmp-it:not([data-on]):not([data-part="stand"]) {
+  --anatomy-hi: var(--anatomy-mid);
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.cmp-stage[data-focus] .cmp-it[data-part="stand"] {
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+/* slurry, water and the wet pad: tints of the figure's own inks */
+.cmp-stream {
+  stroke: none;
+}
+
+.cmp-slurry {
+  fill: var(--anatomy-hi);
+}
+
+.cmp-water {
+  fill: var(--anatomy-mid);
+}
+
+.cmp-wet {
+  fill: var(--anatomy-faint);
+  stroke: none;
+}
+
+.cmp-window {
+  fill: var(--anatomy-shade-0, var(--anatomy-paper));
+}
+
+.cmp-window-lit {
+  fill: var(--anatomy-lit);
+  fill-opacity: 0.55;
+}
+
+/* Fig 1b: the section under the head */
+.cmp-inset {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 0 0 14px;
+  padding: 10px 14px 12px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--cmp-part-ring);
+}
+
+.cmp-inset-title,
+.cmp-inset-note {
+  font: 10.5px/1.3 var(--anatomy-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+}
+
+.cmp-inset-note {
+  grid-column: 1 / -1;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.cmp-section {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.cmp-oxide {
+  fill: var(--anatomy-lo);
+  fill-opacity: 0.35;
+}
+
+.cmp-cu {
+  fill: var(--anatomy-hi);
+  fill-opacity: 0.55;
+}
+
+.cmp-barrier {
+  fill: none;
+  stroke: var(--anatomy-mid);
+  stroke-width: 1.2;
+}
+
+.cmp-surf {
+  fill: none;
+  stroke: var(--anatomy-strong);
+  stroke-width: 1;
+}
+
+.cmp-section {
+  max-height: 120px;
+}
+
+@media (max-width: 640px) {
+  .cmp-stage > svg {
+    width: 110%;
+    margin: -2% -5% 0;
+  }
+}

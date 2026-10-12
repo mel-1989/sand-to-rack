@@ -1,0 +1,302 @@
+.euv {
+  --euv-ring: #ffffff10;
+  --euv-hover: #ffffff0a;
+  --euv-film: var(--anatomy-lit);
+  --euv-glow: var(--anatomy-lit);
+}
+
+[data-theme="light"] .euv {
+  --euv-ring: #00000014;
+  --euv-hover: #0000000a;
+}
+
+.euv .iso-plate {
+  padding: 52px 18px 60px;
+  overflow: hidden;
+}
+
+.euv-stage {
+  position: relative;
+  border-radius: 10px;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.euv-stage:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 6px;
+}
+
+.euv-stage > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.euv-svg .it {
+  pointer-events: visiblePainted;
+}
+
+.euv-svg .it[data-wafer] {
+  pointer-events: none;
+}
+
+/* the light: lit rays, a soft glow for the converging cone, a flash at the plasma point */
+.euv-beam,
+.euv-cone,
+.euv-co2,
+.euv-plasma {
+  pointer-events: none;
+}
+
+.euv-ray {
+  stroke-width: 1.1;
+}
+
+.euv-glow {
+  fill: var(--euv-glow);
+  fill-opacity: 0.16;
+  stroke: none;
+}
+
+.euv-flash {
+  fill: var(--euv-glow);
+  stroke: none;
+}
+
+.euv-drop {
+  fill: var(--anatomy-hi);
+  stroke: none;
+}
+
+.euv-dropline {
+  opacity: 0.5;
+}
+
+/* resist and developer films on the wafers, and exposed fields */
+.euv-film {
+  fill: var(--euv-film);
+  fill-opacity: 0.14;
+  stroke: var(--anatomy-lo);
+  stroke-width: 0.5;
+}
+
+.euv-field {
+  fill: var(--euv-film);
+  fill-opacity: 0;
+  stroke: none;
+}
+
+.it[data-hot] .iso-top {
+  fill: var(--anatomy-lit-top);
+}
+
+.it[data-hot] .iso-edge {
+  stroke: var(--anatomy-lit);
+}
+
+.euv-slit {
+  fill: var(--euv-glow);
+  stroke: none;
+}
+
+/* selection: the picked module lights, the rest step down */
+.euv-stage[data-focus] .it:not([data-on]):not([data-piece="frame"]) {
+  --anatomy-hi: var(--anatomy-mid);
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.euv-stage[data-focus] .it[data-piece="frame"] {
+  --anatomy-mid: var(--anatomy-lo);
+}
+
+.it[data-on] {
+  --anatomy-hi: var(--anatomy-lit);
+  --anatomy-mid: var(--anatomy-hi);
+}
+
+.it[data-on] .iso-top {
+  fill: var(--anatomy-lit-top);
+}
+
+.it[data-on] .iso-shade {
+  fill: var(--anatomy-lit-shade);
+}
+
+.it[data-on] [data-seamless] > .iso-shade {
+  stroke: var(--anatomy-lit-shade);
+}
+
+.it[data-on] [data-seamless] > .iso-top {
+  stroke: var(--anatomy-lit-top);
+}
+
+.euv-controls {
+  position: absolute;
+  left: 22px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.euv-hint {
+  font: 10.5px/1 var(--anatomy-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+}
+
+.euv-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.euv-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.euv-part {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--anatomy-muted);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--euv-ring);
+  transition: color 160ms var(--anatomy-ease), background 160ms var(--anatomy-ease);
+}
+
+.euv-part:hover,
+.euv-part:focus-visible,
+.euv-part[data-on] {
+  color: var(--anatomy-strong);
+  background: var(--euv-hover);
+  outline: none;
+}
+
+.euv-num {
+  font-family: var(--anatomy-mono);
+  font-size: 10px;
+  color: var(--anatomy-muted);
+}
+
+.euv-scrub {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.euv-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-width: 84px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--euv-hover);
+  color: var(--anatomy-strong);
+  font: 12.5px/1.3 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--euv-ring);
+}
+
+.euv-play:focus-visible {
+  outline: 1px solid var(--anatomy-muted);
+  outline-offset: 2px;
+}
+
+.euv-play-icon {
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 5px 0 5px 8px;
+  border-color: transparent transparent transparent currentColor;
+}
+
+.euv-play[data-playing] .euv-play-icon {
+  width: 8px;
+  height: 10px;
+  border: 0;
+  border-left: 3px solid currentColor;
+  border-right: 3px solid currentColor;
+}
+
+.euv-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--anatomy-lit);
+  cursor: pointer;
+}
+
+.euv-step {
+  flex: none;
+  width: 190px;
+  font: 10.5px/1.2 var(--anatomy-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--anatomy-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .euv .iso-plate {
+    padding: 48px 4px 92px;
+  }
+
+  .euv-stage > svg {
+    width: 104%;
+    margin-left: -2%;
+  }
+
+  .euv .iso-plate-corner[data-corner="readout"] {
+    bottom: 44px;
+    right: 0;
+    left: 16px;
+    max-width: calc(100% - 32px);
+    text-align: right;
+    line-height: 1.4;
+    white-space: normal;
+    overflow: visible;
+  }
+
+  .euv-controls {
+    left: 14px;
+    bottom: 14px;
+  }
+
+  .euv-hint {
+    font-size: 9.5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .euv-scrub {
+    flex-wrap: wrap;
+  }
+
+  .euv-step {
+    width: auto;
+    order: 3;
+    flex-basis: 100%;
+  }
+}
