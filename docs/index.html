@@ -148,6 +148,13 @@ body{transition:background-color .35s ease,color .35s ease}
 .cp-lesson strong{color:var(--anatomy-strong);font-weight:600}
 .cp-lesson a{color:var(--anatomy-strong);text-underline-offset:3px;text-decoration-color:var(--anatomy-lo);transition:text-decoration-color .2s ease}
 .cp-lesson a:hover{text-decoration-color:currentColor}
+.cp-pl-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px 28px}
+.cp-players h3{margin:0 0 8px;font:500 11px/1.3 var(--cp-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--anatomy-strong)}
+.cp-players ul{list-style:none;padding:0;gap:0;font-size:14px}
+.cp-players li{padding:8px 0;border-top:1px solid var(--anatomy-faint);line-height:1.45}
+.cp-players li b{display:block;font-weight:500;color:var(--anatomy-strong)}
+.cp-players li span{display:block;font-size:13px;color:var(--cp-muted)}
+.cp-players .cp-pl-note{margin:10px 0 0;font-size:12.5px;color:var(--cp-muted)}
 .cp-numbers{width:100%;border-collapse:collapse;font-size:14px}
 .cp-numbers td{padding:10px 0;border-top:1px solid var(--anatomy-faint);vertical-align:top}
 .cp-numbers tr:last-child td{border-bottom:1px solid var(--anatomy-faint)}
@@ -170,7 +177,7 @@ body{transition:background-color .35s ease,color .35s ease}
 .cp-js .cp-rv{opacity:0;transform:translateY(10px);transition:opacity .7s var(--cp-ease),transform .7s var(--cp-ease)}
 .cp-js .cp-rv.is-in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}.cp-js .cp-rv{opacity:1;transform:none;transition:none}.cp-toggle svg{transition:none}}
-@media (max-width:520px){.cp-head h1{font-size:24px}.cp-where{display:none}.cp-bar{justify-content:space-between}.cp-turn{grid-template-columns:1fr}.cp-turn .cp-next{grid-column:1}.cp-foot a:last-child{margin-left:0}}
+@media (max-width:520px){.cp-pl-cols{grid-template-columns:1fr}.cp-head h1{font-size:24px}.cp-where{display:none}.cp-bar{justify-content:space-between}.cp-turn{grid-template-columns:1fr}.cp-turn .cp-next{grid-column:1}.cp-foot a:last-child{margin-left:0}}
 
 .ix-hero{margin:24px 0 72px;max-width:62ch;font-family:var(--cp-sans)}
 .ix-hero .cp-kicker{font:500 11px/1.3 var(--cp-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--cp-muted);margin:0 0 14px}

@@ -32,6 +32,7 @@ Inside a chapter folder, `node build.mjs --audit` runs the geometry audit (it mu
 |---|---|
 | `site/chapters.mjs` | The chapter list, order and parts |
 | `site/shell.mjs` | The page shell for every page: head tags, fonts, sticky top bar, theme toggle, lesson, prev/next, footer, page transitions |
+| `site/players.mjs` | Suppliers and buyers for each chapter, shown as "Who makes it, who buys it" |
 | `site/index.mjs`, `site/thumbs.mjs` | The course map and its card thumbnails |
 | `chapters/<slug>/` | One chapter: `model.mjs` (sourced numbers), `build.mjs` (geometry), `lesson.mjs`, `live.js`, styles |
 | `vendor/anatomy/` | The [Anatomy](https://github.com/wheresryan22/anatomy) drawing kit and its headless check scripts (MIT, by Ryan) |

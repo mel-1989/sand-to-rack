@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { k } from "./kit.mjs";
 import { CHAPTERS, PARTS, partOf, indexOf } from "./chapters.mjs";
+import { PLAYERS } from "./players.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const DOCS = join(ROOT, "docs");
@@ -108,6 +109,13 @@ body{transition:background-color .35s ease,color .35s ease}
 .cp-lesson strong{color:var(--anatomy-strong);font-weight:600}
 .cp-lesson a{color:var(--anatomy-strong);text-underline-offset:3px;text-decoration-color:var(--anatomy-lo);transition:text-decoration-color .2s ease}
 .cp-lesson a:hover{text-decoration-color:currentColor}
+.cp-pl-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px 28px}
+.cp-players h3{margin:0 0 8px;font:500 11px/1.3 var(--cp-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--anatomy-strong)}
+.cp-players ul{list-style:none;padding:0;gap:0;font-size:14px}
+.cp-players li{padding:8px 0;border-top:1px solid var(--anatomy-faint);line-height:1.45}
+.cp-players li b{display:block;font-weight:500;color:var(--anatomy-strong)}
+.cp-players li span{display:block;font-size:13px;color:var(--cp-muted)}
+.cp-players .cp-pl-note{margin:10px 0 0;font-size:12.5px;color:var(--cp-muted)}
 .cp-numbers{width:100%;border-collapse:collapse;font-size:14px}
 .cp-numbers td{padding:10px 0;border-top:1px solid var(--anatomy-faint);vertical-align:top}
 .cp-numbers tr:last-child td{border-bottom:1px solid var(--anatomy-faint)}
@@ -130,7 +138,7 @@ body{transition:background-color .35s ease,color .35s ease}
 .cp-js .cp-rv{opacity:0;transform:translateY(10px);transition:opacity .7s var(--cp-ease),transform .7s var(--cp-ease)}
 .cp-js .cp-rv.is-in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}.cp-js .cp-rv{opacity:1;transform:none;transition:none}.cp-toggle svg{transition:none}}
-@media (max-width:520px){.cp-head h1{font-size:24px}.cp-where{display:none}.cp-bar{justify-content:space-between}.cp-turn{grid-template-columns:1fr}.cp-turn .cp-next{grid-column:1}.cp-foot a:last-child{margin-left:0}}
+@media (max-width:520px){.cp-pl-cols{grid-template-columns:1fr}.cp-head h1{font-size:24px}.cp-where{display:none}.cp-bar{justify-content:space-between}.cp-turn{grid-template-columns:1fr}.cp-turn .cp-next{grid-column:1}.cp-foot a:last-child{margin-left:0}}
 `;
 
 const MARK = `<svg viewBox="0 0 18 18" aria-hidden="true"><rect x="4.5" y="4.5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="7.25" y="7.25" width="3.5" height="3.5" rx=".6" fill="currentColor"/><path d="M7.5 4.5V2M10.5 4.5V2M7.5 16v-2.5M10.5 16v-2.5M4.5 7.5H2M4.5 10.5H2M16 7.5h-2.5M16 10.5h-2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".55"/></svg>`;
@@ -152,11 +160,20 @@ function turn(slug) {
 }
 
 // lesson: { intro, steps: [html], numbers: [[label, value, note?]], innovations?: [html], sources: [[text, url]] }
-function lessonHtml(lesson) {
+// Who makes it, who buys it: two short lists from site/players.mjs.
+function playersHtml(slug) {
+  const p = PLAYERS[slug];
+  if (!p) return "";
+  const list = (title, rows) => `<div><h3>${title}</h3><ul>${rows.map(([n, note]) => `<li><b>${esc(n)}</b>${note ? `<span>${esc(note)}</span>` : ""}</li>`).join("")}</ul></div>`;
+  return `<section class="cp-players cp-rv"><h2>Who makes it, who buys it</h2><div class="cp-pl-cols">${list("Suppliers", p.makers)}${list("Buyers", p.buyers)}</div><p class="cp-pl-note">Major players as of 2026, not a complete list.</p></section>`;
+}
+
+function lessonHtml(lesson, slug) {
   const parts = [];
   if (lesson.steps?.length) parts.push(`<section class="cp-rv"><h2>What happens</h2><ol>${lesson.steps.map((s) => `<li>${s}</li>`).join("")}</ol></section>`);
   if (lesson.numbers?.length) parts.push(`<section class="cp-rv"><h2>Key numbers</h2><table class="cp-numbers"><tbody>${lesson.numbers.map(([l, v, n]) => `<tr><td>${l}</td><td>${v}${n ? `<span class="cp-note">${n}</span>` : ""}</td></tr>`).join("")}</tbody></table></section>`);
   if (lesson.innovations?.length) parts.push(`<section class="cp-rv"><h2>${esc(lesson.innovationsTitle || "Why it matters")}</h2><ul>${lesson.innovations.map((s) => `<li>${s}</li>`).join("")}</ul></section>`);
+  parts.push(playersHtml(slug));
   if (lesson.more) parts.push(lesson.more);
   if (lesson.sources?.length) parts.push(`<section class="cp-sources cp-rv"><h2>Sources</h2><ul>${lesson.sources.map(([t, u]) => `<li><a href="${esc(u)}" rel="noopener" target="_blank">${esc(t)}</a></li>`).join("")}</ul></section>`);
   return `<div class="cp-lesson">${parts.join("")}</div>`;
@@ -167,7 +184,7 @@ export function chapterHtml({ slug, figure, css = "", script = "", lesson, width
   if (!c) throw new Error(`unknown chapter ${slug}: add it to site/chapters.mjs`);
   const part = partOf(c.part);
   const head = `<header class="cp-head"><p class="cp-kicker">${esc(c.machine)}</p><h1>${esc(c.title)}</h1>${lesson.intro ? `<p>${lesson.intro}</p>` : ""}</header>`;
-  const body = `${THEME_BOOT}<style>${SHELL_CSS}${css}</style><div class="cp-progress" aria-hidden="true"></div>${bar(slug)}${head}${figure}${lessonHtml(lesson)}${turn(slug)}${footHtml}`;
+  const body = `${THEME_BOOT}<style>${SHELL_CSS}${css}</style><div class="cp-progress" aria-hidden="true"></div>${bar(slug)}${head}${figure}${lessonHtml(lesson, slug)}${turn(slug)}${footHtml}`;
   const description = `${c.title}: ${c.machine}. Chapter ${indexOf(slug) + 1} of ${SITE}, an interactive course on how an AI chip is made.`;
   return pageShell({ title: `${c.title} · ${SITE}`, description, body, script, width });
 }
